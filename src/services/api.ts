@@ -1,4 +1,5 @@
 import axios, { isAxiosError } from 'axios'
+import type { ApiSuccess } from '../types/api'
 
 const TOKEN_KEY = 'token'
 
@@ -26,6 +27,37 @@ api.interceptors.request.use((config) => {
   return config
 })
 
+type SessionHandlers = {
+  onUnauthenticated?: () => void
+  onSubscriptionExpired?: () => void
+}
+
+let handlers: SessionHandlers = {}
+
+export function setSessionHandlers(next: SessionHandlers): void {
+  handlers = next
+}
+
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (isAxiosError(error)) {
+      const status = error.response?.status
+      const code = (error.response?.data as { code?: string } | undefined)?.code
+
+      if (status === 401) handlers.onUnauthenticated?.()
+      if (status === 402 && code === 'SUBSCRIPTION_EXPIRED') handlers.onSubscriptionExpired?.()
+    }
+    return Promise.reject(error)
+  },
+)
+
+/** Unwraps the `{ success, message, data }` envelope every Fatura endpoint returns. */
+export async function unwrap<T>(promise: Promise<{ data: ApiSuccess<T> }>): Promise<T> {
+  const response = await promise
+  return response.data.data
+}
+
 export function getErrorMessage(error: unknown, fallback = 'Something went wrong'): string {
   if (isAxiosError(error)) {
     const data = error.response?.data as { message?: string } | undefined
@@ -33,6 +65,11 @@ export function getErrorMessage(error: unknown, fallback = 'Something went wrong
   }
   if (error instanceof Error) return error.message
   return fallback
+}
+
+export function getErrorCode(error: unknown): string | null {
+  if (!isAxiosError(error)) return null
+  return (error.response?.data as { code?: string } | undefined)?.code ?? null
 }
 
 export function mapValidationErrors(error: unknown): Record<string, string> {

@@ -1,5 +1,6 @@
 import { Building2, LogOut, ScanLine, ShieldCheck } from 'lucide-react'
 import { NavLink } from 'react-router-dom'
+import { useAuth } from '../../auth/AuthProvider'
 import { t } from '../../i18n'
 import { cn } from '../../lib/cn'
 import { Avatar } from '../ui/Avatar'
@@ -11,8 +12,17 @@ export type SidebarProps = {
 }
 
 export function Sidebar({ accent = 'blue', onNavigate }: SidebarProps) {
+  const { session, logout } = useAuth()
   const isAdmin = accent === 'indigo'
   const groups = isAdmin ? ADMIN_NAV : APP_NAV
+  const company = session?.company ?? null
+  const userName = session?.user.name ?? t('nav.userName', 'Demo User')
+  const roleLabel =
+    session?.role === 'super_admin'
+      ? t('nav.roleAdmin', 'Platform admin')
+      : session?.role === 'staff'
+        ? t('nav.roleStaff', 'Staff')
+        : t('nav.roleOwner', 'Owner')
   const brand = isAdmin ? 'bg-indigo-600' : 'bg-blue-600'
   const active = isAdmin ? 'bg-indigo-600 text-white shadow-xs' : 'bg-blue-600 text-white shadow-xs'
   const highlightIdle = isAdmin
@@ -46,10 +56,10 @@ export function Sidebar({ accent = 'blue', onNavigate }: SidebarProps) {
         </div>
         <div className="min-w-0">
           <p className="text-xs font-semibold text-white truncate">
-            {t('nav.companyName', 'Fatura Demo')}
+            {isAdmin ? t('app.name', 'Fatura') : (company?.name ?? t('nav.companyName', 'Fatura Demo'))}
           </p>
           <p className="text-[10px] text-slate-400 font-mono truncate">
-            {t('nav.taxId', '-')}
+            {isAdmin ? t('nav.roleAdmin', 'Platform admin') : (company?.email ?? t('nav.taxId', '-'))}
           </p>
         </div>
       </div>
@@ -91,22 +101,23 @@ export function Sidebar({ accent = 'blue', onNavigate }: SidebarProps) {
       </nav>
 
       <div className="p-3 border-t border-slate-800 flex items-center gap-2.5">
-        <Avatar name={t('nav.userName', 'Demo User')} size="sm" />
+        <Avatar name={userName} size="sm" />
         <div className="min-w-0 flex-1">
-          <p className="text-xs font-semibold text-white truncate">{t('nav.userName', 'Demo User')}</p>
-          <p className="text-[10px] text-slate-400 truncate">
-            {isAdmin ? t('nav.roleAdmin', 'Platform admin') : t('nav.roleOwner', 'Owner')}
-          </p>
+          <p className="text-xs font-semibold text-white truncate">{userName}</p>
+          <p className="text-[10px] text-slate-400 truncate">{roleLabel}</p>
         </div>
-        <NavLink
-          to="/login"
-          onClick={onNavigate}
+        <button
+          type="button"
+          onClick={() => {
+            onNavigate?.()
+            void logout()
+          }}
           title={t('nav.logout', 'Log out')}
           aria-label={t('nav.logout', 'Log out')}
           className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
         >
           <LogOut className="w-4 h-4" />
-        </NavLink>
+        </button>
       </div>
     </div>
   )

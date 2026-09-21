@@ -9,6 +9,8 @@ export type ApiFailure = {
   message: string
   data: unknown
   errors?: Record<string, string[] | string>
+  code?: string
+  support?: { email: string; whatsapp: string }
 }
 
 export type ApiEnvelope<T> = ApiSuccess<T> | ApiFailure

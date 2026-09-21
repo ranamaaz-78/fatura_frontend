@@ -1,20 +1,23 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+import { AuthProvider } from './auth/AuthProvider'
+import { RequireGuest, RequireRole } from './auth/guards'
 import { AdminLayout } from './layouts/AdminLayout'
 import { AppLayout } from './layouts/AppLayout'
 import { AuthLayout } from './layouts/AuthLayout'
 import { PublicLayout } from './layouts/PublicLayout'
+import AdminApplicationsPage from './pages/admin/Applications'
 import AuditLogsPage from './pages/admin/AuditLogs'
-import AdminBusinessesPage from './pages/admin/Businesses'
+import AdminCompaniesPage from './pages/admin/Companies'
+import AdminCompanyDetailPage from './pages/admin/CompanyDetail'
 import AdminDashboardPage from './pages/admin/Dashboard'
+import AdminPaymentMethodsPage from './pages/admin/PaymentMethods'
 import AdminPlansPage from './pages/admin/Plans'
 import AdminReportsPage from './pages/admin/Reports'
 import AdminUsersPage from './pages/admin/Users'
 import ForgotPasswordPage from './pages/auth/ForgotPassword'
 import LoginPage from './pages/auth/Login'
-import PendingActivationPage from './pages/auth/PendingActivation'
 import ResetPasswordPage from './pages/auth/ResetPassword'
-import SetupAdminPage from './pages/auth/SetupAdmin'
-import SignupPage from './pages/auth/Signup'
+import SetPasswordPage from './pages/auth/SetPassword'
 import UiGallery from './pages/dev/UiGallery'
 import CustomersPage from './pages/app/Customers'
 import DashboardPage from './pages/app/Dashboard'
@@ -31,8 +34,10 @@ import ReportsPage from './pages/app/Reports'
 import SettingsPage from './pages/app/Settings'
 import StockPage from './pages/app/Stock'
 import StockMovementsPage from './pages/app/StockMovements'
+import SubscriptionPage from './pages/app/Subscription'
 import SuppliersPage from './pages/app/Suppliers'
 import AboutPage from './pages/public/About'
+import ApplyPage from './pages/public/Apply'
 import ContactPage from './pages/public/Contact'
 import FeaturesPage from './pages/public/Features'
 import HomePage from './pages/public/Home'
@@ -43,58 +48,70 @@ import TermsPage from './pages/public/Terms'
 function App() {
   return (
     <BrowserRouter>
-      <Routes>
-        <Route element={<PublicLayout />}>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/features" element={<FeaturesPage />} />
-          <Route path="/pricing" element={<PricingPage />} />
-          <Route path="/about" element={<AboutPage />} />
-          <Route path="/contact" element={<ContactPage />} />
-          <Route path="/terms" element={<TermsPage />} />
-          <Route path="/privacy" element={<PrivacyPage />} />
-        </Route>
+      <AuthProvider>
+        <Routes>
+          <Route element={<PublicLayout />}>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/apply" element={<ApplyPage />} />
+            <Route path="/features" element={<FeaturesPage />} />
+            <Route path="/pricing" element={<PricingPage />} />
+            <Route path="/about" element={<AboutPage />} />
+            <Route path="/contact" element={<ContactPage />} />
+            <Route path="/terms" element={<TermsPage />} />
+            <Route path="/privacy" element={<PrivacyPage />} />
+          </Route>
 
-        <Route element={<AuthLayout />}>
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/signup" element={<SignupPage />} />
-          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-          <Route path="/reset-password" element={<ResetPasswordPage />} />
-          <Route path="/pending-activation" element={<PendingActivationPage />} />
-          <Route path="/setup/admin" element={<SetupAdminPage />} />
-        </Route>
+          <Route element={<RequireGuest />}>
+            <Route element={<AuthLayout />}>
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/set-password" element={<SetPasswordPage />} />
+              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+              <Route path="/reset-password" element={<ResetPasswordPage />} />
+            </Route>
+          </Route>
 
-        <Route path="/app" element={<AppLayout />}>
-          <Route index element={<Navigate to="dashboard" replace />} />
-          <Route path="dashboard" element={<DashboardPage />} />
-          <Route path="invoices/new" element={<InvoiceNewPage />} />
-          <Route path="invoices" element={<InvoicesPage />} />
-          <Route path="invoices/:id" element={<InvoiceDetailPage />} />
-          <Route path="quotes" element={<QuotesPage />} />
-          <Route path="proformas" element={<ProformasPage />} />
-          <Route path="payments" element={<PaymentsPage />} />
-          <Route path="products" element={<ProductsPage />} />
-          <Route path="stock" element={<StockPage />} />
-          <Route path="stock/movements" element={<StockMovementsPage />} />
-          <Route path="import" element={<ImportPage />} />
-          <Route path="purchases" element={<PurchasesPage />} />
-          <Route path="customers" element={<CustomersPage />} />
-          <Route path="suppliers" element={<SuppliersPage />} />
-          <Route path="reports" element={<ReportsPage />} />
-          <Route path="settings" element={<SettingsPage />} />
-        </Route>
+          <Route element={<RequireRole roles={['business_admin', 'staff']} />}>
+            <Route path="/app" element={<AppLayout />}>
+              <Route index element={<Navigate to="dashboard" replace />} />
+              <Route path="dashboard" element={<DashboardPage />} />
+              <Route path="subscription" element={<SubscriptionPage />} />
+              <Route path="invoices/new" element={<InvoiceNewPage />} />
+              <Route path="invoices" element={<InvoicesPage />} />
+              <Route path="invoices/:id" element={<InvoiceDetailPage />} />
+              <Route path="quotes" element={<QuotesPage />} />
+              <Route path="proformas" element={<ProformasPage />} />
+              <Route path="payments" element={<PaymentsPage />} />
+              <Route path="products" element={<ProductsPage />} />
+              <Route path="stock" element={<StockPage />} />
+              <Route path="stock/movements" element={<StockMovementsPage />} />
+              <Route path="import" element={<ImportPage />} />
+              <Route path="purchases" element={<PurchasesPage />} />
+              <Route path="customers" element={<CustomersPage />} />
+              <Route path="suppliers" element={<SuppliersPage />} />
+              <Route path="reports" element={<ReportsPage />} />
+              <Route path="settings" element={<SettingsPage />} />
+            </Route>
+          </Route>
 
-        <Route path="/admin" element={<AdminLayout />}>
-          <Route index element={<Navigate to="dashboard" replace />} />
-          <Route path="dashboard" element={<AdminDashboardPage />} />
-          <Route path="businesses" element={<AdminBusinessesPage />} />
-          <Route path="users" element={<AdminUsersPage />} />
-          <Route path="plans" element={<AdminPlansPage />} />
-          <Route path="reports" element={<AdminReportsPage />} />
-          <Route path="audit-logs" element={<AuditLogsPage />} />
-        </Route>
+          <Route element={<RequireRole roles={['super_admin']} />}>
+            <Route path="/admin" element={<AdminLayout />}>
+              <Route index element={<Navigate to="dashboard" replace />} />
+              <Route path="dashboard" element={<AdminDashboardPage />} />
+              <Route path="applications" element={<AdminApplicationsPage />} />
+              <Route path="companies" element={<AdminCompaniesPage />} />
+              <Route path="companies/:id" element={<AdminCompanyDetailPage />} />
+              <Route path="plans" element={<AdminPlansPage />} />
+              <Route path="payment-methods" element={<AdminPaymentMethodsPage />} />
+              <Route path="users" element={<AdminUsersPage />} />
+              <Route path="reports" element={<AdminReportsPage />} />
+              <Route path="audit-logs" element={<AuditLogsPage />} />
+            </Route>
+          </Route>
 
-        <Route path="/dev/ui" element={<UiGallery />} />
-      </Routes>
+          <Route path="/dev/ui" element={<UiGallery />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </AuthProvider>
     </BrowserRouter>
   )
 }

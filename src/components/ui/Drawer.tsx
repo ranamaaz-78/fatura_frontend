@@ -1,13 +1,16 @@
 import { useEffect, type ReactNode } from 'react'
+import { cn } from '../../lib/cn'
 
 export type DrawerProps = {
   open: boolean
   onClose: () => void
   children: ReactNode
   side?: 'left' | 'right'
+  /** Tailwind width classes. Wide panels need more room than the default nav drawer. */
+  width?: string
 }
 
-export function Drawer({ open, onClose, children, side = 'left' }: DrawerProps) {
+export function Drawer({ open, onClose, children, side = 'left', width = 'w-72' }: DrawerProps) {
   useEffect(() => {
     if (!open) return
     const previousOverflow = document.body.style.overflow
@@ -35,11 +38,11 @@ export function Drawer({ open, onClose, children, side = 'left' }: DrawerProps) 
         onClick={onClose}
       />
       <aside
-        className={
-          isLeft
-            ? 'fixed inset-y-0 left-0 w-72 z-50 bg-white shadow-lg border-r border-slate-200 overflow-y-auto'
-            : 'fixed inset-y-0 right-0 w-72 z-50 bg-white shadow-lg border-l border-slate-200 overflow-y-auto'
-        }
+        className={cn(
+          'fixed inset-y-0 z-50 bg-white shadow-lg overflow-y-auto',
+          width,
+          isLeft ? 'left-0 border-r border-slate-200' : 'right-0 border-l border-slate-200',
+        )}
       >
         {children}
       </aside>

@@ -46,10 +46,10 @@ export function PublicNavbar() {
             {t('auth.login', 'Log in')}
           </Link>
           <Link
-            to="/signup"
+            to="/apply"
             className="h-11 px-5 rounded-lg bg-[#004ac6] text-white text-sm font-semibold inline-flex items-center hover:bg-[#2563eb] transition-colors"
           >
-            {t('auth.signup', 'Create account')}
+            {t('public.applyCta', 'Apply for access')}
           </Link>
         </div>
 
@@ -82,11 +82,11 @@ export function PublicNavbar() {
               {t('auth.login', 'Log in')}
             </Link>
             <Link
-              to="/signup"
+              to="/apply"
               onClick={() => setOpen(false)}
               className="h-11 px-5 rounded-lg bg-[#004ac6] text-white text-sm font-semibold inline-flex items-center justify-center"
             >
-              {t('auth.signup', 'Create account')}
+              {t('public.applyCta', 'Apply for access')}
             </Link>
           </div>
         </div>

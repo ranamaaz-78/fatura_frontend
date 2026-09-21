@@ -1,4 +1,4 @@
-import type { TextareaHTMLAttributes } from 'react'
+import { useId, type TextareaHTMLAttributes } from 'react'
 import { cn } from '../../lib/cn'
 
 export type TextareaProps = TextareaHTMLAttributes<HTMLTextAreaElement> & {
@@ -16,7 +16,8 @@ export function Textarea({
   className,
   ...props
 }: TextareaProps) {
-  const textareaId = id ?? props.name
+  const fallbackId = useId()
+  const textareaId = id ?? props.name ?? fallbackId
   const hintId = hint ? `${textareaId}-hint` : undefined
   const errorId = error ? `${textareaId}-error` : undefined
 

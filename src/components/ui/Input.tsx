@@ -1,4 +1,4 @@
-import type { InputHTMLAttributes, ReactNode } from 'react'
+import { useId, type InputHTMLAttributes, type ReactNode } from 'react'
 import { cn } from '../../lib/cn'
 
 export type InputProps = InputHTMLAttributes<HTMLInputElement> & {
@@ -18,7 +18,8 @@ export function Input({
   className,
   ...props
 }: InputProps) {
-  const inputId = id ?? props.name
+  const fallbackId = useId()
+  const inputId = id ?? props.name ?? fallbackId
   const hintId = hint ? `${inputId}-hint` : undefined
   const errorId = error ? `${inputId}-error` : undefined
 

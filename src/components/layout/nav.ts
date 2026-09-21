@@ -5,6 +5,7 @@ import {
   FileSpreadsheet,
   FileText,
   History,
+  Inbox,
   LayoutDashboard,
   Layers,
   Package,
@@ -16,6 +17,7 @@ import {
   TrendingUp,
   Truck,
   Users,
+  Wallet,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -102,6 +104,7 @@ export const APP_NAV: NavGroup[] = [
     titleFallback: 'Analytics and settings',
     items: [
       { to: '/app/reports', labelKey: 'nav.reports', fallback: 'Reports', icon: TrendingUp },
+      { to: '/app/subscription', labelKey: 'nav.subscription', fallback: 'Subscription', icon: CreditCard },
       { to: '/app/settings', labelKey: 'nav.settings', fallback: 'Settings', icon: Settings },
     ],
   },
@@ -125,15 +128,17 @@ export const ADMIN_NAV: NavGroup[] = [
     titleKey: 'nav.group.platform',
     titleFallback: 'Platform',
     items: [
-      { to: '/admin/businesses', labelKey: 'nav.businesses', fallback: 'Businesses', icon: Building2 },
-      { to: '/admin/users', labelKey: 'nav.users', fallback: 'Users', icon: Users },
+      { to: '/admin/applications', labelKey: 'nav.applications', fallback: 'Applications', icon: Inbox },
+      { to: '/admin/companies', labelKey: 'nav.companies', fallback: 'Companies', icon: Building2 },
       { to: '/admin/plans', labelKey: 'nav.plans', fallback: 'Plans', icon: CreditCard },
+      { to: '/admin/payment-methods', labelKey: 'nav.paymentMethods', fallback: 'Payment methods', icon: Wallet },
     ],
   },
   {
     titleKey: 'nav.group.analytics',
     titleFallback: 'Analytics and settings',
     items: [
+      { to: '/admin/users', labelKey: 'nav.users', fallback: 'Users', icon: Users },
       { to: '/admin/reports', labelKey: 'nav.reports', fallback: 'Reports', icon: TrendingUp },
       { to: '/admin/audit-logs', labelKey: 'nav.auditLogs', fallback: 'Audit logs', icon: ShieldCheck },
     ],

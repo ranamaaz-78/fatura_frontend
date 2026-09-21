@@ -1,4 +1,4 @@
-import type { SelectHTMLAttributes, ReactNode } from 'react'
+import { useId, type SelectHTMLAttributes, type ReactNode } from 'react'
 import { cn } from '../../lib/cn'
 
 export type SelectProps = SelectHTMLAttributes<HTMLSelectElement> & {
@@ -18,7 +18,8 @@ export function Select({
   children,
   ...props
 }: SelectProps) {
-  const selectId = id ?? props.name
+  const fallbackId = useId()
+  const selectId = id ?? props.name ?? fallbackId
   const hintId = hint ? `${selectId}-hint` : undefined
   const errorId = error ? `${selectId}-error` : undefined
 
