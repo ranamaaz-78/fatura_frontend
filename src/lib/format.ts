@@ -1,10 +1,15 @@
-export function formatCurrency(value: number, currency: string, locale: string): string {
+export function formatCurrency(value: number, currency: string, locale: string, decimals = 2): string {
   return new Intl.NumberFormat(locale, {
     style: 'currency',
     currency,
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
   }).format(value)
+}
+
+/** Headline prices drop a trailing `.00` so "$20" reads as a price, not a total. */
+export function formatPlanPrice(value: number, currency: string): string {
+  return formatCurrency(value, currency, 'en-US', Number.isInteger(value) ? 0 : 2)
 }
 
 export function formatNumber(value: number, decimals: number): string {

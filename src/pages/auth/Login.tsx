@@ -3,8 +3,7 @@ import { useMutation } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { z } from 'zod'
-import { Button } from '../../components/ui/Button'
-import { Input } from '../../components/ui/Input'
+import { PublicInput, PublicSubmit } from '../../components/ui/PublicField'
 import { useToast } from '../../components/ui/Toast'
 import { homeFor, useAuth } from '../../auth/AuthProvider'
 import { t } from '../../i18n'
@@ -49,46 +48,46 @@ function Login() {
   })
 
   return (
-    <form noValidate onSubmit={handleSubmit((values) => mutation.mutate(values))} className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-          {t('auth.loginTitle', 'Welcome back')}
-        </h1>
-        <p className="mt-1 text-sm text-slate-500">
-          {t('auth.loginSubtitle', 'Sign in to your Fatura workspace.')}
-        </p>
-      </div>
+    <form noValidate onSubmit={handleSubmit((values) => mutation.mutate(values))}>
+      <h1 className="text-[30px] font-extrabold tracking-[-0.025em] text-[#0b1c30]">
+        {t('auth.loginTitle', 'Welcome back')}
+      </h1>
+      <p className="mt-1.5 text-[15px] text-[#434655]">
+        {t('auth.loginSubtitle', 'Sign in to your Fatura workspace.')}
+      </p>
 
-      <div className="space-y-4">
-        <Input
+      <div className="mt-8 flex flex-col gap-4.5">
+        <PublicInput
           label={t('auth.email', 'Email')}
           type="email"
           autoComplete="email"
           required
+          placeholder="you@business.com"
           error={errors.email?.message}
           {...register('email')}
         />
-        <Input
+        <PublicInput
           label={t('auth.password', 'Password')}
           type="password"
           autoComplete="current-password"
           required
+          placeholder="••••••••"
           error={errors.password?.message}
           {...register('password')}
         />
       </div>
 
-      <Button type="submit" size="lg" fullWidth loading={mutation.isPending}>
+      <PublicSubmit className="mt-7 w-full" disabled={mutation.isPending}>
         {mutation.isPending ? t('auth.signingIn', 'Signing in') : t('auth.login', 'Log in')}
-      </Button>
+      </PublicSubmit>
 
-      <div className="flex items-center justify-between text-xs">
-        <Link to="/forgot-password" className="font-semibold text-blue-700 hover:text-blue-800">
+      <div className="mt-6 flex flex-wrap items-center justify-between gap-3 text-sm">
+        <Link to="/forgot-password" className="font-semibold text-[#004ac6] hover:text-[#2563eb]">
           {t('auth.forgot', 'Forgot your password?')}
         </Link>
-        <span className="text-slate-500">
+        <span className="text-[#434655]">
           {t('auth.noAccount', 'No account yet?')}{' '}
-          <Link to="/apply" className="font-semibold text-blue-700 hover:text-blue-800">
+          <Link to="/apply" className="font-semibold text-[#004ac6] hover:text-[#2563eb]">
             {t('auth.applyInstead', 'Apply for access')}
           </Link>
         </span>

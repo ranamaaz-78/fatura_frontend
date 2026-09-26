@@ -4,8 +4,7 @@ import { MailCheck } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { Link } from 'react-router-dom'
 import { z } from 'zod'
-import { Button } from '../../components/ui/Button'
-import { Input } from '../../components/ui/Input'
+import { PublicInput, PublicSubmit } from '../../components/ui/PublicField'
 import { useToast } from '../../components/ui/Toast'
 import { t } from '../../i18n'
 import { getErrorMessage } from '../../services/api'
@@ -30,15 +29,17 @@ function ForgotPassword() {
 
   if (mutation.isSuccess) {
     return (
-      <div className="space-y-4">
-        <MailCheck className="h-8 w-8 text-emerald-600" />
-        <h1 className="text-xl font-bold tracking-tight text-slate-900">
+      <div>
+        <span className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-50 text-[#007d55]">
+          <MailCheck className="h-6 w-6" />
+        </span>
+        <h1 className="mt-5 text-[26px] font-extrabold tracking-[-0.025em] text-[#0b1c30]">
           {t('auth.forgotTitle', 'Reset your password')}
         </h1>
-        <p className="text-sm leading-relaxed text-slate-600">
+        <p className="mt-2 text-[15px] leading-relaxed text-[#434655]">
           {t('auth.forgotSent', 'If that email is registered, a reset link is on its way.')}
         </p>
-        <Link to="/login" className="inline-block text-xs font-semibold text-blue-700">
+        <Link to="/login" className="mt-7 inline-block text-sm font-semibold text-[#004ac6] hover:text-[#2563eb]">
           {t('auth.backToLogin', 'Back to log in')}
         </Link>
       </div>
@@ -46,30 +47,31 @@ function ForgotPassword() {
   }
 
   return (
-    <form noValidate onSubmit={handleSubmit((values) => mutation.mutate(values))} className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-          {t('auth.forgotTitle', 'Reset your password')}
-        </h1>
-        <p className="mt-1 text-sm text-slate-500">
-          {t('auth.forgotSubtitle', 'Enter your email and we will send you a reset link.')}
-        </p>
+    <form noValidate onSubmit={handleSubmit((values) => mutation.mutate(values))}>
+      <h1 className="text-[30px] font-extrabold tracking-[-0.025em] text-[#0b1c30]">
+        {t('auth.forgotTitle', 'Reset your password')}
+      </h1>
+      <p className="mt-1.5 text-[15px] text-[#434655]">
+        {t('auth.forgotSubtitle', 'Enter your email and we will send you a reset link.')}
+      </p>
+
+      <div className="mt-7">
+        <PublicInput
+          label={t('auth.email', 'Email')}
+          type="email"
+          autoComplete="email"
+          required
+          placeholder="you@business.com"
+          error={errors.email?.message}
+          {...register('email')}
+        />
       </div>
 
-      <Input
-        label={t('auth.email', 'Email')}
-        type="email"
-        autoComplete="email"
-        required
-        error={errors.email?.message}
-        {...register('email')}
-      />
-
-      <Button type="submit" size="lg" fullWidth loading={mutation.isPending}>
+      <PublicSubmit className="mt-7 w-full" disabled={mutation.isPending}>
         {t('auth.forgotSend', 'Send reset link')}
-      </Button>
+      </PublicSubmit>
 
-      <Link to="/login" className="inline-block text-xs font-semibold text-blue-700">
+      <Link to="/login" className="mt-6 inline-block text-sm font-semibold text-[#004ac6] hover:text-[#2563eb]">
         {t('auth.backToLogin', 'Back to log in')}
       </Link>
     </form>

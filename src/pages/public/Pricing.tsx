@@ -10,28 +10,32 @@ function Pricing() {
   const plans = query.data ?? []
 
   return (
-    <section className="mx-auto max-w-[1280px] px-6 py-16 sm:px-8 sm:py-24">
-      <h1 className="text-4xl font-bold tracking-tight text-[#0b1c30] sm:text-5xl">
-        {t('public.pricingTitle', 'Simple pricing')}
-      </h1>
-      <p className="mt-4 max-w-2xl text-base text-[#434655]">
-        {t('public.pricingBody', 'One plan per business. Change it any time by talking to us.')}
-      </p>
+    <section className="mx-auto max-w-[1200px] px-5 py-16 sm:py-24">
+      <div className="text-center">
+        <span className="text-[13px] font-bold uppercase tracking-[0.1em] text-[#004ac6]">
+          {t('public.pricingEyebrow', 'Pricing')}
+        </span>
+        <h1 className="mt-3 text-[32px] leading-[1.12] font-extrabold tracking-[-0.03em] text-[#0b1c30] sm:text-[44px]">
+          {t('public.pricingTitle', 'Simple pricing')}
+        </h1>
+        <p className="mx-auto mt-4 max-w-2xl text-base text-[#434655] sm:text-lg">
+          {t('public.pricingBody', 'No setup fee and no long contract. Our team activates your account after a short call, and you pay period to period.')}
+        </p>
+      </div>
 
       {query.isPending ? (
-        <div className="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          <Skeleton className="h-96 w-full" />
-          <Skeleton className="h-96 w-full" />
+        <div className="mt-14 grid justify-center gap-8 sm:grid-cols-[repeat(auto-fit,minmax(320px,420px))]">
+          <Skeleton className="h-[520px] w-full rounded-[28px]" />
         </div>
       ) : plans.length === 0 ? (
-        <p className="mt-10 text-sm text-[#6b7086]">
+        <p className="mt-10 text-center text-sm text-[#6b7086]">
           {t('public.plansUnavailable', 'Pricing is temporarily unavailable.')}{' '}
           <Link to="/apply" className="font-semibold text-[#004ac6]">
             {t('public.applyCta', 'Apply for access')}
           </Link>
         </p>
       ) : (
-        <div className="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-14 grid justify-center gap-8 sm:grid-cols-[repeat(auto-fit,minmax(320px,420px))]">
           {plans.map((plan) => (
             <PlanCard key={plan.id} plan={plan} />
           ))}

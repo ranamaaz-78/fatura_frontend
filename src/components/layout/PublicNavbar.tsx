@@ -1,10 +1,19 @@
-import { Menu, X } from 'lucide-react'
+import { Menu, ScanLine, X } from 'lucide-react'
 import { useState } from 'react'
-import { Link, NavLink } from 'react-router-dom'
+import { Link, NavLink, useLocation } from 'react-router-dom'
 import { t } from '../../i18n'
 import { cn } from '../../lib/cn'
 
-const links = [
+/** The landing page scrolls between its own sections; every other page routes. */
+const LANDING_LINKS = [
+  { href: '#features', key: 'nav.features', fallback: 'Features' },
+  { href: '#how', key: 'nav.howItWorks', fallback: 'How it works' },
+  { href: '#mobile', key: 'nav.mobileApp', fallback: 'Mobile app' },
+  { href: '#pricing', key: 'nav.pricing', fallback: 'Pricing' },
+  { href: '#faq', key: 'nav.faq', fallback: 'FAQ' },
+]
+
+const PAGE_LINKS = [
   { to: '/features', key: 'nav.features', fallback: 'Features' },
   { to: '/pricing', key: 'nav.pricing', fallback: 'Pricing' },
   { to: '/about', key: 'nav.about', fallback: 'About' },
@@ -13,80 +22,130 @@ const links = [
 
 export function PublicNavbar() {
   const [open, setOpen] = useState(false)
+  const { pathname } = useLocation()
+
+  // On the landing page the bar sits inside the dark hero instead of above it.
+  const onHero = pathname === '/'
 
   return (
-    <header className="fixed top-0 inset-x-0 z-40 h-20 bg-white/90 backdrop-blur-xl border-b border-slate-100/80">
-      <div className="h-20 max-w-[1280px] mx-auto px-6 sm:px-8 flex items-center justify-between gap-6">
-        <Link to="/" className="flex items-center gap-2.5 shrink-0">
-          <span className="w-9 h-9 rounded-lg bg-[#004ac6] text-white font-mono text-sm font-bold inline-flex items-center justify-center">
-            F
+    <header
+      className={cn(
+        'z-40',
+        onHero
+          ? 'absolute inset-x-0 top-0'
+          : 'fixed inset-x-0 top-0 border-b border-[#e5eeff] bg-white/90 backdrop-blur-xl',
+      )}
+    >
+      <div
+        className={cn(
+          'mx-auto flex h-20 max-w-[1200px] items-center justify-between gap-6 px-5',
+          onHero && 'border-b border-white/8',
+        )}
+      >
+        <Link to="/" className="flex shrink-0 items-center gap-2.5">
+          <span className="inline-flex h-9 w-9 items-center justify-center rounded-[10px] bg-[#004ac6] text-white">
+            <ScanLine className="h-[18px] w-[18px]" />
           </span>
-          <span className="text-xl font-bold tracking-tight text-[#0b1c30]">{t('app.name', 'Fatura')}</span>
+          <span
+            className={cn(
+              'text-xl font-bold tracking-[-0.02em]',
+              onHero ? 'text-white' : 'text-[#0b1c30]',
+            )}
+          >
+            {t('app.name', 'Fatura')}
+          </span>
         </Link>
 
-        <nav className="hidden md:flex items-center gap-6">
-          {links.map((link) => (
-            <NavLink
-              key={link.to}
-              to={link.to}
-              className={({ isActive }) =>
-                cn(
-                  'text-[15px] font-medium text-[#434655] hover:text-[#004ac6] transition-colors',
-                  isActive && 'text-[#004ac6] font-semibold',
-                )
-              }
-            >
-              {t(link.key, link.fallback)}
-            </NavLink>
-          ))}
+        <nav className="hidden items-center gap-9 lg:flex">
+          {onHero
+            ? LANDING_LINKS.map((link) => (
+                <a
+                  key={link.href}
+                  href={link.href}
+                  className="text-[15px] font-medium text-[#cbd5e1] transition-colors hover:text-white"
+                >
+                  {t(link.key, link.fallback)}
+                </a>
+              ))
+            : PAGE_LINKS.map((link) => (
+                <NavLink
+                  key={link.to}
+                  to={link.to}
+                  className={({ isActive }) =>
+                    cn(
+                      'text-[15px] font-medium text-[#434655] transition-colors hover:text-[#004ac6]',
+                      isActive && 'font-semibold text-[#004ac6]',
+                    )
+                  }
+                >
+                  {t(link.key, link.fallback)}
+                </NavLink>
+              ))}
         </nav>
 
-        <div className="hidden md:flex items-center gap-4">
-          <Link to="/login" className="text-[15px] font-medium text-[#434655] hover:text-[#004ac6]">
+        <div className="hidden items-center gap-3 md:flex">
+          <Link
+            to="/login"
+            className={cn(
+              'px-4 py-2.5 text-[15px] font-semibold transition-colors',
+              onHero ? 'text-white hover:text-[#cbd5e1]' : 'text-[#434655] hover:text-[#004ac6]',
+            )}
+          >
             {t('auth.login', 'Log in')}
           </Link>
           <Link
             to="/apply"
-            className="h-11 px-5 rounded-lg bg-[#004ac6] text-white text-sm font-semibold inline-flex items-center hover:bg-[#2563eb] transition-colors"
+            className="inline-flex h-11 items-center rounded-[10px] bg-[#004ac6] px-5 text-[15px] font-semibold text-white transition-colors hover:bg-[#2563eb]"
           >
-            {t('public.applyCta', 'Apply for access')}
+            {t('public.applyNow', 'Apply now')}
           </Link>
         </div>
 
         <button
           type="button"
-          className="md:hidden p-2 rounded-lg text-slate-600"
+          className={cn('rounded-lg p-2 md:hidden', onHero ? 'text-white' : 'text-[#434655]')}
           aria-label={open ? t('common.close', 'Close') : t('nav.menu', 'Menu')}
           onClick={() => setOpen((current) => !current)}
         >
-          {open ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          {open ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
         </button>
       </div>
 
       {open ? (
-        <div className="md:hidden border-t border-slate-100 bg-white/98 shadow-lg">
-          <div className="px-6 py-4 flex flex-col gap-3">
-            {links.map((link) => (
-              <NavLink
-                key={link.to}
-                to={link.to}
-                onClick={() => setOpen(false)}
-                className={({ isActive }) =>
-                  cn('text-[15px] font-medium text-[#434655]', isActive && 'text-[#004ac6] font-semibold')
-                }
-              >
-                {t(link.key, link.fallback)}
-              </NavLink>
-            ))}
+        <div className="border-t border-[#e5eeff] bg-white shadow-lg md:hidden">
+          <div className="flex flex-col gap-3 px-5 py-4">
+            {onHero
+              ? LANDING_LINKS.map((link) => (
+                  <a
+                    key={link.href}
+                    href={link.href}
+                    onClick={() => setOpen(false)}
+                    className="text-[15px] font-medium text-[#434655]"
+                  >
+                    {t(link.key, link.fallback)}
+                  </a>
+                ))
+              : PAGE_LINKS.map((link) => (
+                  <NavLink
+                    key={link.to}
+                    to={link.to}
+                    onClick={() => setOpen(false)}
+                    className={({ isActive }) =>
+                      cn('text-[15px] font-medium text-[#434655]', isActive && 'font-semibold text-[#004ac6]')
+                    }
+                  >
+                    {t(link.key, link.fallback)}
+                  </NavLink>
+                ))}
             <Link to="/login" onClick={() => setOpen(false)} className="text-[15px] font-medium text-[#434655]">
               {t('auth.login', 'Log in')}
             </Link>
             <Link
               to="/apply"
               onClick={() => setOpen(false)}
-              className="h-11 px-5 rounded-lg bg-[#004ac6] text-white text-sm font-semibold inline-flex items-center justify-center"
+              className="inline-flex h-11 items-center justify-center rounded-[10px] bg-[#004ac6] px-5 text-[15px] font-semibold text-white"
             >
-              {t('public.applyCta', 'Apply for access')}
+              {t('public.applyNow', 'Apply now')}
             </Link>
           </div>
         </div>

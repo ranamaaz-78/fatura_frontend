@@ -1,13 +1,12 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation } from '@tanstack/react-query'
 import { AlertTriangle, Mail, MessageCircle } from 'lucide-react'
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { useForm } from 'react-hook-form'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { z } from 'zod'
 import { useAuth } from '../../auth/AuthProvider'
-import { Button } from '../../components/ui/Button'
-import { Input } from '../../components/ui/Input'
+import { PublicInput, PublicSubmit } from '../../components/ui/PublicField'
 import { t } from '../../i18n'
 import { getErrorCode, getErrorMessage, mapValidationErrors } from '../../services/api'
 import { setPassword } from '../../services/auth'
@@ -30,27 +29,43 @@ function SupportBlock({ support }: { support: SupportContact | null }) {
   const whatsapp = support?.whatsapp
 
   return (
-    <div className="mt-6 space-y-2">
+    <div className="mt-6 flex flex-col gap-2.5">
       {whatsapp ? (
         <a
           href={`https://wa.me/${whatsapp.replace(/\D+/g, '')}`}
           target="_blank"
           rel="noreferrer"
-          className="flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+          className="flex h-12 items-center gap-2.5 rounded-xl border border-[#dbe1ff] bg-white px-4 text-sm font-semibold text-[#0b1c30] hover:border-[#c3d4ff]"
         >
-          <MessageCircle className="h-4 w-4 text-emerald-600" />
+          <MessageCircle className="h-[18px] w-[18px] text-[#007d55]" />
           {t('auth.contactWhatsapp', 'Message us on WhatsApp')}
         </a>
       ) : null}
       {email ? (
         <a
           href={`mailto:${email}`}
-          className="flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+          className="flex h-12 items-center gap-2.5 rounded-xl border border-[#dbe1ff] bg-white px-4 text-sm font-semibold text-[#0b1c30] hover:border-[#c3d4ff]"
         >
-          <Mail className="h-4 w-4 text-blue-600" />
+          <Mail className="h-[18px] w-[18px] text-[#004ac6]" />
           {t('auth.contactEmail', 'Email support')}
         </a>
       ) : null}
+    </div>
+  )
+}
+
+function Notice({ title, body, children }: { title: string; body: string; children?: ReactNode }) {
+  return (
+    <div>
+      <span className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
+        <AlertTriangle className="h-6 w-6" />
+      </span>
+      <h1 className="mt-5 text-[26px] font-extrabold tracking-[-0.025em] text-[#0b1c30]">{title}</h1>
+      <p className="mt-2 text-[15px] leading-relaxed text-[#434655]">{body}</p>
+      {children}
+      <Link to="/login" className="mt-7 inline-block text-sm font-semibold text-[#004ac6] hover:text-[#2563eb]">
+        {t('auth.backToLogin', 'Back to log in')}
+      </Link>
     </div>
   )
 }
@@ -101,77 +116,70 @@ function SetPassword() {
 
   if (!token || !email) {
     return (
-      <div className="space-y-4">
-        <AlertTriangle className="h-8 w-8 text-amber-500" />
-        <h1 className="text-xl font-bold tracking-tight text-slate-900">
-          {t('auth.setPasswordTitle', 'Choose your password')}
-        </h1>
-        <p className="text-sm leading-relaxed text-slate-600">
-          {t('auth.setPasswordMissing', 'This link is incomplete. Open the link from your email exactly as it was sent.')}
-        </p>
-        <Link to="/login" className="inline-block text-xs font-semibold text-blue-700">
-          {t('auth.backToLogin', 'Back to log in')}
-        </Link>
-      </div>
+      <Notice
+        title={t('auth.setPasswordTitle', 'Choose your password')}
+        body={t(
+          'auth.setPasswordMissing',
+          'This link is incomplete. Open the link from your email exactly as it was sent.',
+        )}
+      />
     )
   }
 
   if (expired) {
     return (
-      <div>
-        <AlertTriangle className="h-8 w-8 text-amber-500" />
-        <h1 className="mt-4 text-xl font-bold tracking-tight text-slate-900">
-          {t('auth.linkExpiredTitle', 'This link has expired')}
-        </h1>
-        <p className="mt-2 text-sm leading-relaxed text-slate-600">
-          {t('auth.linkExpiredBody', 'Set-password links are valid for 48 hours. Contact us and we will send a fresh one.')}
-        </p>
+      <Notice
+        title={t('auth.linkExpiredTitle', 'This link has expired')}
+        body={t(
+          'auth.linkExpiredBody',
+          'Set-password links are valid for 48 hours. Contact us and we will send a fresh one.',
+        )}
+      >
         <SupportBlock support={expired} />
-        <Link to="/login" className="mt-6 inline-block text-xs font-semibold text-blue-700">
-          {t('auth.backToLogin', 'Back to log in')}
-        </Link>
-      </div>
+      </Notice>
     )
   }
 
   return (
-    <form noValidate onSubmit={handleSubmit((values) => mutation.mutate(values))} className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-          {t('auth.setPasswordTitle', 'Choose your password')}
-        </h1>
-        <p className="mt-1 text-sm text-slate-500">
-          {t('auth.setPasswordSubtitle', 'Pick a password to finish setting up your account.')}
-        </p>
-        <p className="mt-2 font-mono text-xs text-slate-400">{email}</p>
-      </div>
+    <form noValidate onSubmit={handleSubmit((values) => mutation.mutate(values))}>
+      <h1 className="text-[30px] font-extrabold tracking-[-0.025em] text-[#0b1c30]">
+        {t('auth.setPasswordTitle', 'Choose your password')}
+      </h1>
+      <p className="mt-1.5 text-[15px] text-[#434655]">
+        {t('auth.setPasswordSubtitle', 'Pick a password to finish setting up your account.')}
+      </p>
+      <p className="mt-2 font-mono text-[13px] text-[#64748b]">{email}</p>
 
       {formError ? (
-        <p className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs text-rose-700">{formError}</p>
+        <p className="mt-5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+          {formError}
+        </p>
       ) : null}
 
-      <div className="space-y-4">
-        <Input
+      <div className="mt-7 flex flex-col gap-4.5">
+        <PublicInput
           label={t('auth.password', 'Password')}
           type="password"
           autoComplete="new-password"
           required
+          placeholder="••••••••"
           error={errors.password?.message}
           {...register('password')}
         />
-        <Input
+        <PublicInput
           label={t('auth.confirmPassword', 'Confirm password')}
           type="password"
           autoComplete="new-password"
           required
+          placeholder="••••••••"
           error={errors.password_confirmation?.message}
           {...register('password_confirmation')}
         />
       </div>
 
-      <Button type="submit" size="lg" fullWidth loading={mutation.isPending}>
+      <PublicSubmit className="mt-7 w-full" disabled={mutation.isPending}>
         {t('auth.setPasswordSubmit', 'Set password and continue')}
-      </Button>
+      </PublicSubmit>
     </form>
   )
 }
