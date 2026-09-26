@@ -1,15 +1,17 @@
 import { useQuery } from '@tanstack/react-query'
-import { Pencil, Printer, Trash2, X } from 'lucide-react'
+import { ImageOff, Pencil, Printer, Trash2, X } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { BarcodeSvg } from '../../components/ui/BarcodeSvg'
 import { Drawer } from '../../components/ui/Drawer'
 import { IconButton } from '../../components/ui/IconButton'
+import { ProtectedImage } from '../../components/ui/ProtectedImage'
 import { Skeleton } from '../../components/ui/Skeleton'
 import { t } from '../../i18n'
 import { cn } from '../../lib/cn'
 import { formatCents } from '../../lib/money'
 import { getProduct } from '../../services/catalog'
 import type { Product } from '../../types/catalog'
+import { useProductImageLookup } from './productImageLookup'
 
 function Field({ label, value }: { label: string; value: ReactNode }) {
   return (
@@ -60,7 +62,9 @@ export function ProductDrawer({ product, currency, onClose, onEdit, onPrint, onD
     initialData: product ?? undefined,
   })
 
+  const findImage = useProductImageLookup()
   const current = query.data ?? product
+  const file = findImage(current?.image_code ?? null)
   const stockTone =
     !current || current.quantity <= 0
       ? 'bg-[#fff1f2] text-[#be123c]'
@@ -108,6 +112,26 @@ export function ProductDrawer({ product, currency, onClose, onEdit, onPrint, onD
               </span>
             ) : null}
           </div>
+
+          {file ? (
+            <ProtectedImage
+              fileUrl={file.file_url}
+              alt={current.article}
+              className="h-56 w-full rounded-2xl border border-slate-200 bg-slate-50 object-contain"
+            />
+          ) : (
+            <div className="flex h-32 flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-slate-200 bg-slate-50 text-center">
+              <ImageOff className="h-6 w-6 text-slate-300" />
+              <p className="px-4 text-[11px] text-slate-500">
+                {current.image_code
+                  ? t('products.noImageMatch', 'No file in the image folder is named :code.').replace(
+                      ':code',
+                      current.image_code,
+                    )
+                  : t('products.noImageCode', 'This product has no image code yet.')}
+              </p>
+            </div>
+          )}
 
           <div className="rounded-2xl border border-slate-200 bg-white p-4 text-center">
             <BarcodeSvg code={current.barcode} className="mx-auto h-20 w-full" />

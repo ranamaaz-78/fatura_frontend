@@ -5,6 +5,7 @@ import {
   FileSpreadsheet,
   FileText,
   History,
+  Images,
   Inbox,
   LayoutDashboard,
   Layers,
@@ -80,6 +81,12 @@ export const APP_NAV: NavGroup[] = [
     titleFallback: 'Inventory and catalog',
     items: [
       { to: '/app/products', labelKey: 'nav.products', fallback: 'Products and barcodes', icon: Package },
+      {
+        to: '/app/product-images',
+        labelKey: 'nav.productImages',
+        fallback: 'Product images',
+        icon: Images,
+      },
       { to: '/app/stock', labelKey: 'nav.stock', fallback: 'Warehouse stock', icon: Layers, end: true },
       {
         to: '/app/stock/movements',

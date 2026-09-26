@@ -77,3 +77,23 @@ export type ImportRowError = {
   row: number
   messages: string[]
 }
+
+/** A file in the product image folder. `file_url` is the authenticated stream. */
+export type ProductImage = {
+  uuid: string
+  name: string
+  mime: string
+  size_bytes: number
+  file_url: string
+  created_at: string | null
+}
+
+export type ProductImageUploadError = {
+  file: string
+  message: string
+}
+
+export type ProductImageUpload = {
+  images: ProductImage[]
+  errors: ProductImageUploadError[]
+}

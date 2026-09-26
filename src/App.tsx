@@ -26,6 +26,7 @@ import InvoiceDetailPage from './pages/app/InvoiceDetail'
 import InvoiceNewPage from './pages/app/InvoiceNew'
 import InvoicesPage from './pages/app/Invoices'
 import PaymentsPage from './pages/app/Payments'
+import ProductImagesPage from './pages/app/ProductImages'
 import ProductsPage from './pages/app/Products'
 import ProformasPage from './pages/app/Proformas'
 import PurchasesPage from './pages/app/Purchases'
@@ -84,6 +85,7 @@ function App() {
               <Route path="proformas" element={<ProformasPage />} />
               <Route path="payments" element={<PaymentsPage />} />
               <Route path="products" element={<ProductsPage />} />
+              <Route path="product-images" element={<ProductImagesPage />} />
               <Route path="stock" element={<StockPage />} />
               <Route path="stock/movements" element={<StockMovementsPage />} />
               <Route path="import" element={<ImportPage />} />

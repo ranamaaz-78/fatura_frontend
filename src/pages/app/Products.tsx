@@ -18,6 +18,7 @@ import { useAuth } from '../../auth/AuthProvider'
 import { BarcodeSvg } from '../../components/ui/BarcodeSvg'
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog'
 import { EmptyState } from '../../components/ui/EmptyState'
+import { ProtectedImage } from '../../components/ui/ProtectedImage'
 import { SkeletonTable } from '../../components/ui/Skeleton'
 import { useToast } from '../../components/ui/Toast'
 import { t } from '../../i18n'
@@ -25,8 +26,9 @@ import { cn } from '../../lib/cn'
 import { formatCents } from '../../lib/money'
 import { getErrorMessage } from '../../services/api'
 import { deleteProduct, listProducts } from '../../services/catalog'
-import type { Product, ProductStockFilter } from '../../types/catalog'
+import type { Product, ProductImage, ProductStockFilter } from '../../types/catalog'
 import { CategoryManagerModal, useCategories } from './CategoryManagerModal'
+import { useProductImageLookup } from './productImageLookup'
 import { PrintLabelsModal } from './PrintLabelsModal'
 import { ProductDrawer } from './ProductDrawer'
 import { ProductImportModal } from './ProductImportModal'
@@ -41,6 +43,29 @@ function initials(article: string): string {
   const words = article.trim().split(/\s+/).filter(Boolean)
   const letters = words.length >= 2 ? `${words[0]![0]}${words[1]![0]}` : (words[0] ?? '?').slice(0, 2)
   return letters.toUpperCase()
+}
+
+/** The folder image whose name matches the image code, or the design's initials tile. */
+function Thumb({ product, file }: { product: Product; file: ProductImage | null }) {
+  if (file) {
+    return (
+      <ProtectedImage
+        fileUrl={file.file_url}
+        alt={product.article}
+        className="h-9 w-9 shrink-0 rounded-[10px] border border-slate-200 object-cover"
+      />
+    )
+  }
+
+  return (
+    <span
+      aria-hidden="true"
+      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] text-xs font-bold text-white"
+      style={{ background: THUMB_INKS[product.id % THUMB_INKS.length] }}
+    >
+      {initials(product.article)}
+    </span>
+  )
 }
 
 function stockTone(product: Product): string {
@@ -117,6 +142,7 @@ function Products() {
   }, [search])
 
   const categories = useCategories()
+  const findImage = useProductImageLookup()
 
   const query = useQuery({
     queryKey: ['app', 'products', { page, search: debounced, stock, categoryId }],
@@ -433,13 +459,7 @@ function Products() {
                       />
                     </span>
                     <span className="flex min-w-0 flex-grow items-center gap-3">
-                      <span
-                        aria-hidden="true"
-                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] text-xs font-bold text-white"
-                        style={{ background: THUMB_INKS[product.id % THUMB_INKS.length] }}
-                      >
-                        {initials(product.article)}
-                      </span>
+                      <Thumb product={product} file={findImage(product.image_code)} />
                       <span className="min-w-0">
                         <button
                           type="button"
