@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Plus, RefreshCw } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Button } from '../../components/ui/Button'
@@ -8,9 +8,9 @@ import { Select } from '../../components/ui/Select'
 import { Textarea } from '../../components/ui/Textarea'
 import { useToast } from '../../components/ui/Toast'
 import { t } from '../../i18n'
-import { centsToInput, formatCents, parseAmountToCents, parseNumber, sellingPriceCents } from '../../lib/money'
+import { centsToInput, parseAmountToCents, parseNumber } from '../../lib/money'
 import { getErrorMessage, mapValidationErrors } from '../../services/api'
-import { createCategory, createProduct, generateBarcode, updateProduct } from '../../services/catalog'
+import { createCategory, createProduct, generateBarcode, listTaxRates, updateProduct } from '../../services/catalog'
 import type { Product, ProductInput } from '../../types/catalog'
 import { categoriesKey, useCategories } from './CategoryManagerModal'
 
@@ -24,7 +24,7 @@ type Draft = {
   image_code: string
   barcode: string
   buying_price: string
-  margin_percent: string
+  selling_price: string
   iva_percent: string
   minimum_stock: string
 }
@@ -39,8 +39,8 @@ const BLANK: Draft = {
   image_code: '',
   barcode: '',
   buying_price: '0.00',
-  margin_percent: '0',
-  iva_percent: '0',
+  selling_price: '0.00',
+  iva_percent: '21',
   minimum_stock: '0',
 }
 
@@ -55,7 +55,7 @@ function toDraft(product: Product): Draft {
     image_code: product.image_code ?? '',
     barcode: product.barcode,
     buying_price: centsToInput(product.buying_price),
-    margin_percent: String(product.margin_percent),
+    selling_price: centsToInput(product.selling_price),
     iva_percent: String(product.iva_percent),
     minimum_stock: String(product.minimum_stock),
   }
@@ -69,14 +69,18 @@ const fieldButton =
 export type ProductModalProps = {
   open: boolean
   product: Product | null
-  currency: string
   onClose: () => void
 }
 
-export function ProductModal({ open, product, currency, onClose }: ProductModalProps) {
+export function ProductModal({ open, product, onClose }: ProductModalProps) {
   const queryClient = useQueryClient()
   const { push } = useToast()
   const categories = useCategories()
+  const taxRates = useQuery({
+    queryKey: ['app', 'tax-rates'],
+    queryFn: listTaxRates,
+    enabled: open,
+  })
 
   const [draft, setDraft] = useState<Draft>(BLANK)
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -94,9 +98,8 @@ export function ProductModal({ open, product, currency, onClose }: ProductModalP
   }
 
   const buyingCents = parseAmountToCents(draft.buying_price) ?? 0
-  const margin = parseNumber(draft.margin_percent) ?? 0
+  const sellingCents = parseAmountToCents(draft.selling_price)
   const iva = parseNumber(draft.iva_percent) ?? 0
-  const selling = sellingPriceCents(buyingCents, margin, iva)
 
   function toInput(): ProductInput {
     return {
@@ -110,9 +113,19 @@ export function ProductModal({ open, product, currency, onClose }: ProductModalP
       quantity: Math.max(0, Math.round(parseNumber(draft.quantity) ?? 0)),
       minimum_stock: Math.max(0, Math.round(parseNumber(draft.minimum_stock) ?? 0)),
       buying_price: buyingCents,
-      margin_percent: margin,
+      selling_price: sellingCents ?? 0,
       iva_percent: iva,
     }
+  }
+
+  function save() {
+    if (sellingCents === null || sellingCents <= buyingCents) {
+      setErrors({
+        selling_price: t('products.sellingAbove', 'Selling price must be higher than the buying price.'),
+      })
+      return
+    }
+    saveMutation.mutate()
   }
 
   const saveMutation = useMutation({
@@ -165,7 +178,7 @@ export function ProductModal({ open, product, currency, onClose }: ProductModalP
             size="sm"
             loading={saveMutation.isPending}
             disabled={draft.article.trim() === ''}
-            onClick={() => saveMutation.mutate()}
+            onClick={save}
           >
             {t('products.save', 'Save product')}
           </Button>
@@ -290,7 +303,7 @@ export function ProductModal({ open, product, currency, onClose }: ProductModalP
           <span className="text-[10px] font-bold tracking-[0.08em] text-slate-500 uppercase">
             {t('products.pricing', 'Pricing')}
           </span>
-          <div className="mt-2 grid grid-cols-3 gap-2">
+          <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
             <Input
               compact
               label={t('products.buyingPrice', 'Buying price')}
@@ -301,29 +314,32 @@ export function ProductModal({ open, product, currency, onClose }: ProductModalP
             />
             <Input
               compact
-              label={t('products.margin', 'Margin %')}
+              label={t('products.sellingPrice', 'Selling price')}
               inputMode="decimal"
-              value={draft.margin_percent}
-              error={errors.margin_percent}
-              onChange={(event) => set('margin_percent', event.target.value)}
+              value={draft.selling_price}
+              error={errors.selling_price}
+              onChange={(event) => set('selling_price', event.target.value)}
             />
-            <Input
+            <Select
               compact
               label={t('products.iva', '% IVA')}
-              inputMode="decimal"
               value={draft.iva_percent}
               error={errors.iva_percent}
               onChange={(event) => set('iva_percent', event.target.value)}
-            />
+            >
+              {(taxRates.data ?? []).map((rate) => (
+                <option key={rate.id} value={String(rate.rate)}>
+                  {rate.rate}% ({rate.name})
+                </option>
+              ))}
+              {(taxRates.data ?? []).some((rate) => String(rate.rate) === draft.iva_percent) ? null : (
+                <option value={draft.iva_percent}>{draft.iva_percent}%</option>
+              )}
+            </Select>
           </div>
-          <div className="mt-2.5 flex items-baseline justify-between border-t border-slate-200 pt-2">
-            <span className="text-[11px] font-semibold text-slate-600">
-              {t('products.sellingPrice', 'Selling price')}
-            </span>
-            <span data-testid="selling-price" className="font-mono text-base font-bold text-[#004ac6]">
-              {formatCents(selling, currency)}
-            </span>
-          </div>
+          <p className="mt-2 text-[11px] text-slate-500">
+            {t('products.priceHint', 'Selling price stays above the buying price. IVA is added on the invoice, not in this price.')}
+          </p>
         </div>
 
         <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">

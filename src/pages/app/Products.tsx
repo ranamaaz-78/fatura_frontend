@@ -608,7 +608,6 @@ function Products() {
       <ProductModal
         open={productOpen}
         product={editing}
-        currency={currency}
         onClose={() => setProductOpen(false)}
       />
       <CategoryManagerModal open={categoriesOpen} onClose={() => setCategoriesOpen(false)} />

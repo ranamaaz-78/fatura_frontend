@@ -10,7 +10,6 @@ export const IMPORT_FIELDS = [
   'quantity',
   'minimum_stock',
   'buying_price',
-  'margin_percent',
   'iva_percent',
   'selling_price',
 ] as const
@@ -27,7 +26,6 @@ const ALIASES: Record<ImportField, string[]> = {
   barcode: ['barcode', 'bar code', 'ean', 'ean13', 'codigo de barras', 'cod barras', 'codbar'],
   buying_price: ['buying price', 'buy price', 'cost', 'cost price', 'purchase price', 'coste', 'precio compra', 'compra'],
   selling_price: ['selling price', 'sale price', 'sell price', 'price', 'pvp', 'precio venta', 'venta'],
-  margin_percent: ['margin', 'margin %', 'margin percent', 'markup', 'margen'],
   iva_percent: ['iva', '% iva', 'iva %', 'vat', 'tax', 'tax rate', 'impuesto'],
   minimum_stock: ['minimum stock', 'min stock', 'reorder point', 'reorder', 'stock minimo', 'minimo'],
   quantity: ['quantity', 'qty', 'stock', 'cantidad', 'units'],
@@ -47,7 +45,6 @@ const MATCH_ORDER: ImportField[] = [
   'barcode',
   'buying_price',
   'selling_price',
-  'margin_percent',
   'iva_percent',
   'minimum_stock',
   'quantity',
@@ -105,9 +102,8 @@ export const FIELD_LABELS: Record<ImportField, string> = {
   quantity: 'Quantity',
   minimum_stock: 'Minimum stock',
   buying_price: 'Buying price',
-  margin_percent: 'Margin %',
   iva_percent: '% IVA',
   selling_price: 'Selling price',
 }
 
-export const REQUIRED_FIELDS: ImportField[] = ['article', 'buying_price']
+export const REQUIRED_FIELDS: ImportField[] = ['article', 'buying_price', 'selling_price']

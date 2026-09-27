@@ -1,3 +1,9 @@
+export type TaxRate = {
+  id: number
+  name: string
+  rate: number
+}
+
 export type Category = {
   id: number
   name: string
@@ -52,7 +58,7 @@ export type ProductInput = {
   quantity: number
   minimum_stock: number
   buying_price: number
-  margin_percent: number
+  selling_price: number
   iva_percent: number
 }
 
@@ -68,7 +74,6 @@ export type ImportRow = {
   quantity: number
   minimum_stock: number
   buying_price: number
-  margin_percent: number
   iva_percent: number
   selling_price: number
 }

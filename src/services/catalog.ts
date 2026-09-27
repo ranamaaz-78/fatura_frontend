@@ -5,8 +5,21 @@ import type {
   ProductInput,
   ProductList,
   ProductListParams,
+  TaxRate,
 } from '../types/catalog'
 import { api, unwrap } from './api'
+
+export function listTaxRates(): Promise<TaxRate[]> {
+  return unwrap<TaxRate[]>(api.get('/app/tax-rates'))
+}
+
+export function createTaxRate(input: { name: string; rate: number }): Promise<TaxRate> {
+  return unwrap<TaxRate>(api.post('/app/tax-rates', input))
+}
+
+export function deleteTaxRate(id: number): Promise<unknown> {
+  return unwrap(api.delete(`/app/tax-rates/${id}`))
+}
 
 export function listCategories(): Promise<Category[]> {
   return unwrap<Category[]>(api.get('/app/categories'))
@@ -26,6 +39,17 @@ export function deleteCategory(id: number): Promise<unknown> {
 
 export function listProducts(params: ProductListParams): Promise<ProductList> {
   return unwrap<ProductList>(api.get('/app/products', { params }))
+}
+
+/** Every product, loaded once so the sale screen can filter without another request. */
+export async function listAllProducts(): Promise<Product[]> {
+  const first = await listProducts({ per_page: 100, page: 1 })
+  const items = [...first.items]
+  for (let page = 2; page <= first.meta.last_page; page += 1) {
+    const next = await listProducts({ per_page: 100, page })
+    items.push(...next.items)
+  }
+  return items
 }
 
 export function getProduct(id: number): Promise<Product> {

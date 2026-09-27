@@ -72,8 +72,7 @@ export function ProductDrawer({ product, currency, onClose, onEdit, onPrint, onD
         ? 'bg-[#fffbeb] text-[#b45309]'
         : 'bg-[#ecfdf5] text-[#047857]'
 
-  const netOfIva = current ? Math.round(current.buying_price * (1 + current.margin_percent / 100)) : 0
-  const profit = current ? netOfIva - current.buying_price : 0
+  const profit = current ? current.selling_price - current.buying_price : 0
 
   return (
     <Drawer open={product !== null} onClose={onClose} side="right" width="w-full sm:w-[30rem]">
@@ -156,7 +155,6 @@ export function ProductDrawer({ product, currency, onClose, onEdit, onPrint, onD
               label={t('products.buyingPrice', 'Buying price')}
               value={formatCents(current.buying_price, currency)}
             />
-            <Line label={t('products.margin', 'Margin %')} value={`${current.margin_percent}%`} />
             <Line label={t('products.iva', '% IVA')} value={`${current.iva_percent}%`} />
             <div className="border-t border-slate-200 pt-2.5">
               <Line
@@ -165,10 +163,9 @@ export function ProductDrawer({ product, currency, onClose, onEdit, onPrint, onD
                 strong
               />
             </div>
-            <Line
-              label={t('products.netOfIva', 'Net of IVA')}
-              value={formatCents(netOfIva, currency)}
-            />
+            <p className="text-[11px] text-slate-500">
+              {t('products.priceHint', 'Selling price stays above the buying price. IVA is added on the invoice, not in this price.')}
+            </p>
             <Line label={t('products.profitPerUnit', 'Profit per unit')} value={formatCents(profit, currency)} />
           </div>
 

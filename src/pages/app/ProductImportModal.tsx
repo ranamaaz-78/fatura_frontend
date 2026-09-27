@@ -10,7 +10,7 @@ import { Stepper } from '../../components/ui/Stepper'
 import { useToast } from '../../components/ui/Toast'
 import { t } from '../../i18n'
 import { cn } from '../../lib/cn'
-import { parseAmountToCents, parseNumber, sellingPriceCents } from '../../lib/money'
+import { parseAmountToCents, parseNumber } from '../../lib/money'
 import { getErrorMessage } from '../../services/api'
 import { importProducts } from '../../services/catalog'
 import type { ImportRow, ImportRowError } from '../../types/catalog'
@@ -39,7 +39,6 @@ const CELL_WIDTH: Record<ImportField, string> = {
   quantity: 'w-14',
   minimum_stock: 'w-14',
   buying_price: 'w-24',
-  margin_percent: 'w-14',
   iva_percent: 'w-14',
   selling_price: 'w-24',
 }
@@ -73,21 +72,18 @@ function rowProblems(row: GridRow, index: number, all: GridRow[]): string[] {
 
   const buying = parseAmountToCents(row.buying_price)
   const selling = parseAmountToCents(row.selling_price)
-  const margin = parseNumber(row.margin_percent) ?? 0
   const iva = parseNumber(row.iva_percent) ?? 0
 
   if (buying === null || buying < 0) {
     problems.push(t('import.badBuying', 'Buying price is not a number'))
   }
-  if (margin < 0 || iva < 0 || iva > 100) {
-    problems.push(t('import.badPercent', 'Margin or IVA is out of range'))
-  }
-  if (buying !== null && buying >= 0 && selling !== null) {
-    if (Math.abs(selling - sellingPriceCents(buying, margin, iva)) > 1) {
-      problems.push(t('import.priceMismatch', 'Selling price does not match the formula'))
-    }
-  } else if (selling === null) {
+  if (selling === null || selling < 0) {
     problems.push(t('import.badSelling', 'Selling price is not a number'))
+  } else if (buying !== null && selling <= buying) {
+    problems.push(t('products.sellingAbove', 'Selling price must be higher than the buying price.'))
+  }
+  if (iva < 0 || iva > 100) {
+    problems.push(t('import.badPercent', 'IVA is out of range'))
   }
 
   for (const key of ['quantity', 'minimum_stock'] as const) {
@@ -122,7 +118,6 @@ function toImportRow(row: GridRow): ImportRow {
     quantity: Math.round(parseNumber(row.quantity) ?? 0),
     minimum_stock: Math.round(parseNumber(row.minimum_stock) ?? 0),
     buying_price: buying,
-    margin_percent: parseNumber(row.margin_percent) ?? 0,
     iva_percent: parseNumber(row.iva_percent) ?? 0,
     selling_price: parseAmountToCents(row.selling_price) ?? 0,
   }
@@ -191,18 +186,6 @@ export function ProductImportModal({ open, onClose, onImported }: ProductImportM
         }),
       ) as GridRow
 
-      // A blank selling price is not an error; the formula fills it in.
-      if (row.selling_price === '') {
-        const buying = parseAmountToCents(row.buying_price)
-        if (buying !== null) {
-          const computed = sellingPriceCents(
-            buying,
-            parseNumber(row.margin_percent) ?? 0,
-            parseNumber(row.iva_percent) ?? 0,
-          )
-          row.selling_price = (computed / 100).toFixed(2)
-        }
-      }
       if (row.quantity === '') row.quantity = '0'
       if (row.minimum_stock === '') row.minimum_stock = '0'
 

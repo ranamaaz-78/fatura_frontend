@@ -44,6 +44,27 @@ export function parseAmountToCents(value: string | number | null | undefined): n
 }
 
 /**
+ * A sale line is priced net of IVA. Discount comes off that base, then IVA is
+ * added, and each step is rounded to the cent once.
+ */
+export function lineTotals(
+  quantity: number,
+  unitCents: number,
+  discountPercent: number,
+  ivaPercent: number,
+): { base: number; tax: number; total: number } {
+  const base = Math.round(quantity * unitCents * (1 - discountPercent / 100))
+  const tax = Math.round(base * (ivaPercent / 100))
+  return { base, tax, total: base + tax }
+}
+
+/** Split a gross amount into the net price. Catalog selling prices are already net. */
+export function netOfIva(sellingCents: number, ivaPercent: number): number {
+  if (ivaPercent <= 0) return sellingCents
+  return Math.round(sellingCents / (1 + ivaPercent / 100))
+}
+
+/**
  * The one pricing rule for the catalog: cost plus margin, then IVA on top.
  * Rounded once so a chain of steps cannot drift.
  */

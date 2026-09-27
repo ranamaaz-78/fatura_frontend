@@ -34,29 +34,30 @@ export function Modal({
 }: ModalProps) {
   const titleId = useId()
   const panelRef = useRef<HTMLDivElement>(null)
-  const triggerRef = useRef<Element | null>(null)
+  const onCloseRef = useRef(onClose)
+  onCloseRef.current = onClose
 
   useEffect(() => {
     if (!open) return
 
-    triggerRef.current = document.activeElement
+    // Remember who opened the dialog. Typing must not rerun this, or the
+    // cleanup pulls focus back out of the field on the next letter.
+    const trigger = document.activeElement
     const previousOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
     panelRef.current?.focus()
 
     function onKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') onClose()
+      if (event.key === 'Escape') onCloseRef.current()
     }
 
     window.addEventListener('keydown', onKeyDown)
     return () => {
       document.body.style.overflow = previousOverflow
       window.removeEventListener('keydown', onKeyDown)
-      if (triggerRef.current instanceof HTMLElement) {
-        triggerRef.current.focus()
-      }
+      if (trigger instanceof HTMLElement) trigger.focus()
     }
-  }, [open, onClose])
+  }, [open])
 
   if (!open) return null
 

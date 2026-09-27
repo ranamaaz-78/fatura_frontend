@@ -71,6 +71,7 @@ export const APP_NAV: NavGroup[] = [
         icon: Receipt,
         end: true,
       },
+      { to: '/app/customers', labelKey: 'nav.customers', fallback: 'Clients', icon: Users },
       { to: '/app/quotes', labelKey: 'nav.quotes', fallback: 'Quotes', icon: FileText },
       { to: '/app/proformas', labelKey: 'nav.proformas', fallback: 'Proformas', icon: FileCheck2 },
       { to: '/app/payments', labelKey: 'nav.payments', fallback: 'Payments', icon: CreditCard },
@@ -102,7 +103,6 @@ export const APP_NAV: NavGroup[] = [
     titleFallback: 'Purchases and contacts',
     items: [
       { to: '/app/purchases', labelKey: 'nav.purchases', fallback: 'Purchases', icon: ShoppingBag },
-      { to: '/app/customers', labelKey: 'nav.customers', fallback: 'Customers', icon: Users },
       { to: '/app/suppliers', labelKey: 'nav.suppliers', fallback: 'Suppliers', icon: Truck },
     ],
   },
