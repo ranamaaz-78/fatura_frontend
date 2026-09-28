@@ -89,6 +89,7 @@ export type Company = {
   city: string | null
   country: string | null
   currency: string
+  logo_url?: string | null
   status: CompanyStatus
   notes: string | null
   created_at: string

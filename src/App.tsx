@@ -27,6 +27,7 @@ import InvoiceDetailPage from './pages/app/InvoiceDetail'
 import InvoiceNewPage from './pages/app/InvoiceNew'
 import InvoicesPage from './pages/app/Invoices'
 import PaymentsPage from './pages/app/Payments'
+import PrintablesPage from './pages/app/Printables'
 import ProductImagesPage from './pages/app/ProductImages'
 import ProductsPage from './pages/app/Products'
 import ProformasPage from './pages/app/Proformas'
@@ -36,7 +37,6 @@ import ReportsPage from './pages/app/Reports'
 import SettingsPage from './pages/app/Settings'
 import StockPage from './pages/app/Stock'
 import StockMovementsPage from './pages/app/StockMovements'
-import SubscriptionPage from './pages/app/Subscription'
 import SuppliersPage from './pages/app/Suppliers'
 import AboutPage from './pages/public/About'
 import ApplyPage from './pages/public/Apply'
@@ -78,7 +78,7 @@ function App() {
             <Route path="/app" element={<AppLayout />}>
               <Route index element={<Navigate to="dashboard" replace />} />
               <Route path="dashboard" element={<DashboardPage />} />
-              <Route path="subscription" element={<SubscriptionPage />} />
+              <Route path="subscription" element={<Navigate to="/app/settings?tab=subscription" replace />} />
               <Route path="invoices/new" element={<InvoiceNewPage />} />
               <Route path="invoices" element={<InvoicesPage />} />
               <Route path="invoices/:id" element={<InvoiceDetailPage />} />
@@ -99,6 +99,7 @@ function App() {
               <Route path="customers" element={<CustomersPage />} />
               <Route path="suppliers" element={<SuppliersPage />} />
               <Route path="reports" element={<ReportsPage />} />
+              <Route path="printables" element={<PrintablesPage />} />
               <Route path="settings" element={<SettingsPage />} />
             </Route>
           </Route>

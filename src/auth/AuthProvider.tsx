@@ -66,7 +66,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     setSessionHandlers({
       onUnauthenticated: () => clear(),
-      onSubscriptionExpired: () => navigate('/app/subscription', { replace: true }),
+      onSubscriptionExpired: () => navigate('/app/settings?tab=subscription', { replace: true }),
     })
   }, [clear, navigate])
 

@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, ImageDown, Pencil, Printer } from 'lucide-react'
+import { ArrowLeft, FileDown, ImageDown, Pencil, Printer } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../../auth/AuthProvider'
@@ -8,7 +8,7 @@ import { IconButton } from '../../components/ui/IconButton'
 import { useToast } from '../../components/ui/Toast'
 import { t } from '../../i18n'
 import { cn } from '../../lib/cn'
-import { downloadSheetImage, sheetFileName } from '../../lib/downloadSheetImage'
+import { downloadSaleDocumentSheet } from '../../lib/exportSaleSheet'
 import { formatCents } from '../../lib/money'
 import { getErrorMessage } from '../../services/api'
 import { convertSale, getSale, settleSale, updateSalePayment, updateSaleSettlement, voidSale } from '../../services/sales'
@@ -53,7 +53,7 @@ function InvoiceDetail() {
   const currency = session?.company?.currency ?? 'USD'
   const company = session?.company
   const documentId = Number(id)
-  const [exporting, setExporting] = useState(false)
+  const [exporting, setExporting] = useState<'png' | 'pdf' | null>(null)
   const [methodOpen, setMethodOpen] = useState(false)
   const [settleOpen, setSettleOpen] = useState(false)
   const [editingSettlement, setEditingSettlement] = useState<SaleSettlement | null>(null)
@@ -211,17 +211,33 @@ function InvoiceDetail() {
           </button>
           <button
             type="button"
-            disabled={exporting}
+            disabled={Boolean(exporting)}
             onClick={() => {
-              setExporting(true)
-              void downloadSheetImage(sheetFileName(document.number))
+              setExporting('pdf')
+              void downloadSaleDocumentSheet(document, company ?? null, currency, 'pdf')
                 .catch((error) => push({ tone: 'danger', title: getErrorMessage(error) }))
-                .finally(() => setExporting(false))
+                .finally(() => setExporting(null))
+            }}
+            className="inline-flex h-[38px] cursor-pointer items-center gap-2 rounded-xl bg-slate-100 px-3.5 text-xs font-semibold text-slate-700 disabled:opacity-60"
+          >
+            <FileDown className="h-4 w-4" />
+            {exporting === 'pdf'
+              ? t('sales.savingPdf', 'Saving PDF...')
+              : t('sales.downloadPdf', 'Download PDF')}
+          </button>
+          <button
+            type="button"
+            disabled={Boolean(exporting)}
+            onClick={() => {
+              setExporting('png')
+              void downloadSaleDocumentSheet(document, company ?? null, currency, 'png')
+                .catch((error) => push({ tone: 'danger', title: getErrorMessage(error) }))
+                .finally(() => setExporting(null))
             }}
             className="inline-flex h-[38px] cursor-pointer items-center gap-2 rounded-xl bg-slate-100 px-3.5 text-xs font-semibold text-slate-700 disabled:opacity-60"
           >
             <ImageDown className="h-4 w-4" />
-            {exporting
+            {exporting === 'png'
               ? t('sales.savingImage', 'Saving image...')
               : t('sales.downloadImage', 'Download as image')}
           </button>

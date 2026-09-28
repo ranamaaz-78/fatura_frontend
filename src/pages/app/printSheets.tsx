@@ -1,21 +1,31 @@
 import { CircleAlert } from 'lucide-react'
-import type { ReactNode } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { useEffect, type ReactNode } from 'react'
 import { t } from '../../i18n'
 import { cn } from '../../lib/cn'
 import { formatDate } from '../../lib/format'
 import { formatCents } from '../../lib/money'
+import { pickPrintTemplate, printSheetStyle } from '../../lib/printTheme'
+import { ensurePrintFonts } from '../../lib/printFonts'
+import { getPrintTemplates } from '../../services/printables'
+import { loadImageBlob } from '../../services/productImages'
 import type { Company } from '../../types/module01'
+import type { PrintTemplate } from '../../types/printables'
 import { saleDisplayStatus, type SaleDisplayStatus, type SaleDocument, type SaleLine } from '../../types/sales'
 
 export type PrintSheetProps = {
   document: SaleDocument
   company: Company | null
   currency: string
+  theme?: PrintTemplate
+  logoSrc?: string | null
 }
 
 type SheetProps = PrintSheetProps & {
   lines: SaleLine[]
   issued: string
+  theme: PrintTemplate
+  logoSrc: string | null
 }
 
 function Label({ children, className }: { children: ReactNode; className?: string }) {
@@ -109,10 +119,19 @@ function taxGroups(lines: SaleLine[]): { rate: number; base: number; tax: number
     .map(([rate, group]) => ({ rate, ...group }))
 }
 
-function SheetFrame({ children, className }: { children: ReactNode; className?: string }) {
+function SheetFrame({
+  children,
+  className,
+  theme,
+}: {
+  children: ReactNode
+  className?: string
+  theme: PrintTemplate
+}) {
   return (
     <article
       id="printable-invoice"
+      style={printSheetStyle(theme.primary_color, theme.font_key)}
       className={cn(
         'relative mx-auto box-border h-[1123px] w-[794px] overflow-hidden bg-white text-[#0f172a] shadow-[0_1px_4px_rgba(15,23,42,0.08)] ring-1 ring-slate-200/80 print:fixed print:inset-0 print:mx-0 print:h-full print:w-full print:shadow-none print:ring-0',
         className,
@@ -131,18 +150,89 @@ function SheetBody({ children, className }: { children: ReactNode; className?: s
   )
 }
 
-function LogoMark({ company, outline = false }: { company: Company | null; outline?: boolean }) {
+function LogoMark({
+  company,
+  outline = false,
+  showLogo,
+  logoSrc,
+}: {
+  company: Company | null
+  outline?: boolean
+  showLogo: boolean
+  logoSrc: string | null
+}) {
+  const box = outline
+    ? 'h-[52px] w-[52px] rounded-[10px] border-2 border-[var(--print-accent)] text-lg text-[var(--print-accent)]'
+    : 'h-14 w-14 rounded-xl bg-[var(--print-accent)] text-[19px] tracking-[-0.02em] text-white'
+
+  if (showLogo && logoSrc) {
+    return (
+      <span className={cn('flex shrink-0 items-center justify-center overflow-hidden bg-white', box)}>
+        <img src={logoSrc} alt={company?.name ?? ''} className="h-full w-full object-contain p-0.5" />
+      </span>
+    )
+  }
+
   return (
-    <span
-      className={cn(
-        'flex shrink-0 items-center justify-center font-mono font-bold',
-        outline
-          ? 'h-[52px] w-[52px] rounded-[10px] border-2 border-[#004ac6] text-lg text-[#004ac6]'
-          : 'h-14 w-14 rounded-xl bg-[#004ac6] text-[19px] tracking-[-0.02em] text-white',
-      )}
-    >
+    <span className={cn('flex shrink-0 items-center justify-center font-mono font-bold', box)}>
       {companyInitials(company)}
     </span>
+  )
+}
+
+function SignatureRow() {
+  return (
+    <div className="mt-8 flex gap-10">
+      <div className="min-w-0 flex-1">
+        <span className="block h-px bg-[#cbd5e1]" />
+        <span className="mt-1.5 block text-[9px] font-bold tracking-[0.12em] text-[#64748b] uppercase">
+          {t('printables.receivedBy', 'Received by')}
+        </span>
+      </div>
+      <div className="w-[160px] shrink-0">
+        <span className="block h-px bg-[#cbd5e1]" />
+        <span className="mt-1.5 block text-[9px] font-bold tracking-[0.12em] text-[#64748b] uppercase">
+          {t('printables.signDate', 'Date')}
+        </span>
+      </div>
+    </div>
+  )
+}
+
+function TermsBlock({
+  notes,
+  footer,
+  signature,
+  notesLabel,
+}: {
+  notes: string | null
+  footer: string
+  signature: boolean
+  notesLabel?: string
+}) {
+  const sale = notes?.trim() ?? ''
+  const terms = footer.trim()
+
+  return (
+    <>
+      {sale || terms ? (
+        <div className="mt-5 space-y-3">
+          {sale ? (
+            <div>
+              <Label>{notesLabel ?? t('sales.notes', 'Notes')}</Label>
+              <p className="mt-1.5 mb-0 text-[11.5px] leading-[1.65] whitespace-pre-wrap text-[#475569]">{sale}</p>
+            </div>
+          ) : null}
+          {terms ? (
+            <div>
+              <Label>{t('printables.terms', 'Terms')}</Label>
+              <p className="mt-1.5 mb-0 text-[11.5px] leading-[1.65] whitespace-pre-wrap text-[#475569]">{terms}</p>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+      {signature ? <SignatureRow /> : null}
+    </>
   )
 }
 
@@ -167,7 +257,7 @@ function ClientLines({ document, inline = false }: { document: SaleDocument; inl
   )
 }
 
-function InvoiceSheet({ document, company, currency, lines, issued }: SheetProps) {
+function InvoiceSheet({ document, company, currency, lines, issued, theme, logoSrc }: SheetProps) {
   const display = saleDisplayStatus(document)
   const due = display === 'pending' ? document.total_cents : 0
   const groups = taxGroups(lines)
@@ -184,12 +274,12 @@ function InvoiceSheet({ document, company, currency, lines, issued }: SheetProps
   ]
 
   return (
-    <SheetFrame>
-      <span className="absolute inset-x-0 top-0 h-1.5 bg-[#004ac6]" />
+    <SheetFrame theme={theme}>
+      <span className="absolute inset-x-0 top-0 h-1.5 bg-[var(--print-accent)]" />
       <SheetBody className="px-[52px] pt-12 pb-10">
         <div className="flex items-start justify-between gap-8">
           <div className="flex items-center gap-3.5">
-            <LogoMark company={company} />
+            <LogoMark company={company} showLogo={theme.show_logo} logoSrc={logoSrc} />
             <span>
               <span className="block text-[17px] font-bold tracking-[-0.01em]">{company?.name}</span>
               <span className="mt-[3px] block text-[11px] leading-relaxed text-[#64748b]">
@@ -198,8 +288,8 @@ function InvoiceSheet({ document, company, currency, lines, issued }: SheetProps
             </span>
           </div>
           <div className="shrink-0 text-right">
-            <span className="block text-[19px] font-extrabold tracking-[0.24em] text-[#004ac6]">INVOICE</span>
-            <span className="mt-[7px] ml-auto block h-0.5 w-[190px] bg-[#004ac6]" />
+            <span className="block text-[19px] font-extrabold tracking-[0.24em] text-[var(--print-accent)]">INVOICE</span>
+            <span className="mt-[7px] ml-auto block h-0.5 w-[190px] bg-[var(--print-accent)]" />
             <span className="mt-2.5 block font-mono text-[15px] font-bold">{document.number}</span>
             <PaymentPill status={display} compact />
           </div>
@@ -212,14 +302,14 @@ function InvoiceSheet({ document, company, currency, lines, issued }: SheetProps
               className={cn(
                 'box-border flex-1 px-4 py-[11px]',
                 index < meta.length - 1 && 'border-r border-[#e2e8f0]',
-                item.accent && 'bg-[#f5f8ff]',
+                item.accent && 'bg-[var(--print-soft)]',
               )}
             >
               <Label>{item.label}</Label>
               <span
                 className={cn(
                   'mt-[3px] block font-mono text-[13px] font-bold',
-                  item.accent ? 'text-[#004ac6]' : 'text-[#0f172a]',
+                  item.accent ? 'text-[var(--print-accent)]' : 'text-[#0f172a]',
                 )}
               >
                 {item.text}
@@ -241,15 +331,15 @@ function InvoiceSheet({ document, company, currency, lines, issued }: SheetProps
               {company?.email ? <span className="block">{company.email}</span> : null}
             </span>
           </div>
-          <div className="flex-1 rounded-[10px] border border-[#dbe1ff] bg-[#f5f8ff] px-[18px] py-4">
-            <Label className="text-[#004ac6]">{t('sales.billTo', 'Bill to')}</Label>
+          <div className="flex-1 rounded-[10px] border border-[var(--print-border)] bg-[var(--print-soft)] px-[18px] py-4">
+            <Label className="text-[var(--print-accent)]">{t('sales.billTo', 'Bill to')}</Label>
             <span className="mt-[7px] block text-[13px] font-bold">{clientTitle(document)}</span>
             <ClientLines document={document} />
           </div>
         </div>
 
         <div className="mt-[22px] overflow-hidden rounded-[10px] border border-[#e2e8f0]">
-          <div className="flex items-center bg-[#004ac6] px-3.5 py-[9px] text-[8.5px] font-bold tracking-[0.12em] text-white uppercase">
+          <div className="flex items-center bg-[var(--print-accent)] px-3.5 py-[9px] text-[8.5px] font-bold tracking-[0.12em] text-white uppercase">
             <span className="w-6">#</span>
             <span className="min-w-0 flex-1">{t('sales.article', 'Article')}</span>
             <span className="w-[50px] text-right">{t('sales.qty', 'Qty')}</span>
@@ -263,7 +353,7 @@ function InvoiceSheet({ document, company, currency, lines, issued }: SheetProps
               key={line.position}
               className={cn(
                 'flex items-center border-t border-[#f1f5f9] px-3.5 py-[9px]',
-                index % 2 === 1 && 'bg-[#fafbff]',
+                index % 2 === 1 && 'bg-[var(--print-stripe)]',
               )}
             >
               <span className="w-6 font-mono text-[11px] text-[#94a3b8]">{line.position}</span>
@@ -327,9 +417,9 @@ function InvoiceSheet({ document, company, currency, lines, issued }: SheetProps
                   <span className="font-mono">{formatCents(document.tax_cents, currency)}</span>
                 </span>
               </div>
-              <div className="flex items-baseline justify-between border-t-2 border-[#004ac6] bg-[#f5f8ff] px-4 py-3.5">
+              <div className="flex items-baseline justify-between border-t-2 border-[var(--print-accent)] bg-[var(--print-soft)] px-4 py-3.5">
                 <span className="text-xs font-extrabold tracking-[0.06em] uppercase">{t('sales.total', 'Total')}</span>
-                <span className="font-mono text-[25px] font-extrabold tracking-[-0.02em] text-[#004ac6]">
+                <span className="font-mono text-[25px] font-extrabold tracking-[-0.02em] text-[var(--print-accent)]">
                   {formatCents(document.total_cents, currency)}
                 </span>
               </div>
@@ -343,18 +433,11 @@ function InvoiceSheet({ document, company, currency, lines, issued }: SheetProps
           </div>
         </div>
 
-        {document.notes ? (
-          <div className="mt-5">
-            <Label>{t('sales.notes', 'Notes')}</Label>
-            <p className="mt-1.5 mb-0 text-[11.5px] leading-[1.65] text-[#475569]">{document.notes}</p>
-          </div>
-        ) : null}
+        <TermsBlock notes={document.notes} footer={theme.footer_notes} signature={theme.show_signature} />
 
         <div className="mt-auto flex items-end justify-between gap-6 border-t border-[#e2e8f0] pt-3.5">
           <span className="text-[9.5px] leading-[1.7] text-[#94a3b8]">
             {[company?.name, company?.email].filter(Boolean).join(' · ')}
-            <br />
-            {t('sales.thankYou', 'Thank you for your business.')}
           </span>
           <span className="font-mono text-[9px] text-[#94a3b8]">
             {document.number} · {t('sales.pageOne', 'page 1 of 1')}
@@ -365,20 +448,22 @@ function InvoiceSheet({ document, company, currency, lines, issued }: SheetProps
   )
 }
 
-function AlbaranSheet({ document, currency, lines, issued }: SheetProps) {
+function AlbaranSheet({ document, company, currency, lines, issued, theme }: SheetProps) {
   const units = lines.reduce((sum, line) => sum + line.quantity, 0)
 
   return (
-    <SheetFrame>
+    <SheetFrame theme={theme}>
       <SheetBody className="px-14 pt-[52px] pb-11">
-        <div className="flex items-center justify-between gap-6 rounded-md border-[3px] border-[#004ac6] px-[22px] py-[18px]">
+        <div className="flex items-center justify-between gap-6 rounded-md border-[3px] border-[var(--print-accent)] px-[22px] py-[18px]">
           <div>
-            <h1 className="m-0 text-[54px] leading-[0.95] font-black tracking-[-0.04em] text-[#004ac6]">ALBARÁN</h1>
+            <h1 className="m-0 text-[54px] leading-[0.95] font-black tracking-[-0.04em] text-[var(--print-accent)]">
+              ALBARÁN
+            </h1>
             <span className="mt-1 block text-[13px] font-bold tracking-[0.22em] text-[#475569] uppercase">
               {t('sales.typeAlbaran', 'Delivery note')}
             </span>
           </div>
-          <div className="text-right">
+          <div className="shrink-0 text-right">
             <Label className="text-[9px]">{t('sales.number', 'Number')}</Label>
             <span className="block font-mono text-xl font-extrabold">{document.number}</span>
             <span className="mt-2.5 block">
@@ -446,7 +531,7 @@ function AlbaranSheet({ document, currency, lines, issued }: SheetProps) {
               <span className="w-[110px] text-right font-mono font-bold">{formatCents(line.total_cents, currency)}</span>
             </div>
           ))}
-          <div className="flex items-center border-t-2 border-[#004ac6] bg-[#f8fafc] px-3 py-3">
+          <div className="flex items-center border-t-2 border-[var(--print-accent)] bg-[#f8fafc] px-3 py-3">
             <span className="min-w-0 flex-1 text-xs font-extrabold tracking-[0.06em] uppercase">
               {t('sales.totalDelivered', 'Total delivered (net)')}
             </span>
@@ -456,16 +541,11 @@ function AlbaranSheet({ document, currency, lines, issued }: SheetProps) {
           </div>
         </div>
 
-        {document.notes ? (
-          <div className="mt-[22px]">
-            <Label className="text-[9px]">{t('sales.notes', 'Notes')}</Label>
-            <p className="mt-1.5 mb-0 text-xs leading-relaxed text-[#334155]">{document.notes}</p>
-          </div>
-        ) : null}
+        <TermsBlock notes={document.notes} footer={theme.footer_notes} signature={theme.show_signature} />
 
         <div className="mt-auto" />
         <div className="mt-4 flex justify-between border-t border-[#e2e8f0] pt-3 text-[10px] text-[#94a3b8]">
-          <span>{t('sales.albaranFooter', 'This delivery note is not a tax invoice.')}</span>
+          <span>{company?.name}</span>
           <span className="font-mono">
             {document.number} · {t('sales.pageOne', 'page 1 of 1')}
           </span>
@@ -475,7 +555,7 @@ function AlbaranSheet({ document, currency, lines, issued }: SheetProps) {
   )
 }
 
-function QuotationSheet({ document, company, currency, lines, issued }: SheetProps) {
+function QuotationSheet({ document, company, currency, lines, issued, theme, logoSrc }: SheetProps) {
   const terms = [
     { label: t('sales.issued', 'Issued'), text: issued, accent: true },
     {
@@ -491,12 +571,12 @@ function QuotationSheet({ document, company, currency, lines, issued }: SheetPro
   ]
 
   return (
-    <SheetFrame>
-      <span className="absolute inset-y-0 left-0 w-2.5 bg-[#004ac6]" />
+    <SheetFrame theme={theme}>
+      <span className="absolute inset-y-0 left-0 w-2.5 bg-[var(--print-accent)]" />
       <SheetBody className="px-[52px] pt-12 pb-10">
         <div className="flex items-start justify-between gap-7">
           <div className="flex items-center gap-3.5">
-            <LogoMark company={company} />
+            <LogoMark company={company} showLogo={theme.show_logo} logoSrc={logoSrc} />
             <span>
               <span className="block text-[17px] font-bold tracking-[-0.01em]">{company?.name}</span>
               <span className="mt-[3px] block text-[11px] leading-relaxed text-[#64748b]">
@@ -511,7 +591,7 @@ function QuotationSheet({ document, company, currency, lines, issued }: SheetPro
             </span>
           </div>
           <div className="shrink-0 text-right">
-            <span className="inline-block rounded-[10px] border-2 border-[#004ac6] px-5 py-[9px] text-[22px] font-black tracking-[0.18em] text-[#004ac6]">
+            <span className="inline-block rounded-[10px] border-2 border-[var(--print-accent)] px-5 py-[9px] text-[22px] font-black tracking-[0.18em] text-[var(--print-accent)]">
               QUOTATION
             </span>
             <span className="mt-2.5 block font-mono text-[15px] font-bold">{document.number}</span>
@@ -527,14 +607,14 @@ function QuotationSheet({ document, company, currency, lines, issued }: SheetPro
               key={item.label}
               className={cn(
                 'box-border flex-1 rounded-[10px] px-4 py-3',
-                item.accent ? 'border border-[#dbe1ff] bg-[#f5f8ff]' : 'border border-[#e2e8f0]',
+                item.accent ? 'border border-[var(--print-border)] bg-[var(--print-soft)]' : 'border border-[#e2e8f0]',
               )}
             >
               <Label>{item.label}</Label>
               <span
                 className={cn(
                   'mt-1 block text-[13px] font-bold',
-                  item.accent ? 'font-mono text-[#004ac6]' : 'text-[#0f172a]',
+                  item.accent ? 'font-mono text-[var(--print-accent)]' : 'text-[#0f172a]',
                 )}
               >
                 {item.text}
@@ -544,8 +624,8 @@ function QuotationSheet({ document, company, currency, lines, issued }: SheetPro
         </div>
 
         <div className="mt-5 flex items-stretch gap-[18px]">
-          <div className="min-w-0 flex-[1.3] rounded-[10px] border border-[#dbe1ff] bg-[#f5f8ff] px-[18px] py-4">
-            <Label className="text-[#004ac6]">{t('sales.quotationFor', 'Quotation for')}</Label>
+          <div className="min-w-0 flex-[1.3] rounded-[10px] border border-[var(--print-border)] bg-[var(--print-soft)] px-[18px] py-4">
+            <Label className="text-[var(--print-accent)]">{t('sales.quotationFor', 'Quotation for')}</Label>
             <span className="mt-[7px] block text-sm font-bold">{clientTitle(document)}</span>
             <ClientLines document={document} inline />
           </div>
@@ -557,8 +637,8 @@ function QuotationSheet({ document, company, currency, lines, issued }: SheetPro
           ) : null}
         </div>
 
-        <div className="mt-5 overflow-hidden rounded-[10px] border border-[#dbe1ff]">
-          <div className="flex items-center border-b border-[#dbe1ff] bg-[#eff4ff] px-3.5 py-[9px] text-[8.5px] font-extrabold tracking-[0.1em] text-[#1e293b] uppercase">
+        <div className="mt-5 overflow-hidden rounded-[10px] border border-[var(--print-border)]">
+          <div className="flex items-center border-b border-[var(--print-border)] bg-[var(--print-tint)] px-3.5 py-[9px] text-[8.5px] font-extrabold tracking-[0.1em] text-[#1e293b] uppercase">
             <span className="w-[22px]">#</span>
             <span className="min-w-0 flex-1">{t('sales.article', 'Article')}</span>
             <span className="w-11 text-right">{t('sales.qty', 'Qty')}</span>
@@ -573,7 +653,7 @@ function QuotationSheet({ document, company, currency, lines, issued }: SheetPro
               key={line.position}
               className={cn(
                 'flex items-center border-t border-[#f1f5f9] px-3.5 py-[9px]',
-                index % 2 === 1 && 'bg-[#fafbff]',
+                index % 2 === 1 && 'bg-[var(--print-stripe)]',
               )}
             >
               <span className="w-[22px] font-mono text-[11px] text-[#94a3b8]">{line.position}</span>
@@ -600,15 +680,12 @@ function QuotationSheet({ document, company, currency, lines, issued }: SheetPro
         <div className="mt-5 flex items-start gap-[22px]">
           <div className="min-w-0 flex-1 rounded-[10px] border border-[#e2e8f0] px-4 py-3.5">
             <Label>{t('sales.scope', 'Scope and conditions')}</Label>
-            <span className="mt-[7px] block text-[11.5px] leading-[1.75] text-[#475569]">
-              {t('sales.scopeNetGross', 'Prices shown both without and with tax, at the rates in force today.')}
-              <br />
-              {t('sales.scopeAccept', 'Delivery starts once the quotation is accepted in writing.')}
-              <br />
-              {t('sales.scopeStock', 'Stock is not reserved until acceptance.')}
+            <span className="mt-[7px] block text-[11.5px] leading-[1.75] whitespace-pre-wrap text-[#475569]">
+              {theme.footer_notes.trim() ||
+                t('sales.scopeNetGross', 'Prices shown both without and with tax, at the rates in force today.')}
             </span>
           </div>
-          <div className="w-[286px] shrink-0 overflow-hidden rounded-[10px] border border-[#dbe1ff]">
+          <div className="w-[286px] shrink-0 overflow-hidden rounded-[10px] border border-[var(--print-border)]">
             <div className="flex flex-col gap-2 px-4 py-3 text-xs text-[#475569]">
               <span className="flex justify-between">
                 <span>{t('sales.totalWithoutTax', 'Total without tax')}</span>
@@ -619,7 +696,7 @@ function QuotationSheet({ document, company, currency, lines, issued }: SheetPro
                 <span className="font-mono">{formatCents(document.tax_cents, currency)}</span>
               </span>
             </div>
-            <div className="flex items-baseline justify-between bg-[#004ac6] px-4 py-3.5 text-white">
+            <div className="flex items-baseline justify-between bg-[var(--print-accent)] px-4 py-3.5 text-white">
               <span className="text-[11px] font-extrabold tracking-[0.08em] uppercase">
                 {t('sales.totalWithTax', 'Total with tax')}
               </span>
@@ -630,8 +707,10 @@ function QuotationSheet({ document, company, currency, lines, issued }: SheetPro
           </div>
         </div>
 
+        {theme.show_signature ? <SignatureRow /> : null}
+
         <div className="mt-auto flex items-center justify-between gap-5 border-t border-[#e2e8f0] pt-3.5">
-          <span className="inline-flex items-center gap-[7px] text-[11px] font-bold text-[#004ac6]">
+          <span className="inline-flex items-center gap-[7px] text-[11px] font-bold text-[var(--print-accent)]">
             <CircleAlert className="h-[15px] w-[15px]" strokeWidth={2} />
             {t('sales.quotationFooter', 'This is a quotation, not a tax invoice.')}
           </span>
@@ -644,22 +723,22 @@ function QuotationSheet({ document, company, currency, lines, issued }: SheetPro
   )
 }
 
-function ProformaSheet({ document, company, currency, lines, issued }: SheetProps) {
+function ProformaSheet({ document, company, currency, lines, issued, theme, logoSrc }: SheetProps) {
   const units = lines.reduce((sum, line) => sum + line.quantity, 0)
 
   return (
-    <SheetFrame>
+    <SheetFrame theme={theme}>
       <SheetBody className="px-[52px] pt-12 pb-10">
         <div className="flex items-start justify-between gap-7">
           <div className="flex items-center gap-[13px]">
-            <LogoMark company={company} outline />
+            <LogoMark company={company} outline showLogo={theme.show_logo} logoSrc={logoSrc} />
             <span>
               <span className="block text-base font-bold tracking-[-0.01em]">{company?.name}</span>
               <span className="mt-0.5 block text-[11px] text-[#64748b]">{companyContactLine(company, false)}</span>
             </span>
           </div>
           <div className="text-right">
-            <span className="inline-block rounded-md bg-[#004ac6] px-4 py-[7px] text-lg font-black tracking-[0.2em] text-white">
+            <span className="inline-block rounded-md bg-[var(--print-accent)] px-4 py-[7px] text-lg font-black tracking-[0.2em] text-white">
               PROFORMA
             </span>
             <span className="mt-2.5 block font-mono text-[15px] font-bold">{document.number}</span>
@@ -669,7 +748,7 @@ function ProformaSheet({ document, company, currency, lines, issued }: SheetProp
           </div>
         </div>
 
-        <div className="mt-5 h-0.5 bg-[#004ac6]" />
+        <div className="mt-5 h-0.5 bg-[var(--print-accent)]" />
 
         <div className="mt-5 flex items-stretch gap-[18px]">
           <div className="flex-[1.5] rounded-lg border border-[#cbd5e1] px-[18px] py-[15px]">
@@ -689,8 +768,8 @@ function ProformaSheet({ document, company, currency, lines, issued }: SheetProp
           </div>
         </div>
 
-        <div className="mt-[22px] overflow-hidden rounded-lg border-2 border-[#004ac6]">
-          <div className="flex items-center bg-[#004ac6] px-4 py-2.5 text-[8.5px] font-extrabold tracking-[0.14em] text-white uppercase">
+        <div className="mt-[22px] overflow-hidden rounded-lg border-2 border-[var(--print-accent)]">
+          <div className="flex items-center bg-[var(--print-accent)] px-4 py-2.5 text-[8.5px] font-extrabold tracking-[0.14em] text-white uppercase">
             <span className="w-[30px]">#</span>
             <span className="min-w-0 flex-1">{t('sales.article', 'Article')}</span>
             <span className="w-[92px] text-right">{t('sales.qty', 'Qty')}</span>
@@ -721,7 +800,7 @@ function ProformaSheet({ document, company, currency, lines, issued }: SheetProp
               </span>
             </div>
           ))}
-          <div className="flex items-center border-t-2 border-[#004ac6] bg-[#f8fafc] px-4 py-4">
+          <div className="flex items-center border-t-2 border-[var(--print-accent)] bg-[#f8fafc] px-4 py-4">
             <span className="min-w-0 flex-1 text-xs font-extrabold tracking-[0.1em] uppercase">
               {t('sales.total', 'Total')}
             </span>
@@ -738,17 +817,10 @@ function ProformaSheet({ document, company, currency, lines, issued }: SheetProp
           )}
         </span>
 
-        {document.notes ? (
-          <div className="mt-[22px] rounded-lg border border-[#cbd5e1] px-4 py-3.5">
-            <Label>{t('sales.notes', 'Notes')}</Label>
-            <p className="mt-1.5 mb-0 text-[11.5px] leading-[1.7] text-[#475569]">{document.notes}</p>
-          </div>
-        ) : null}
+        <TermsBlock notes={document.notes} footer={theme.footer_notes} signature={theme.show_signature} />
 
         <div className="mt-auto flex items-center justify-between gap-5 border-t border-[#e2e8f0] pt-3.5">
-          <span className="text-[10.5px] text-[#64748b]">
-            {t('sales.proformaFooter', 'Proforma document. Not a tax invoice and not a payment request.')}
-          </span>
+          <span className="text-[10.5px] text-[#64748b]">{company?.name}</span>
           <span className="font-mono text-[9px] text-[#94a3b8]">
             {document.number} · {t('sales.pageOne', 'page 1 of 1')}
           </span>
@@ -758,10 +830,22 @@ function ProformaSheet({ document, company, currency, lines, issued }: SheetProp
   )
 }
 
-export function PrintSheet({ document, company, currency }: PrintSheetProps) {
+export function PrintSheetView({
+  document,
+  company,
+  currency,
+  theme,
+  logoSrc,
+}: {
+  document: SaleDocument
+  company: Company | null
+  currency: string
+  theme: PrintTemplate
+  logoSrc: string | null
+}) {
   const lines = document.lines ?? []
   const issued = formatDate(document.issued_at)
-  const props = { document, company, currency, lines, issued }
+  const props = { document, company, currency, lines, issued, theme, logoSrc }
 
   switch (document.type) {
     case 'albaran':
@@ -773,4 +857,48 @@ export function PrintSheet({ document, company, currency }: PrintSheetProps) {
     default:
       return <InvoiceSheet {...props} />
   }
+}
+
+export function PrintSheet({ document, company, currency, theme, logoSrc }: PrintSheetProps) {
+  const query = useQuery({
+    queryKey: ['app', 'print-templates'],
+    queryFn: getPrintTemplates,
+    enabled: theme === undefined,
+  })
+  const applied = theme ?? pickPrintTemplate(query.data?.templates, document.type)
+  const waiting = theme === undefined && query.isPending
+  const logoUrl = company?.logo_url ?? query.data?.logo_url ?? null
+  const blobQuery = useQuery({
+    queryKey: ['app', 'image-blob', logoUrl],
+    queryFn: () => loadImageBlob(logoUrl as string),
+    enabled:
+      !waiting && logoSrc === undefined && document.type !== 'albaran' && Boolean(logoUrl) && applied.show_logo,
+  })
+
+  useEffect(() => {
+    if (waiting) return
+    ensurePrintFonts(applied.font_key)
+  }, [waiting, applied.font_key])
+
+  if (waiting) {
+    return (
+      <article
+        id="printable-invoice"
+        className="relative mx-auto h-[1123px] w-[794px] animate-pulse bg-white shadow-[0_1px_4px_rgba(15,23,42,0.08)] ring-1 ring-slate-200/80"
+      />
+    )
+  }
+
+  const src =
+    document.type === 'albaran' ? null : logoSrc !== undefined ? logoSrc : (blobQuery.data ?? null)
+
+  return (
+    <PrintSheetView
+      document={document}
+      company={company}
+      currency={currency}
+      theme={applied}
+      logoSrc={src}
+    />
+  )
 }

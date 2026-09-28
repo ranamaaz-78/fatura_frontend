@@ -1,4 +1,4 @@
-import { toPng } from 'html-to-image'
+import { toBlob } from 'html-to-image'
 import { jsPDF } from 'jspdf'
 
 /** On-screen A4 frame (210mm × 297mm at 96dpi). */
@@ -10,18 +10,63 @@ export function sheetFileName(number: string, ext = 'png'): string {
   return `${safe || 'document'}.${ext}`
 }
 
-export async function captureSheetPng(node: HTMLElement): Promise<string> {
-  return toPng(node, {
-    cacheBust: true,
-    pixelRatio: 2,
-    width: A4_CSS_WIDTH,
-    height: A4_CSS_HEIGHT,
-    backgroundColor: '#ffffff',
-    style: {
-      margin: '0',
-      transform: 'none',
-      boxShadow: 'none',
-    },
+function withTimeout(ms: number): Promise<void> {
+  return new Promise((resolve) => window.setTimeout(resolve, ms))
+}
+
+async function waitForSheetAssets(node: HTMLElement): Promise<void> {
+  if (window.document.fonts?.ready) {
+    await Promise.race([window.document.fonts.ready, withTimeout(2500)])
+  }
+  const images = [...node.querySelectorAll('img')]
+  await Promise.all(
+    images.map((img) => {
+      if (img.complete && img.naturalWidth > 0) return Promise.resolve()
+      return img.decode().catch(() => undefined)
+    }),
+  )
+}
+
+const captureOptions = {
+  cacheBust: false,
+  pixelRatio: 2,
+  skipFonts: true,
+  width: A4_CSS_WIDTH,
+  height: A4_CSS_HEIGHT,
+  backgroundColor: '#ffffff',
+  style: {
+    margin: '0',
+    transform: 'none',
+    boxShadow: 'none',
+    opacity: '1',
+  },
+}
+
+function asError(error: unknown): Error {
+  if (error instanceof Error) return error
+  return new Error('Could not render the document.')
+}
+
+export async function captureSheetPngBlob(node: HTMLElement): Promise<Blob> {
+  await waitForSheetAssets(node)
+  try {
+    const blob = await Promise.race([
+      toBlob(node, captureOptions),
+      withTimeout(12000).then(() => null),
+    ])
+    if (!blob) throw new Error('Could not render the document.')
+    return blob
+  } catch (error) {
+    throw asError(error)
+  }
+}
+
+function blobToDataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(String(reader.result))
+    reader.onerror = () => reject(reader.error)
+    reader.readAsDataURL(blob)
   })
 }
 
@@ -33,20 +78,26 @@ function sheetNode(node?: HTMLElement | null): HTMLElement {
   return target
 }
 
-function triggerDownload(filename: string, href: string): void {
+function triggerBlobDownload(filename: string, blob: Blob): void {
+  const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.download = filename
-  link.href = href
+  link.rel = 'noopener'
+  link.href = url
+  document.body.appendChild(link)
   link.click()
+  link.remove()
+  window.setTimeout(() => URL.revokeObjectURL(url), 2000)
 }
 
 export async function downloadSheetImage(filename: string, node?: HTMLElement | null): Promise<void> {
-  const dataUrl = await captureSheetPng(sheetNode(node))
-  triggerDownload(filename, dataUrl)
+  const blob = await captureSheetPngBlob(sheetNode(node))
+  triggerBlobDownload(filename, blob)
 }
 
 export async function downloadSheetPdf(filename: string, node?: HTMLElement | null): Promise<void> {
-  const dataUrl = await captureSheetPng(sheetNode(node))
+  const blob = await captureSheetPngBlob(sheetNode(node))
+  const dataUrl = await blobToDataUrl(blob)
   const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
   pdf.addImage(dataUrl, 'PNG', 0, 0, 210, 297)
   pdf.save(filename)

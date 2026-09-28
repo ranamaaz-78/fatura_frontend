@@ -7,6 +7,7 @@ import {
   Inbox,
   LayoutDashboard,
   Package,
+  Printer,
   Receipt,
   ScanLine,
   Settings,
@@ -98,7 +99,7 @@ export const APP_NAV: NavGroup[] = [
     titleFallback: 'Analytics and settings',
     items: [
       { to: '/app/reports', labelKey: 'nav.reports', fallback: 'Reports', icon: TrendingUp },
-      { to: '/app/subscription', labelKey: 'nav.subscription', fallback: 'Subscription', icon: CreditCard },
+      { to: '/app/printables', labelKey: 'nav.printables', fallback: 'Printables', icon: Printer },
       { to: '/app/settings', labelKey: 'nav.settings', fallback: 'Settings', icon: Settings },
     ],
   },

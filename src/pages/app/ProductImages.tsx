@@ -47,16 +47,18 @@ function Lightbox({ image, onClose }: { image: ProductImage; onClose: () => void
         />
         <p className="max-w-[90vw] truncate text-center text-sm font-semibold text-white">{image.name}</p>
       </div>
-      <Tooltip content={t('common.close', 'Close')} align="end" side="bottom" className="absolute top-4 right-4 z-10">
-        <button
-          type="button"
-          aria-label={t('common.close', 'Close')}
-          onClick={onClose}
-          className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
-        >
-          <X className="h-5 w-5" />
-        </button>
-      </Tooltip>
+      <span className="absolute top-4 right-4 z-20">
+        <Tooltip content={t('common.close', 'Close')} align="end" side="bottom">
+          <button
+            type="button"
+            aria-label={t('common.close', 'Close')}
+            onClick={onClose}
+            className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-white text-slate-700 shadow-xs hover:bg-slate-100 hover:text-slate-900"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </Tooltip>
+      </span>
     </div>
   )
 }
@@ -248,16 +250,18 @@ function ProductImages() {
                       className="h-[100px] w-[100px] object-cover"
                     />
                   </button>
-                  <Tooltip content={t('common.delete', 'Delete')} align="end" className="absolute -top-2 -right-2 z-10">
-                    <button
-                      type="button"
-                      aria-label={`${t('common.delete', 'Delete')} ${image.name}`}
-                      onClick={() => setDeleting(image)}
-                      className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 shadow-xs transition-colors hover:bg-rose-50 hover:text-rose-600"
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </button>
-                  </Tooltip>
+                  <span className="absolute -top-2 -right-2 z-10">
+                    <Tooltip content={t('common.delete', 'Delete')} align="end">
+                      <button
+                        type="button"
+                        aria-label={`${t('common.delete', 'Delete')} ${image.name}`}
+                        onClick={() => setDeleting(image)}
+                        className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 shadow-xs hover:bg-rose-50 hover:text-rose-600"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </Tooltip>
+                  </span>
                 </div>
 
                 {renaming === image.uuid ? (

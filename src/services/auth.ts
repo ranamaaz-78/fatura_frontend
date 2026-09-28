@@ -35,3 +35,13 @@ export function setPassword(input: SetPasswordInput): Promise<AuthResult> {
 export function forgotPassword(email: string): Promise<unknown> {
   return unwrap(api.post('/auth/forgot-password', { email }))
 }
+
+export type ChangePasswordInput = {
+  current_password: string
+  password: string
+  password_confirmation: string
+}
+
+export function changePassword(input: ChangePasswordInput): Promise<unknown> {
+  return unwrap(api.patch('/app/password', input))
+}
