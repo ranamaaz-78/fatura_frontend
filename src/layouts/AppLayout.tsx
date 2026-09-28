@@ -15,6 +15,7 @@ function titleForPath(pathname: string): string {
     }
   }
   if (pathname === '/app/invoices/new') return t('sales.newTitle', 'New sale')
+  if (pathname.endsWith('/edit') && pathname.includes('/quotes/')) return t('sales.editQuote', 'Edit quotation')
   if (pathname.startsWith('/app/invoices/')) return t('nav.invoice', 'Invoice')
   return t('app.name', 'Fatura')
 }
@@ -27,7 +28,7 @@ export function AppLayout() {
   const title = useMemo(() => titleForPath(location.pathname), [location.pathname])
 
   return (
-    <div className="fixed inset-0 flex overflow-hidden bg-slate-50 print:static print:block print:h-auto print:overflow-visible">
+    <div className="fixed inset-0 flex overflow-hidden bg-slate-50 print:contents">
       <aside className="hidden w-64 shrink-0 border-r border-slate-800 bg-slate-900 text-slate-300 select-none lg:flex lg:flex-col print:hidden">
         <Sidebar />
       </aside>
@@ -44,7 +45,7 @@ export function AppLayout() {
         </div>
       ) : null}
 
-      <div className="flex min-w-0 flex-1 flex-col print:block">
+      <div className="flex min-w-0 flex-1 flex-col print:contents">
         <div className="print:hidden">
           <TopBar
             title={title}
@@ -53,7 +54,7 @@ export function AppLayout() {
             onMenu={() => setMenuOpen(true)}
           />
         </div>
-        <main className="flex-1 space-y-6 overflow-y-auto p-4 overscroll-contain sm:p-6 print:overflow-visible print:p-0">
+        <main className="flex-1 space-y-6 overflow-y-auto p-4 overscroll-contain sm:p-6 print:contents">
           <Outlet />
         </main>
         <div className="print:hidden">

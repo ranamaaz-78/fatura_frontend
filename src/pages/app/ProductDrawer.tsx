@@ -83,7 +83,7 @@ export function ProductDrawer({ product, currency, onClose, onEdit, onPrint, onD
           </p>
           <h2 className="truncate text-lg font-bold text-slate-900">{current?.article ?? '—'}</h2>
         </div>
-        <IconButton label={t('common.close', 'Close')} onClick={onClose}>
+          <IconButton label={t('common.close', 'Close')} tooltipAlign="end" onClick={onClose}>
           <X className="h-5 w-5" />
         </IconButton>
       </div>
@@ -100,6 +100,11 @@ export function ProductDrawer({ product, currency, onClose, onEdit, onPrint, onD
             {current.category ? (
               <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-medium text-slate-700">
                 {current.category}
+              </span>
+            ) : null}
+            {current.supplier ? (
+              <span className="rounded-full bg-[#eff4ff] px-2.5 py-0.5 text-[11px] font-medium text-[#004ac6]">
+                {current.supplier}
               </span>
             ) : null}
             <span className={cn('rounded-full px-2.5 py-0.5 font-mono text-xs font-semibold', stockTone)}>
@@ -184,6 +189,7 @@ export function ProductDrawer({ product, currency, onClose, onEdit, onPrint, onD
           <dl className="grid grid-cols-2 gap-x-4 gap-y-3">
             <Field label={t('products.srNumber', 'Sr number')} value={current.sr_number ?? '—'} />
             <Field label={t('products.brand', 'Brand')} value={current.brand ?? '—'} />
+            <Field label={t('products.supplier', 'Supplier')} value={current.supplier ?? '—'} />
             <Field label={t('products.imageCode', 'Image code')} value={current.image_code ?? '—'} />
             <Field
               label={t('products.barcode', 'Bar code')}

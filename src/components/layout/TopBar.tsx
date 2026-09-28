@@ -2,6 +2,7 @@ import { ChevronLeft } from 'lucide-react'
 import { t } from '../../i18n'
 import { Avatar } from '../ui/Avatar'
 import { IconButton } from '../ui/IconButton'
+import { Tooltip } from '../ui/Tooltip'
 
 export type TopBarProps = {
   title: string
@@ -19,9 +20,11 @@ export function TopBar({ title, showBack, onBack, onMenu }: TopBarProps) {
             <ChevronLeft className="w-6 h-6" />
           </IconButton>
         ) : (
-          <button type="button" onClick={onMenu} className="rounded-full" aria-label={t('nav.companyMenu', 'Company menu')}>
-            <Avatar name={t('nav.companyName', 'Fatura Demo')} size="sm" />
-          </button>
+          <Tooltip content={t('nav.companyMenu', 'Company menu')}>
+            <button type="button" onClick={onMenu} className="rounded-full" aria-label={t('nav.companyMenu', 'Company menu')}>
+              <Avatar name={t('nav.companyName', 'Fatura Demo')} size="sm" />
+            </button>
+          </Tooltip>
         )}
       </div>
       <h1 className="text-[15px] font-semibold text-slate-900 truncate text-center flex-1 px-2">{title}</h1>

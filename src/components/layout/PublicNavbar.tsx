@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import { t } from '../../i18n'
 import { cn } from '../../lib/cn'
+import { Tooltip } from '../ui/Tooltip'
 
 /** The landing page scrolls between its own sections; every other page routes. */
 const LANDING_LINKS = [
@@ -101,14 +102,16 @@ export function PublicNavbar() {
           </Link>
         </div>
 
-        <button
-          type="button"
-          className={cn('rounded-lg p-2 md:hidden', onHero ? 'text-white' : 'text-[#434655]')}
-          aria-label={open ? t('common.close', 'Close') : t('nav.menu', 'Menu')}
-          onClick={() => setOpen((current) => !current)}
-        >
+        <Tooltip content={open ? t('common.close', 'Close') : t('nav.menu', 'Menu')} align="end">
+          <button
+            type="button"
+            className={cn('rounded-lg p-2 md:hidden', onHero ? 'text-white' : 'text-[#434655]')}
+            aria-label={open ? t('common.close', 'Close') : t('nav.menu', 'Menu')}
+            onClick={() => setOpen((current) => !current)}
+          >
           {open ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-        </button>
+          </button>
+        </Tooltip>
       </div>
 
       {open ? (

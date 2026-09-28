@@ -292,10 +292,10 @@ function UiGallery() {
           }}
           rowActions={() => (
             <>
-              <IconButton label={t('gallery.edit', 'Edit')}>
+              <IconButton label={t('gallery.edit', 'Edit')} tooltipAlign="end">
                 <Pencil className="w-4 h-4" />
               </IconButton>
-              <IconButton label={t('common.remove', 'Remove')} destructive>
+              <IconButton label={t('common.remove', 'Remove')} tooltipAlign="end" destructive>
                 <Trash2 className="w-4 h-4" />
               </IconButton>
             </>

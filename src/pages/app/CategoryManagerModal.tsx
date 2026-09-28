@@ -130,11 +130,12 @@ export function CategoryManagerModal({ open, onClose }: { open: boolean; onClose
                     />
                     <IconButton
                       label={t('common.save', 'Save')}
+                      tooltipAlign="end"
                       onClick={() => renameMutation.mutate(category)}
                     >
                       <Check className="h-4 w-4 text-emerald-600" />
                     </IconButton>
-                    <IconButton label={t('common.cancel', 'Cancel')} onClick={() => setEditingId(null)}>
+                    <IconButton label={t('common.cancel', 'Cancel')} tooltipAlign="end" onClick={() => setEditingId(null)}>
                       <X className="h-4 w-4" />
                     </IconButton>
                   </>
@@ -146,6 +147,7 @@ export function CategoryManagerModal({ open, onClose }: { open: boolean; onClose
                     </span>
                     <IconButton
                       label={t('common.edit', 'Edit')}
+                      tooltipAlign="end"
                       onClick={() => {
                         setEditingId(category.id)
                         setEditingName(category.name)
@@ -156,6 +158,7 @@ export function CategoryManagerModal({ open, onClose }: { open: boolean; onClose
                     </IconButton>
                     <IconButton
                       label={t('common.delete', 'Delete')}
+                      tooltipAlign="end"
                       onClick={() => deleteMutation.mutate(category)}
                     >
                       <Trash2 className="h-4 w-4 text-rose-500" />

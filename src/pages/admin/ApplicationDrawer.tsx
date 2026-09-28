@@ -127,7 +127,7 @@ export function ApplicationDrawer({ applicationId, onClose }: ApplicationDrawerP
               {application?.company_name ?? '—'}
             </h2>
           </div>
-          <IconButton label={t('common.close', 'Close')} onClick={onClose}>
+          <IconButton label={t('common.close', 'Close')} tooltipAlign="end" onClick={onClose}>
             <X className="h-5 w-5" />
           </IconButton>
         </div>

@@ -19,7 +19,9 @@ import { BarcodeSvg } from '../../components/ui/BarcodeSvg'
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { ProtectedImage } from '../../components/ui/ProtectedImage'
+import { Select } from '../../components/ui/Select'
 import { SkeletonTable } from '../../components/ui/Skeleton'
+import { Tooltip } from '../../components/ui/Tooltip'
 import { useToast } from '../../components/ui/Toast'
 import { t } from '../../i18n'
 import { cn } from '../../lib/cn'
@@ -219,45 +221,59 @@ function Products() {
     return Array.from({ length: Math.min(3, meta.last_page) }, (_, index) => start + index)
   }, [meta])
 
-  const actions = (product: Product) => (
-    <>
-      <button
-        type="button"
-        aria-label={`${t('common.view', 'View')} ${product.article}`}
-        className={cn(rowAction, 'hover:bg-slate-100 hover:text-slate-600')}
-        onClick={() => setViewing(product)}
-      >
-        <Eye className="h-4 w-4" />
-      </button>
-      <button
-        type="button"
-        aria-label={`${t('common.edit', 'Edit')} ${product.article}`}
-        className={cn(rowAction, 'hover:bg-slate-100 hover:text-slate-600')}
-        onClick={() => {
-          setEditing(product)
-          setProductOpen(true)
-        }}
-      >
-        <Pencil className="h-4 w-4" />
-      </button>
-      <button
-        type="button"
-        aria-label={`${t('labels.printOne', 'Print label')} ${product.article}`}
-        className={cn(rowAction, 'hover:bg-[#eff4ff] hover:text-[#004ac6]')}
-        onClick={() => setLabelTargets([product])}
-      >
-        <Printer className="h-4 w-4" />
-      </button>
-      <button
-        type="button"
-        aria-label={`${t('common.delete', 'Delete')} ${product.article}`}
-        className={cn(rowAction, 'hover:bg-rose-50 hover:text-rose-600')}
-        onClick={() => setDeleting(product)}
-      >
-        <Trash2 className="h-4 w-4" />
-      </button>
-    </>
-  )
+  const actions = (product: Product) => {
+    const viewLabel = t('common.view', 'View')
+    const editLabel = t('common.edit', 'Edit')
+    const printLabel = t('labels.printOne', 'Print label')
+    const deleteLabel = t('common.delete', 'Delete')
+    return (
+      <>
+        <Tooltip content={viewLabel} align="end">
+          <button
+            type="button"
+            aria-label={`${viewLabel} ${product.article}`}
+            className={cn(rowAction, 'hover:bg-slate-100 hover:text-slate-600')}
+            onClick={() => setViewing(product)}
+          >
+            <Eye className="h-4 w-4" />
+          </button>
+        </Tooltip>
+        <Tooltip content={editLabel} align="end">
+          <button
+            type="button"
+            aria-label={`${editLabel} ${product.article}`}
+            className={cn(rowAction, 'hover:bg-slate-100 hover:text-slate-600')}
+            onClick={() => {
+              setEditing(product)
+              setProductOpen(true)
+            }}
+          >
+            <Pencil className="h-4 w-4" />
+          </button>
+        </Tooltip>
+        <Tooltip content={printLabel} align="end">
+          <button
+            type="button"
+            aria-label={`${printLabel} ${product.article}`}
+            className={cn(rowAction, 'hover:bg-[#eff4ff] hover:text-[#004ac6]')}
+            onClick={() => setLabelTargets([product])}
+          >
+            <Printer className="h-4 w-4" />
+          </button>
+        </Tooltip>
+        <Tooltip content={deleteLabel} align="end">
+          <button
+            type="button"
+            aria-label={`${deleteLabel} ${product.article}`}
+            className={cn(rowAction, 'hover:bg-rose-50 hover:text-rose-600')}
+            onClick={() => setDeleting(product)}
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        </Tooltip>
+      </>
+    )
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -351,8 +367,8 @@ function Products() {
       </div>
 
       {/* Table card */}
-      <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-xs">
-        <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 px-4 py-3">
+      <div className="rounded-2xl border border-slate-200/80 bg-white shadow-xs">
+        <div className="flex flex-wrap items-center gap-3 rounded-t-2xl border-b border-slate-100 px-4 py-3">
           <span className="relative w-full max-w-[340px] flex-grow">
             <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input
@@ -363,14 +379,14 @@ function Products() {
               className="h-[38px] w-full rounded-xl border border-slate-200 bg-white pr-3 pl-8.5 text-[13px] outline-none focus:border-[#004ac6] focus:ring-2 focus:ring-[#004ac6]/20"
             />
           </span>
-          <select
+          <Select
             aria-label={t('products.category', 'Category')}
             value={categoryId}
+            className="w-[12.5rem] shrink-0"
             onChange={(event) => {
               setCategoryId(event.target.value)
               setPage(1)
             }}
-            className="h-[38px] rounded-xl border border-slate-200 bg-white px-2.5 text-[13px] text-slate-700 outline-none focus:border-[#004ac6]"
           >
             <option value="">{t('products.allCategories', 'All categories')}</option>
             {(categories.data ?? []).map((category) => (
@@ -378,7 +394,7 @@ function Products() {
                 {category.name}
               </option>
             ))}
-          </select>
+          </Select>
           <div className="flex flex-wrap gap-1.5 md:ml-auto">
             {chips.map((chip) => {
               const on = stock === chip.id

@@ -110,7 +110,11 @@ function AdminCompanies() {
           />
         }
         rowActions={(row) => (
-          <IconButton label={t('admin.viewCompany', 'View company')} onClick={() => navigate(`/admin/companies/${row.id}`)}>
+          <IconButton
+            label={t('admin.viewCompany', 'View company')}
+            tooltipAlign="end"
+            onClick={() => navigate(`/admin/companies/${row.id}`)}
+          >
             <Eye className="h-4 w-4" />
           </IconButton>
         )}

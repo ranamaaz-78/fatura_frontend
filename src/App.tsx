@@ -22,6 +22,7 @@ import UiGallery from './pages/dev/UiGallery'
 import CustomersPage from './pages/app/Customers'
 import DashboardPage from './pages/app/Dashboard'
 import ImportPage from './pages/app/Import'
+import DeliveryNotesPage from './pages/app/DeliveryNotes'
 import InvoiceDetailPage from './pages/app/InvoiceDetail'
 import InvoiceNewPage from './pages/app/InvoiceNew'
 import InvoicesPage from './pages/app/Invoices'
@@ -81,8 +82,13 @@ function App() {
               <Route path="invoices/new" element={<InvoiceNewPage />} />
               <Route path="invoices" element={<InvoicesPage />} />
               <Route path="invoices/:id" element={<InvoiceDetailPage />} />
+              <Route path="delivery-notes" element={<DeliveryNotesPage />} />
+              <Route path="delivery-notes/:id" element={<InvoiceDetailPage />} />
               <Route path="quotes" element={<QuotesPage />} />
+              <Route path="quotes/:id/edit" element={<InvoiceNewPage />} />
+              <Route path="quotes/:id" element={<InvoiceDetailPage />} />
               <Route path="proformas" element={<ProformasPage />} />
+              <Route path="proformas/:id" element={<InvoiceDetailPage />} />
               <Route path="payments" element={<PaymentsPage />} />
               <Route path="products" element={<ProductsPage />} />
               <Route path="product-images" element={<ProductImagesPage />} />

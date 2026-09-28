@@ -57,7 +57,7 @@ export function DataTable<T>({
   summary,
 }: DataTableProps<T>) {
   return (
-    <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
+    <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs">
       <div className="px-4 py-3 border-b border-slate-100 flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
         {onSearch ? <SearchInput value={search ?? ''} onChange={onSearch} /> : <div />}
         <div className="flex items-center gap-2">

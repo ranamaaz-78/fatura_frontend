@@ -1,6 +1,39 @@
-export type SaleType = 'factura' | 'albaran' | 'abono'
+/** abono is closed to new documents; older rows still load with it. */
+export type SaleType = 'factura' | 'albaran' | 'quotation' | 'proforma' | 'abono'
 
-export type PaymentStatus = 'pending' | 'paid'
+export type IssuableType = Exclude<SaleType, 'abono'>
+
+export type PaymentStatus = 'pending' | 'partial' | 'paid'
+
+export type SaleDisplayStatus = PaymentStatus | 'voided'
+
+export function isSaleVoided(document: { voided_at?: string | null; is_voided?: boolean }): boolean {
+  return Boolean(document.is_voided || document.voided_at)
+}
+
+export function isSaleConverted(document: {
+  converted_at?: string | null
+  is_converted?: boolean
+}): boolean {
+  return Boolean(document.is_converted || document.converted_at)
+}
+
+export function saleDisplayStatus(document: {
+  payment_status: PaymentStatus
+  voided_at?: string | null
+  is_voided?: boolean
+}): SaleDisplayStatus {
+  return isSaleVoided(document) ? 'voided' : document.payment_status
+}
+
+export type CompanyPaymentMethod = {
+  id: number
+  name: string
+  is_active: boolean
+  sort_order: number
+  documents_count?: number
+  settlements_count?: number
+}
 
 export type Customer = {
   id: number
@@ -23,6 +56,7 @@ export type CustomerInput = {
 }
 
 export type SaleLine = {
+  id?: number
   position: number
   product_id: number | null
   sr_number: string | null
@@ -35,6 +69,33 @@ export type SaleLine = {
   base_cents: number
   tax_cents: number
   total_cents: number
+  settled_quantity?: number
+  remaining_quantity?: number
+}
+
+export type SaleSettlementLine = {
+  line_id: number
+  quantity: number
+  unit_price: number
+  total_cents: number
+}
+
+export type SaleSettlement = {
+  id: number
+  payment_method_id: number
+  payment_method: { id: number; name: string } | null
+  total_cents: number
+  created_at: string
+  lines?: SaleSettlementLine[]
+}
+
+export type SaleSettleInput = {
+  payment_method_id: number
+  lines: { line_id: number; quantity: number; unit_price: number }[]
+}
+
+export type SaleSettlementQtyInput = {
+  lines: { line_id: number; quantity: number }[]
 }
 
 export type SaleDocument = {
@@ -43,6 +104,15 @@ export type SaleDocument = {
   number: string
   issued_at: string
   payment_status: PaymentStatus
+  payment_method_id: number | null
+  payment_method: { id: number; name: string } | null
+  voided_at: string | null
+  void_reason: string | null
+  is_voided: boolean
+  converted_to_id: number | null
+  converted_at: string | null
+  is_converted: boolean
+  converted_to?: { id: number; type: SaleType; number: string } | null
   customer_id: number | null
   client_code: string | null
   client_name: string
@@ -54,7 +124,10 @@ export type SaleDocument = {
   base_cents: number
   tax_cents: number
   total_cents: number
+  settled_cents: number
+  is_partial: boolean
   lines?: SaleLine[]
+  settlements?: SaleSettlement[]
 }
 
 export type SaleLineInput = {
@@ -72,6 +145,7 @@ export type SaleInput = {
   type: SaleType
   issued_at: string
   payment_status: PaymentStatus
+  payment_method_id?: number | null
   customer_id: number | null
   save_customer: boolean
   client_name: string
@@ -81,4 +155,78 @@ export type SaleInput = {
   client_nie: string | null
   notes: string | null
   lines: SaleLineInput[]
+}
+
+export type SaleListParams = {
+  search?: string
+  type?: SaleType
+  payment_status?: PaymentStatus
+  display_status?: SaleDisplayStatus
+  page?: number
+  per_page?: number
+}
+
+export type SaleList = {
+  items: SaleDocument[]
+  meta: { current_page: number; last_page: number; per_page: number; total: number }
+  counts: { all: number; pending: number; paid: number; partial: number; voided: number }
+  stats: {
+    total_cents: number
+    paid_count: number
+    paid_cents: number
+    pending_count: number
+    pending_cents: number
+    settled_cents: number
+    month_count: number
+    month_cents: number
+    client_count: number
+  }
+}
+
+export type PaymentStatusBadge = 'received' | 'pending' | 'partial'
+
+export type PaymentEntry = {
+  id: string
+  kind: 'document' | 'settlement'
+  status: PaymentStatusBadge
+  document_id: number
+  document_type: SaleType
+  document_number: string
+  customer_id: number | null
+  client_code: string | null
+  client_name: string
+  client_company: string | null
+  payment_method_id: number | null
+  payment_method: { id: number; name: string } | null
+  amount_cents: number
+  outstanding_cents: number
+  paid_at: string | null
+}
+
+export type PaymentPeriod = 'all' | 'month' | 'week' | 'day' | 'custom'
+
+export type PaymentListParams = {
+  search?: string
+  period?: PaymentPeriod
+  from?: string
+  to?: string
+  status?: PaymentStatusBadge | 'all'
+  payment_method_id?: string
+  page?: number
+  per_page?: number
+}
+
+export type PaymentList = {
+  items: PaymentEntry[]
+  meta: { current_page: number; last_page: number; per_page: number; total: number }
+  counts: { all: number; month: number; week: number; day: number }
+  stats: {
+    received_cents: number
+    received_count: number
+    pending_cents: number
+    pending_count: number
+    outstanding_cents: number
+    outstanding_count: number
+    client_count: number
+  }
 }

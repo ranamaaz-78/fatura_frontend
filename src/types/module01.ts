@@ -168,6 +168,25 @@ export type AdminDashboard = {
   latest_applications: Application[]
 }
 
+export type DashboardDocument = {
+  id: number
+  type: string
+  number: string
+  client_name: string
+  issued_at: string | null
+  payment_status: string
+  total_cents: number
+  outstanding_cents: number
+}
+
+export type DashboardStockRow = {
+  id: number
+  article: string
+  quantity: number
+  minimum_stock: number
+  band: 'low' | 'out'
+}
+
 export type AppDashboard = {
   company: { id: number | null; name: string | null; currency: string }
   kpis: {
@@ -176,7 +195,22 @@ export type AppDashboard = {
     overdue: number
     invoices_this_month: number
     clients: number
+    document_count: number
+    paid_count: number
+    open_count: number
+    total_cents: number
+    base_cents: number
+    tax_cents: number
+    cost_cents: number
+    profit_cents: number
+    low_count: number
+    out_count: number
   }
+  series: { day: string; document_count: number; total_cents: number }[]
+  breakdown: { key: string; count: number; total_cents: number }[]
+  status: { key: string; count: number; total_cents: number }[]
+  recent: DashboardDocument[]
+  open_documents: DashboardDocument[]
+  low_stock: DashboardStockRow[]
   subscription: Subscription | null
-  getting_started: { key: string; label: string; done: boolean }[]
 }

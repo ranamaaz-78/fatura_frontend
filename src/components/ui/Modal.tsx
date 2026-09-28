@@ -90,7 +90,7 @@ export function Modal({
               </h3>
               {subtitle ? <p className="text-xs text-slate-500 mt-0.5">{subtitle}</p> : null}
             </div>
-            <IconButton label={t('common.close', 'Close')} onClick={onClose}>
+            <IconButton label={t('common.close', 'Close')} tooltipAlign="end" tooltipSide="bottom" onClick={onClose}>
               <X className="w-5 h-5" />
             </IconButton>
           </div>

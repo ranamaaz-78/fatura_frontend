@@ -1,4 +1,5 @@
 import {
+  forwardRef,
   useId,
   type ButtonHTMLAttributes,
   type InputHTMLAttributes,
@@ -8,6 +9,7 @@ import {
 } from 'react'
 import { ArrowRight } from 'lucide-react'
 import { cn } from '../../lib/cn'
+import { optionsFromChildren, SearchableSelect } from './SearchableSelect'
 
 /**
  * Form controls for the marketing and auth shells. They are taller and softer
@@ -114,21 +116,33 @@ export function PublicInput({
   )
 }
 
-export function PublicSelect({
-  id,
-  label,
-  hint,
-  error,
-  action,
-  optional,
-  required,
-  className,
-  fieldClassName,
-  children,
-  ...props
-}: SelectHTMLAttributes<HTMLSelectElement> & Shared & { children: ReactNode }) {
+export const PublicSelect = forwardRef<
+  HTMLSelectElement,
+  SelectHTMLAttributes<HTMLSelectElement> & Shared & { children: ReactNode }
+>(function PublicSelect(
+  {
+    id,
+    label,
+    hint,
+    error,
+    action,
+    optional,
+    required,
+    className,
+    fieldClassName,
+    children,
+    value,
+    defaultValue,
+    onChange,
+    onBlur,
+    name,
+    disabled,
+    ...props
+  },
+  ref,
+) {
   const fallbackId = useId()
-  const selectId = id ?? props.name ?? fallbackId
+  const selectId = id ?? name ?? fallbackId
 
   return (
     <PublicFieldShell
@@ -141,19 +155,26 @@ export function PublicSelect({
       action={action}
       className={fieldClassName}
     >
-      <select
+      <SearchableSelect
+        ref={ref}
         id={selectId}
+        name={name}
+        options={optionsFromChildren(children)}
+        value={value}
+        defaultValue={defaultValue}
+        onChange={onChange}
+        onBlur={onBlur}
+        disabled={disabled}
         required={required}
-        aria-invalid={Boolean(error)}
+        error={Boolean(error)}
+        tone="public"
+        className={className}
+        aria-label={props['aria-label']}
         aria-describedby={error ? `${selectId}-error` : hint ? `${selectId}-hint` : undefined}
-        className={cn(control, 'h-12 w-full px-3', error && invalid, className)}
-        {...props}
-      >
-        {children}
-      </select>
+      />
     </PublicFieldShell>
   )
-}
+})
 
 export function PublicTextarea({
   id,

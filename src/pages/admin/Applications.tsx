@@ -96,7 +96,11 @@ function AdminApplications() {
           />
         }
         rowActions={(row) => (
-          <IconButton label={t('admin.applicationDetail', 'Application')} onClick={() => setSelected(row.id)}>
+          <IconButton
+            label={t('admin.applicationDetail', 'Application')}
+            tooltipAlign="end"
+            onClick={() => setSelected(row.id)}
+          >
             <Eye className="h-4 w-4" />
           </IconButton>
         )}

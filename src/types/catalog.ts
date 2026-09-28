@@ -19,6 +19,8 @@ export type Product = {
   quantity: number
   category_id: number | null
   category?: string | null
+  supplier_id: number | null
+  supplier?: string | null
   brand: string | null
   image_code: string | null
   barcode: string
@@ -55,6 +57,7 @@ export type ProductInput = {
   sr_number: string | null
   barcode: string | null
   category_id: number | null
+  supplier_id: number | null
   quantity: number
   minimum_stock: number
   buying_price: number
@@ -68,6 +71,7 @@ export type ImportRow = {
   article: string
   description: string | null
   category: string | null
+  supplier: string | null
   brand: string | null
   image_code: string | null
   barcode: string | null

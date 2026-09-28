@@ -1,23 +1,22 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { Camera, Minus, Plus, Receipt, ScanLine, ShieldCheck, Trash2, UserRound, X } from 'lucide-react'
-import { useMemo, useState, type KeyboardEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useMemo, useState, type KeyboardEvent } from 'react'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../auth/AuthProvider'
 import { useToast } from '../../components/ui/Toast'
+import { Select } from '../../components/ui/Select'
+import { Tooltip } from '../../components/ui/Tooltip'
 import { t } from '../../i18n'
 import { cn } from '../../lib/cn'
 import { centsToInput, formatCents, lineTotals, parseAmountToCents, parseNumber } from '../../lib/money'
 import { getErrorMessage } from '../../services/api'
 import { listAllProducts, listTaxRates } from '../../services/catalog'
-import { createSale, listActiveCustomers, previewSale } from '../../services/sales'
+import { createSale, getSale, listActiveCustomers, previewSale, updateSale } from '../../services/sales'
 import type { Product } from '../../types/catalog'
-import type { Customer, PaymentStatus, SaleType } from '../../types/sales'
-
-const TYPES: { id: SaleType; label: string }[] = [
-  { id: 'factura', label: 'Factura' },
-  { id: 'albaran', label: 'Albarán' },
-  { id: 'abono', label: 'Abono' },
-]
+import type { Customer, IssuableType, PaymentStatus, SaleDocument, SaleInput } from '../../types/sales'
+import { isSaleConverted } from '../../types/sales'
+import { ISSUABLE_TYPES, celebratesPayment, isIssuable, rulesFor, typeLabel } from './documentTypes'
+import { RecordPaymentModal } from './RecordPaymentModal'
 
 type DraftLine = {
   key: string
@@ -42,6 +41,31 @@ function nowLocal(): string {
   const date = new Date()
   const pad = (value: number) => String(value).padStart(2, '0')
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
+
+function toLocalInput(iso: string): string {
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return nowLocal()
+  const pad = (value: number) => String(value).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
+
+function linesFromDocument(document: SaleDocument, products: Product[]): DraftLine[] {
+  return (document.lines ?? []).map((line) => {
+    const product = line.product_id === null ? undefined : products.find((row) => row.id === line.product_id)
+    return {
+      key: crypto.randomUUID(),
+      product_id: line.product_id,
+      sr_number: line.sr_number ?? '',
+      article: line.article,
+      description: line.description ?? '',
+      quantity: line.quantity,
+      unitPrice: centsToInput(line.unit_price),
+      discount: String(line.discount_percent),
+      iva: String(line.iva_percent),
+      stock: product?.quantity ?? null,
+    }
+  })
 }
 
 function initials(name: string): string {
@@ -75,13 +99,21 @@ function productRank(product: Product, query: string): number {
 function InvoiceNew() {
   const { session } = useAuth()
   const navigate = useNavigate()
+  const { id } = useParams()
   const { push } = useToast()
+  const [params] = useSearchParams()
   const currency = session?.company?.currency ?? 'USD'
   const company = session?.company
+  const editingId = Number(id)
+  const editing = Number.isFinite(editingId)
 
-  const [type, setType] = useState<SaleType>('factura')
+  const requested = params.get('type')
+  const [type, setType] = useState<IssuableType>(editing ? 'quotation' : isIssuable(requested) ? requested : 'factura')
+  const [hydrated, setHydrated] = useState(false)
+  const rules = rulesFor(type)
   const [issuedAt, setIssuedAt] = useState(nowLocal)
   const [payment, setPayment] = useState<PaymentStatus>('pending')
+  const [methodOpen, setMethodOpen] = useState(false)
   const [notes, setNotes] = useState('')
 
   const [customerId, setCustomerId] = useState<number | null>(null)
@@ -95,9 +127,26 @@ function InvoiceNew() {
   const [camera, setCamera] = useState(false)
   const [lines, setLines] = useState<DraftLine[]>([])
 
+  // Each list opens this screen with its own ?type=, and the route is shared,
+  // so the screen is not remounted when one list sends us to another.
+  useEffect(() => {
+    if (editing) {
+      setType('quotation')
+      return
+    }
+    if (isIssuable(requested)) setType(requested)
+  }, [editing, requested])
+
+  const existing = useQuery({
+    queryKey: ['app', 'sale', editingId],
+    queryFn: () => getSale(editingId),
+    enabled: editing,
+  })
+
   const preview = useQuery({
     queryKey: ['app', 'sales', 'preview', type],
     queryFn: () => previewSale(type),
+    enabled: !editing,
   })
 
   const customers = useQuery({
@@ -143,30 +192,67 @@ function InvoiceNew() {
       .map((row) => row.product)
   }, [catalog.data, productQuery])
 
+  // What a line is worth once this document's own tax and discount rules apply.
+  const lineMath = useMemo(() => {
+    const byKey = new Map<string, { base: number; tax: number; total: number; iva: number }>()
+    for (const line of lines) {
+      const unit = parseAmountToCents(line.unitPrice) ?? 0
+      const discount = rules.carriesDiscount ? (parseNumber(line.discount) ?? 0) : 0
+      const iva = rules.carriesTax ? (parseNumber(line.iva) ?? 0) : 0
+      byKey.set(line.key, { ...lineTotals(line.quantity, unit, discount, iva), iva })
+    }
+    return byKey
+  }, [lines, rules.carriesDiscount, rules.carriesTax])
+
   const totals = useMemo(() => {
     const groups = new Map<number, { base: number; tax: number }>()
     let base = 0
     let tax = 0
 
     for (const line of lines) {
-      const unit = parseAmountToCents(line.unitPrice) ?? 0
-      const discount = parseNumber(line.discount) ?? 0
-      const iva = parseNumber(line.iva) ?? 0
-      const math = lineTotals(line.quantity, unit, discount, iva)
+      const math = lineMath.get(line.key)
+      if (!math) continue
       base += math.base
       tax += math.tax
-      const group = groups.get(iva) ?? { base: 0, tax: 0 }
+      const group = groups.get(math.iva) ?? { base: 0, tax: 0 }
       group.base += math.base
       group.tax += math.tax
-      groups.set(iva, group)
+      groups.set(math.iva, group)
     }
 
     return { base, tax, total: base + tax, groups: [...groups.entries()] }
-  }, [lines])
+  }, [lines, lineMath])
 
-  const issue = useMutation({
-    mutationFn: createSale,
-    onSuccess: (document) => navigate(`/app/invoices/${document.id}`),
+  useEffect(() => {
+    const document = existing.data
+    if (!document || hydrated) return
+    if (isSaleConverted(document) && document.converted_to) {
+      navigate(`${rulesFor(document.converted_to.type).listPath}/${document.converted_to.id}`, { replace: true })
+      return
+    }
+    setType('quotation')
+    setIssuedAt(toLocalInput(document.issued_at))
+    setNotes(document.notes ?? '')
+    setCustomerId(document.customer_id)
+    setClientName(document.client_name)
+    setClientCompany(document.client_company ?? '')
+    setClientPhone(document.client_phone ?? '')
+    setClientNif(document.client_nif ?? '')
+    setLines(linesFromDocument(document, catalog.data ?? []))
+    setHydrated(true)
+  }, [catalog.data, existing.data, hydrated, navigate])
+
+  const save = useMutation({
+    mutationFn: (input: SaleInput) => (editing ? updateSale(editingId, input) : createSale(input)),
+    onSuccess: (document) => {
+      setMethodOpen(false)
+      navigate(`${rulesFor(document.type).listPath}/${document.id}`, {
+        state:
+          !editing && celebratesPayment(document.type) && document.payment_status === 'paid'
+            ? { celebrate: true }
+            : undefined,
+      })
+    },
     onError: (error) => push({ tone: 'danger', title: getErrorMessage(error) }),
   })
 
@@ -204,13 +290,14 @@ function InvoiceNew() {
   }
 
   function piecesLeft(productId: number, stock: number): number {
+    if (!rules.movesStock) return stock
     const used = lines.reduce((sum, line) => (line.product_id === productId ? sum + line.quantity : sum), 0)
-    return type === 'abono' ? stock + used : stock - used
+    return stock - used
   }
 
   function addProduct(product: Product) {
     const existing = lines.find((line) => line.product_id === product.id)
-    if (existing && existing.stock !== null && type !== 'abono' && existing.quantity + 1 > existing.stock) {
+    if (existing && existing.stock !== null && rules.movesStock && existing.quantity + 1 > existing.stock) {
       push({
         tone: 'danger',
         title: t('sales.noStock', 'Not enough stock for :article. Only :stock left.')
@@ -230,7 +317,8 @@ function InvoiceNew() {
               article: product.article,
               description: product.description ?? '',
               quantity: 1,
-              unitPrice: centsToInput(product.selling_price),
+              // A proforma is issued at the agreed price, so the box starts empty.
+              unitPrice: rules.manualPrice ? '' : centsToInput(product.selling_price),
               discount: '0',
               iva: String(product.iva_percent),
               stock: product.quantity,
@@ -238,7 +326,7 @@ function InvoiceNew() {
           ]
         }
         const next = line.quantity + 1
-        if (line.stock !== null && type !== 'abono' && next > line.stock) return current
+        if (line.stock !== null && rules.movesStock && next > line.stock) return current
         return current.map((item) => (item.key === line.key ? { ...item, quantity: next } : item))
       })
     }
@@ -252,20 +340,19 @@ function InvoiceNew() {
   }
 
   function changeQuantity(line: DraftLine, next: number) {
-    const capped = line.stock !== null && type !== 'abono' ? Math.min(next, line.stock) : next
+    const capped = line.stock !== null && rules.movesStock ? Math.min(next, line.stock) : next
     if (capped < 1) return
     changeLine(line.key, { quantity: capped })
   }
 
-  function submit() {
-    if (issue.isPending) return
+  function buildPayload(): SaleInput | null {
     if (clientName.trim() === '') {
       push({ tone: 'danger', title: t('sales.needClient', 'Enter the client name.') })
-      return
+      return null
     }
     if (lines.length === 0) {
       push({ tone: 'danger', title: t('sales.needLines', 'Add at least one line.') })
-      return
+      return null
     }
 
     const typedPhone = digits(clientPhone)
@@ -276,7 +363,7 @@ function InvoiceNew() {
           tone: 'danger',
           title: t('sales.phoneTaken', 'This number is already saved. Pick that client from the list.'),
         })
-        return
+        return null
       }
     }
 
@@ -287,19 +374,19 @@ function InvoiceNew() {
       description: line.description.trim() || null,
       quantity: line.quantity,
       unit_price: parseAmountToCents(line.unitPrice) ?? -1,
-      discount_percent: parseNumber(line.discount) ?? 0,
-      iva_percent: parseNumber(line.iva) ?? 0,
+      discount_percent: rules.carriesDiscount ? (parseNumber(line.discount) ?? 0) : 0,
+      iva_percent: rules.carriesTax ? (parseNumber(line.iva) ?? 0) : 0,
     }))
 
     if (prepared.some((line) => line.article === '' || line.unit_price < 0)) {
       push({ tone: 'danger', title: t('sales.badLine', 'Every line needs an article and a price.') })
-      return
+      return null
     }
 
-    issue.mutate({
+    return {
       type,
       issued_at: new Date(issuedAt).toISOString(),
-      payment_status: payment,
+      payment_status: rules.settlesPayment ? payment : 'pending',
       customer_id: customerId,
       save_customer: customerId === null,
       client_name: clientName.trim(),
@@ -309,15 +396,43 @@ function InvoiceNew() {
       client_nie: null,
       notes: notes.trim() || null,
       lines: prepared,
-    })
+    }
   }
 
-  const issueLabel =
-    type === 'abono'
-      ? t('sales.issueAbono', 'Issue abono and return stock')
-      : type === 'albaran'
-        ? t('sales.issueAlbaran', 'Issue albarán and deduct stock')
-        : t('sales.issueFactura', 'Issue factura and deduct stock')
+  function submit() {
+    if (save.isPending) return
+    const payload = buildPayload()
+    if (!payload) return
+    if (!editing && rules.settlesPayment && payment === 'paid') {
+      setMethodOpen(true)
+      return
+    }
+    save.mutate(payload)
+  }
+
+  function confirmMethod(methodId: number) {
+    const payload = buildPayload()
+    if (!payload) return
+    save.mutate({ ...payload, payment_status: 'paid', payment_method_id: methodId })
+  }
+
+  const issueLabel = editing
+    ? t('sales.saveQuote', 'Save quotation')
+    : rules.movesStock
+      ? t('sales.issueAndDeduct', 'Issue :type and deduct stock').replace(':type', typeLabel(type).toLowerCase())
+      : t('sales.issueOnly', 'Issue :type').replace(':type', typeLabel(type).toLowerCase())
+
+  if (editing && existing.isError) {
+    return (
+      <div className="rounded-2xl border border-rose-200 bg-rose-50 px-5 py-4 text-sm text-rose-900">
+        {getErrorMessage(existing.error)}
+      </div>
+    )
+  }
+
+  if (editing && !hydrated) {
+    return <div className="h-64 animate-pulse rounded-2xl bg-white" />
+  }
 
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-6">
@@ -328,17 +443,28 @@ function InvoiceNew() {
           </span>
           <div>
             <h1 className="text-xl font-bold tracking-[-0.02em] text-slate-900">
-              {t('sales.newTitle', 'New sale')}
+              {editing ? t('sales.editQuote', 'Edit quotation') : t('sales.newTitle', 'New sale')}
             </h1>
             <p className="mt-0.5 text-xs text-slate-500">
-              {t('sales.newSubtitle', 'Factura, albarán or abono, with the client and the lines on one screen.')}
+              {editing
+                ? t('sales.editQuoteHint', 'Change the client or the lines. The quotation number stays.')
+                : t('sales.newSubtitle', 'Invoice, delivery note, quotation or proforma, with the client and the lines on one screen.')}
             </p>
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+          <span
+            className={cn(
+              'inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold',
+              rules.movesStock
+                ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                : 'border-slate-200 bg-slate-50 text-slate-600',
+            )}
+          >
             <ShieldCheck className="h-3.5 w-3.5" />
-            {t('sales.stockProtected', 'Stock protected, no negatives')}
+            {rules.movesStock
+              ? t('sales.stockProtected', 'Stock protected, no negatives')
+              : t('sales.stockUntouched', 'Stock is not touched')}
           </span>
             <button
             type="button"
@@ -356,44 +482,59 @@ function InvoiceNew() {
 
       <div className="flex flex-col gap-8 rounded-3xl border border-slate-200 bg-white p-4 shadow-md sm:p-8 lg:p-10">
         <div className="grid gap-6 border-b border-slate-100 pb-6 lg:grid-cols-2">
-          <div>
-            <div className="flex items-center gap-2.5">
-              <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#004ac6] font-mono text-sm font-bold text-white">
-                {initials(company?.name ?? 'Fatura')}
-              </span>
-              <div>
-                <h2 className="text-lg font-bold text-slate-900">{company?.name ?? '—'}</h2>
-                <p className="font-mono text-xs text-slate-500">{company?.email}</p>
+          {rules.showsCompanyContact ? (
+            <div>
+              <div className="flex items-center gap-2.5">
+                <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#004ac6] font-mono text-sm font-bold text-white">
+                  {initials(company?.name ?? 'Fatura')}
+                </span>
+                <div>
+                  <h2 className="text-lg font-bold text-slate-900">{company?.name ?? '—'}</h2>
+                  <p className="font-mono text-xs text-slate-500">{company?.email}</p>
+                </div>
               </div>
+              <p className="mt-1.5 text-xs text-slate-500">
+                {[company?.address, company?.city].filter(Boolean).join(' · ') || t('sales.noAddress', 'No address on the company yet')}
+              </p>
             </div>
-            <p className="mt-1.5 text-xs text-slate-500">
-              {[company?.address, company?.city].filter(Boolean).join(' · ') || t('sales.noAddress', 'No address on the company yet')}
-            </p>
-          </div>
+          ) : (
+            <div>
+              <p className="text-[11px] font-bold tracking-[0.16em] text-slate-500 uppercase">
+                {t('sales.document', 'Document')}
+              </p>
+              <h2 className="mt-1 text-3xl font-black tracking-tight text-slate-900">{rules.title}</h2>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 gap-3 rounded-2xl border border-slate-200/80 bg-slate-50 p-4 sm:grid-cols-3">
             <div className="sm:col-span-3">
               <span className={label}>{t('sales.document', 'Document')}</span>
-              <div className="grid grid-cols-3 gap-1.5">
-                {TYPES.map((option) => (
-                  <button
-                    key={option.id}
-                    type="button"
-                    onClick={() => setType(option.id)}
-                    className={cn(
-                      'cursor-pointer rounded-lg px-2 py-1.5 text-xs font-bold',
-                      type === option.id ? 'bg-[#004ac6] text-white' : 'border border-slate-300 bg-white text-slate-700',
-                    )}
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
+              {editing ? (
+                <span className="block rounded-lg bg-[#004ac6] px-2 py-1.5 text-xs font-bold text-white">
+                  {typeLabel('quotation')}
+                </span>
+              ) : (
+                <div className="grid grid-cols-2 gap-1.5">
+                  {ISSUABLE_TYPES.map((option) => (
+                    <button
+                      key={option}
+                      type="button"
+                      onClick={() => setType(option)}
+                      className={cn(
+                        'cursor-pointer rounded-lg px-2 py-1.5 text-xs font-bold',
+                        type === option ? 'bg-[#004ac6] text-white' : 'border border-slate-300 bg-white text-slate-700',
+                      )}
+                    >
+                      {typeLabel(option)}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
             <div>
               <span className={label}>{t('sales.number', 'Number')}</span>
               <span className="block rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 font-mono text-xs font-bold text-slate-800">
-                {preview.data?.number ?? '—'}
+                {editing ? (existing.data?.number ?? '—') : (preview.data?.number ?? '—')}
               </span>
             </div>
             <div>
@@ -405,28 +546,30 @@ function InvoiceNew() {
                 className="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 font-mono text-xs text-slate-800 outline-none"
               />
             </div>
-            <div>
-              <span className={label}>{t('sales.payment', 'Payment')}</span>
-              <div className="grid grid-cols-2 gap-1">
-                {(['pending', 'paid'] as const).map((status) => (
-                  <button
-                    key={status}
-                    type="button"
-                    onClick={() => setPayment(status)}
-                    className={cn(
-                      'cursor-pointer rounded-lg px-1 py-1.5 text-[11px] font-bold',
-                      payment === status
-                        ? status === 'paid'
-                          ? 'bg-emerald-600 text-white'
-                          : 'bg-amber-500 text-white'
-                        : 'border border-slate-300 bg-white text-slate-600',
-                    )}
-                  >
-                    {status === 'paid' ? t('sales.paid', 'Paid') : t('sales.pending', 'Pending')}
-                  </button>
-                ))}
+            {!editing && rules.settlesPayment ? (
+              <div>
+                <span className={label}>{t('sales.payment', 'Payment')}</span>
+                <div className="grid grid-cols-2 gap-1">
+                  {(['pending', 'paid'] as const).map((status) => (
+                    <button
+                      key={status}
+                      type="button"
+                      onClick={() => setPayment(status)}
+                      className={cn(
+                        'cursor-pointer rounded-lg px-1 py-1.5 text-[11px] font-bold',
+                        payment === status
+                          ? status === 'paid'
+                            ? 'bg-emerald-600 text-white'
+                            : 'bg-amber-500 text-white'
+                          : 'border border-slate-300 bg-white text-slate-600',
+                      )}
+                    >
+                      {status === 'paid' ? t('sales.paid', 'Paid') : t('sales.pending', 'Pending')}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
+            ) : null}
           </div>
         </div>
 
@@ -582,12 +725,19 @@ function InvoiceNew() {
                 <span className="w-10 text-center">#</span>
                 <span className="w-28 px-2">{t('sales.sr', 'Sr number')}</span>
                 <span className="min-w-0 flex-1 px-2">{t('sales.article', 'Article')}</span>
-                <span className="w-40 px-2">{t('sales.available', 'Available')}</span>
+                {rules.showsAvailable ? <span className="w-40 px-2">{t('sales.available', 'Available')}</span> : null}
                 <span className="w-28 text-center">{t('sales.qty', 'Quantity')}</span>
                 <span className="w-24 text-right">{t('sales.price', 'Price')}</span>
-                <span className="w-16 text-right">{t('sales.dto', 'Dto %')}</span>
-                <span className="w-16 text-right">{t('sales.iva', '% IVA')}</span>
-                <span className="w-24 text-right">{t('sales.total', 'Total')}</span>
+                {rules.carriesDiscount ? <span className="w-16 text-right">{t('sales.dto', 'Dto %')}</span> : null}
+                {rules.carriesTax ? <span className="w-16 text-right">{t('sales.iva', '% IVA')}</span> : null}
+                {rules.showsPriceWithTax ? (
+                  <>
+                    <span className="w-28 text-right">{t('sales.priceNet', 'Without tax')}</span>
+                    <span className="w-28 text-right">{t('sales.priceGross', 'With tax')}</span>
+                  </>
+                ) : (
+                  <span className="w-24 text-right">{t('sales.total', 'Total')}</span>
+                )}
                 <span className="w-10" />
               </div>
               {lines.length === 0 ? (
@@ -596,11 +746,11 @@ function InvoiceNew() {
                 </p>
               ) : (
                 lines.map((line, index) => {
-                  const unit = parseAmountToCents(line.unitPrice) ?? 0
-                  const math = lineTotals(line.quantity, unit, parseNumber(line.discount) ?? 0, parseNumber(line.iva) ?? 0)
-                  const atStock = line.stock !== null && type !== 'abono' && line.quantity >= line.stock
+                  const math = lineMath.get(line.key) ?? { base: 0, tax: 0, total: 0, iva: 0 }
+                  const atStock = line.stock !== null && rules.movesStock && line.quantity >= line.stock
+                  // A quotation reserves nothing, so its badge stays at the shelf count.
                   const remaining =
-                    line.stock === null ? null : type === 'abono' ? line.stock + line.quantity : line.stock - line.quantity
+                    line.stock === null ? null : rules.movesStock ? line.stock - line.quantity : line.stock
                   const stockTone =
                     remaining === null
                       ? ''
@@ -614,22 +764,24 @@ function InvoiceNew() {
                       <span className="w-10 text-center font-mono text-xs text-slate-400">{index + 1}</span>
                       <span className="w-28 px-2 font-mono text-[11px] text-slate-500">{line.sr_number || '—'}</span>
                       <span className="min-w-0 flex-1 truncate px-2 text-xs font-bold text-slate-900">{line.article}</span>
-                      <span className="flex w-40 flex-col items-start px-2">
-                        {remaining === null || line.stock === null ? (
-                          <span className="text-xs text-slate-400">—</span>
-                        ) : (
-                          <>
-                            <span className={cn('rounded-full px-2 py-0.5 font-mono text-[11px] font-semibold', stockTone)}>
-                              {remaining} {t('sales.left', 'left')}
-                            </span>
-                            <span className="mt-1 text-[10px] leading-tight text-slate-500">
-                              {t('sales.ofAvailable', ':left of :stock available')
-                                .replace(':left', String(remaining))
-                                .replace(':stock', String(line.stock))}
-                            </span>
-                          </>
-                        )}
-                      </span>
+                      {rules.showsAvailable ? (
+                        <span className="flex w-40 flex-col items-start px-2">
+                          {remaining === null || line.stock === null ? (
+                            <span className="text-xs text-slate-400">—</span>
+                          ) : (
+                            <>
+                              <span className={cn('rounded-full px-2 py-0.5 font-mono text-[11px] font-semibold', stockTone)}>
+                                {remaining} {t('sales.left', 'left')}
+                              </span>
+                              <span className="mt-1 text-[10px] leading-tight text-slate-500">
+                                {t('sales.ofAvailable', ':left of :stock available')
+                                  .replace(':left', String(remaining))
+                                  .replace(':stock', String(line.stock))}
+                              </span>
+                            </>
+                          )}
+                        </span>
+                      ) : null}
                       <span className="flex w-28 justify-center">
                         <span className="inline-flex items-center overflow-hidden rounded-lg border border-slate-300">
                           <button type="button" onClick={() => changeQuantity(line, line.quantity - 1)} className="cursor-pointer p-1.5 text-slate-600">
@@ -647,38 +799,65 @@ function InvoiceNew() {
                         </span>
                       </span>
                       <input
+                        aria-label={`${t('sales.price', 'Price')} ${line.article}`}
                         value={line.unitPrice}
                         onChange={(event) => changeLine(line.key, { unitPrice: event.target.value })}
-                        className="w-24 rounded-lg border border-slate-300 px-2 py-1 text-right font-mono text-xs font-bold outline-none"
+                        placeholder={rules.manualPrice ? t('sales.typePrice', 'Price') : undefined}
+                        className={cn(
+                          'w-24 rounded-lg border px-2 py-1 text-right font-mono text-xs font-bold outline-none',
+                          rules.manualPrice && line.unitPrice.trim() === ''
+                            ? 'border-amber-400 bg-amber-50'
+                            : 'border-slate-300',
+                        )}
                       />
-                      <input
-                        value={line.discount}
-                        onChange={(event) => changeLine(line.key, { discount: event.target.value })}
-                        className="ml-2 w-14 rounded-lg border border-slate-300 px-2 py-1 text-right font-mono text-xs outline-none"
-                      />
-                      <select
-                        aria-label={t('sales.iva', '% IVA')}
-                        value={line.iva}
-                        onChange={(event) => changeLine(line.key, { iva: event.target.value })}
-                        className="ml-2 w-[4.5rem] rounded-lg border border-slate-300 bg-white px-1 py-1 text-right font-mono text-xs outline-none"
-                      >
-                        {ivaOptions(taxRates.data ?? [], line.iva).map((option) => (
-                          <option key={option} value={option}>
-                            {option}%
-                          </option>
-                        ))}
-                      </select>
-                      <span className="w-24 text-right font-mono text-sm font-bold text-slate-900">
-                        {formatCents(math.total, currency)}
-                      </span>
-                      <button
-                        type="button"
-                        aria-label={`${t('common.delete', 'Delete')} ${line.article}`}
-                        onClick={() => setLines((current) => current.filter((item) => item.key !== line.key))}
-                        className="flex w-10 cursor-pointer justify-center text-slate-400 hover:text-rose-600"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                      {rules.carriesDiscount ? (
+                        <input
+                          aria-label={`${t('sales.dto', 'Dto %')} ${line.article}`}
+                          value={line.discount}
+                          onChange={(event) => changeLine(line.key, { discount: event.target.value })}
+                          className="ml-2 w-14 rounded-lg border border-slate-300 px-2 py-1 text-right font-mono text-xs outline-none"
+                        />
+                      ) : null}
+                      {rules.carriesTax ? (
+                        <span className="ml-2 w-24 shrink-0">
+                          <Select
+                            compact
+                            aria-label={t('sales.iva', '% IVA')}
+                            value={line.iva}
+                            onChange={(event) => changeLine(line.key, { iva: event.target.value })}
+                          >
+                            {ivaOptions(taxRates.data ?? [], line.iva).map((option) => (
+                              <option key={option} value={option}>
+                                {option}%
+                              </option>
+                            ))}
+                          </Select>
+                        </span>
+                      ) : null}
+                      {rules.showsPriceWithTax ? (
+                        <>
+                          <span className="w-28 text-right font-mono text-sm font-bold text-slate-900">
+                            {formatCents(math.base, currency)}
+                          </span>
+                          <span className="w-28 text-right font-mono text-sm font-bold text-[#004ac6]">
+                            {formatCents(math.total, currency)}
+                          </span>
+                        </>
+                      ) : (
+                        <span className="w-24 text-right font-mono text-sm font-bold text-slate-900">
+                          {formatCents(math.total, currency)}
+                        </span>
+                      )}
+                      <Tooltip content={t('common.delete', 'Delete')} align="end">
+                        <button
+                          type="button"
+                          aria-label={`${t('common.delete', 'Delete')} ${line.article}`}
+                          onClick={() => setLines((current) => current.filter((item) => item.key !== line.key))}
+                          className="flex w-10 cursor-pointer justify-center text-slate-400 hover:text-rose-600"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </Tooltip>
                     </div>
                   )
                 })
@@ -705,19 +884,29 @@ function InvoiceNew() {
             </h4>
             <div className="flex flex-col gap-2 text-xs">
               <span className="flex justify-between text-slate-600">
-                <span>{t('sales.base', 'Taxable base')}</span>
+                <span>{rules.carriesTax ? t('sales.base', 'Taxable base') : t('sales.subtotal', 'Subtotal')}</span>
                 <span className="font-mono font-bold text-slate-800">{formatCents(totals.base, currency)}</span>
               </span>
-              {totals.groups.map(([rate, group]) => (
-                <span key={rate} className="flex justify-between border-l-2 border-blue-400 pl-2 text-[11px] text-slate-500">
-                  <span>IVA {rate}% ({formatCents(group.base, currency)})</span>
-                  <span className="font-mono text-slate-700">{formatCents(group.tax, currency)}</span>
-                </span>
-              ))}
-              <span className="flex justify-between text-slate-600">
-                <span>{t('sales.taxTotal', 'Tax')}</span>
-                <span className="font-mono font-bold text-slate-800">{formatCents(totals.tax, currency)}</span>
-              </span>
+              {rules.carriesTax ? (
+                <>
+                  {totals.groups.map(([rate, group]) => (
+                    <span key={rate} className="flex justify-between border-l-2 border-blue-400 pl-2 text-[11px] text-slate-500">
+                      <span>IVA {rate}% ({formatCents(group.base, currency)})</span>
+                      <span className="font-mono text-slate-700">{formatCents(group.tax, currency)}</span>
+                    </span>
+                  ))}
+                  <span className="flex justify-between text-slate-600">
+                    <span>{t('sales.taxTotal', 'Tax')}</span>
+                    <span className="font-mono font-bold text-slate-800">{formatCents(totals.tax, currency)}</span>
+                  </span>
+                  {rules.showsPriceWithTax ? (
+                    <span className="flex justify-between text-slate-600">
+                      <span>{t('sales.priceNet', 'Without tax')}</span>
+                      <span className="font-mono font-bold text-slate-800">{formatCents(totals.base, currency)}</span>
+                    </span>
+                  ) : null}
+                </>
+              ) : null}
               <span className="mt-1 flex items-baseline justify-between border-t-2 border-slate-200 pt-3">
                 <span className="text-sm font-black text-slate-900">{t('sales.grandTotal', 'Total')}</span>
                 <span className="font-mono text-2xl font-black text-[#2563eb]">{formatCents(totals.total, currency)}</span>
@@ -725,11 +914,15 @@ function InvoiceNew() {
             </div>
             <button
               type="button"
-              disabled={issue.isPending}
+              disabled={save.isPending}
               onClick={submit}
               className="flex w-full cursor-pointer items-center justify-center rounded-xl bg-[#004ac6] px-4 py-3.5 text-sm font-bold text-white shadow-md disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {issue.isPending ? t('sales.issuing', 'Issuing...') : issueLabel}
+              {save.isPending
+                ? editing
+                  ? t('common.saving', 'Saving')
+                  : t('sales.issuing', 'Issuing...')
+                : issueLabel}
             </button>
           </div>
         </div>
@@ -740,9 +933,11 @@ function InvoiceNew() {
           <div role="dialog" aria-label={t('sales.camera', 'Scan code')} className="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl">
             <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
               <h3 className="text-base font-semibold">{t('sales.cameraTitle', 'Find by barcode')}</h3>
-              <button type="button" aria-label={t('common.close', 'Close')} onClick={() => setCamera(false)} className="cursor-pointer text-slate-400">
-                <X className="h-5 w-5" />
-              </button>
+              <Tooltip content={t('common.close', 'Close')} align="end" side="bottom">
+                <button type="button" aria-label={t('common.close', 'Close')} onClick={() => setCamera(false)} className="cursor-pointer text-slate-400">
+                  <X className="h-5 w-5" />
+                </button>
+              </Tooltip>
             </div>
             <form
               className="flex gap-2 p-5"
@@ -770,6 +965,16 @@ function InvoiceNew() {
           </div>
         </div>
       ) : null}
+
+      <RecordPaymentModal
+        open={methodOpen}
+        loading={save.isPending}
+        title={t('payments.issuePaidTitle', 'How was this paid?')}
+        subtitle={t('payments.issuePaidSubtitle', 'The document will be issued as paid with this method.')}
+        confirmLabel={issueLabel}
+        onClose={() => setMethodOpen(false)}
+        onConfirm={confirmMethod}
+      />
     </div>
   )
 }

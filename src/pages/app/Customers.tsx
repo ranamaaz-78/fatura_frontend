@@ -8,6 +8,7 @@ import { Input } from '../../components/ui/Input'
 import { Modal } from '../../components/ui/Modal'
 import { useToast } from '../../components/ui/Toast'
 import { Toggle } from '../../components/ui/Toggle'
+import { Tooltip } from '../../components/ui/Tooltip'
 import { t } from '../../i18n'
 import { cn } from '../../lib/cn'
 import { getErrorMessage } from '../../services/api'
@@ -211,8 +212,8 @@ function Customers() {
         />
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-xs">
-        <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 px-4 py-3">
+      <div className="rounded-2xl border border-slate-200/80 bg-white shadow-xs">
+        <div className="flex flex-wrap items-center gap-3 rounded-t-2xl border-b border-slate-100 px-4 py-3">
           <span className="relative w-full max-w-[360px] flex-grow">
             <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input
@@ -223,14 +224,16 @@ function Customers() {
               className="h-[38px] w-full rounded-xl border border-slate-200 bg-white pr-9 pl-8.5 text-[13px] outline-none focus:border-[#004ac6] focus:ring-2 focus:ring-[#004ac6]/20"
             />
             {search ? (
-              <button
-                type="button"
-                aria-label={t('clients.clearSearch', 'Clear search')}
-                onClick={() => setSearch('')}
-                className="absolute top-1/2 right-2 flex h-6 w-6 -translate-y-1/2 cursor-pointer items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-600"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
+              <Tooltip content={t('clients.clearSearch', 'Clear search')} align="end" className="absolute top-1/2 right-2 -translate-y-1/2">
+                <button
+                  type="button"
+                  aria-label={t('clients.clearSearch', 'Clear search')}
+                  onClick={() => setSearch('')}
+                  className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </Tooltip>
             ) : null}
           </span>
           <div className="flex flex-wrap gap-1.5 md:ml-auto">
@@ -470,14 +473,20 @@ function RowActions({
   onDelete: (customer: Customer) => void
 }) {
   const button = 'flex h-[30px] w-[30px] cursor-pointer items-center justify-center rounded-lg text-slate-400'
+  const editLabel = t('common.edit', 'Edit')
+  const deleteLabel = t('common.delete', 'Delete')
   return (
     <>
-      <button type="button" aria-label={`${t('common.edit', 'Edit')} ${customer.name}`} className={`${button} hover:bg-slate-100 hover:text-slate-600`} onClick={() => onEdit(customer)}>
-        <Pencil className="h-4 w-4" />
-      </button>
-      <button type="button" aria-label={`${t('common.delete', 'Delete')} ${customer.name}`} className={`${button} hover:bg-rose-50 hover:text-rose-600`} onClick={() => onDelete(customer)}>
-        <Trash2 className="h-4 w-4" />
-      </button>
+      <Tooltip content={editLabel} align="end">
+        <button type="button" aria-label={`${editLabel} ${customer.name}`} className={`${button} hover:bg-slate-100 hover:text-slate-600`} onClick={() => onEdit(customer)}>
+          <Pencil className="h-4 w-4" />
+        </button>
+      </Tooltip>
+      <Tooltip content={deleteLabel} align="end">
+        <button type="button" aria-label={`${deleteLabel} ${customer.name}`} className={`${button} hover:bg-rose-50 hover:text-rose-600`} onClick={() => onDelete(customer)}>
+          <Trash2 className="h-4 w-4" />
+        </button>
+      </Tooltip>
     </>
   )
 }

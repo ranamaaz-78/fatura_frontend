@@ -77,7 +77,13 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                 </button>
               ) : null}
             </div>
-            <IconButton label={t('common.close', 'Close')} onClick={() => dismiss(toast.id)} className="min-w-0 min-h-0">
+            <IconButton
+              label={t('common.close', 'Close')}
+              tooltipAlign="end"
+              tooltipSide="bottom"
+              onClick={() => dismiss(toast.id)}
+              className="min-w-0 min-h-0"
+            >
               <X className="w-4 h-4" />
             </IconButton>
           </div>

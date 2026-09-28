@@ -11,6 +11,7 @@ import { t } from '../../i18n'
 import { centsToInput, parseAmountToCents, parseNumber } from '../../lib/money'
 import { getErrorMessage, mapValidationErrors } from '../../services/api'
 import { createCategory, createProduct, generateBarcode, listTaxRates, updateProduct } from '../../services/catalog'
+import { listSuppliers } from '../../services/suppliers'
 import type { Product, ProductInput } from '../../types/catalog'
 import { categoriesKey, useCategories } from './CategoryManagerModal'
 
@@ -20,6 +21,7 @@ type Draft = {
   description: string
   quantity: string
   category_id: string
+  supplier_id: string
   brand: string
   image_code: string
   barcode: string
@@ -35,6 +37,7 @@ const BLANK: Draft = {
   description: '',
   quantity: '0',
   category_id: '',
+  supplier_id: '',
   brand: '',
   image_code: '',
   barcode: '',
@@ -51,6 +54,7 @@ function toDraft(product: Product): Draft {
     description: product.description ?? '',
     quantity: String(product.quantity),
     category_id: product.category_id === null ? '' : String(product.category_id),
+    supplier_id: product.supplier_id === null ? '' : String(product.supplier_id),
     brand: product.brand ?? '',
     image_code: product.image_code ?? '',
     barcode: product.barcode,
@@ -76,6 +80,11 @@ export function ProductModal({ open, product, onClose }: ProductModalProps) {
   const queryClient = useQueryClient()
   const { push } = useToast()
   const categories = useCategories()
+  const suppliers = useQuery({
+    queryKey: ['app', 'suppliers', 'picker'],
+    queryFn: () => listSuppliers(),
+    enabled: open,
+  })
   const taxRates = useQuery({
     queryKey: ['app', 'tax-rates'],
     queryFn: listTaxRates,
@@ -110,6 +119,7 @@ export function ProductModal({ open, product, onClose }: ProductModalProps) {
       sr_number: draft.sr_number.trim() || null,
       barcode: draft.barcode.trim() || null,
       category_id: draft.category_id === '' ? null : Number(draft.category_id),
+      supplier_id: draft.supplier_id === '' ? null : Number(draft.supplier_id),
       quantity: Math.max(0, Math.round(parseNumber(draft.quantity) ?? 0)),
       minimum_stock: Math.max(0, Math.round(parseNumber(draft.minimum_stock) ?? 0)),
       buying_price: buyingCents,
@@ -264,6 +274,24 @@ export function ProductModal({ open, product, onClose }: ProductModalProps) {
             onChange={(event) => set('brand', event.target.value)}
           />
         </div>
+
+        <Select
+          compact
+          label={t('products.supplier', 'Supplier')}
+          value={draft.supplier_id}
+          error={errors.supplier_id}
+          onChange={(event) => set('supplier_id', event.target.value)}
+        >
+          <option value="">{t('products.noSupplier', 'No supplier')}</option>
+          {(suppliers.data ?? [])
+            .filter((supplier) => supplier.is_active || String(supplier.id) === draft.supplier_id)
+            .map((supplier) => (
+              <option key={supplier.id} value={String(supplier.id)}>
+                {supplier.name}
+                {supplier.code ? ` (${supplier.code})` : ''}
+              </option>
+            ))}
+        </Select>
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Input

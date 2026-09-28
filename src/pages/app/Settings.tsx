@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Plus, Settings, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog'
+import { Tooltip } from '../../components/ui/Tooltip'
 import { useToast } from '../../components/ui/Toast'
 import { t } from '../../i18n'
 import { getErrorMessage } from '../../services/api'
@@ -57,7 +58,7 @@ function Page() {
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-xs">
+      <div className="rounded-2xl border border-slate-200/80 bg-white shadow-xs">
         <div className="border-b border-slate-100 px-4 py-3">
           <h2 className="text-sm font-bold text-slate-900">{t('settings.ivaRates', 'IVA rates')}</h2>
         </div>
@@ -105,14 +106,16 @@ function Page() {
               <li key={item.id} className="flex items-center gap-3 px-4 py-3">
                 <span className="w-16 font-mono text-sm font-bold text-[#004ac6]">{item.rate}%</span>
                 <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-slate-800">{item.name}</span>
-                <button
-                  type="button"
-                  aria-label={`${t('common.delete', 'Delete')} ${item.rate}%`}
-                  onClick={() => setRemoving(item)}
-                  className="flex h-[30px] w-[30px] cursor-pointer items-center justify-center rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-600"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
+                <Tooltip content={t('common.delete', 'Delete')} align="end">
+                  <button
+                    type="button"
+                    aria-label={`${t('common.delete', 'Delete')} ${item.rate}%`}
+                    onClick={() => setRemoving(item)}
+                    className="flex h-[30px] w-[30px] cursor-pointer items-center justify-center rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-600"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </Tooltip>
               </li>
             ))}
           </ul>

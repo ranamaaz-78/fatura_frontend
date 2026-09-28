@@ -7,6 +7,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { z } from 'zod'
 import { Modal } from '../../components/ui/Modal'
 import { PublicFieldShell, PublicInput, PublicSelect, PublicTextarea, publicControlClass } from '../../components/ui/PublicField'
+import { SearchableSelect } from '../../components/ui/SearchableSelect'
 import { useToast } from '../../components/ui/Toast'
 import { t } from '../../i18n'
 import { cn } from '../../lib/cn'
@@ -177,6 +178,7 @@ function Apply() {
   })
 
   const sameWhatsapp = useWatch({ control, name: 'whatsapp_same' })
+  const dialCode = useWatch({ control, name: 'dial_code' })
 
   const mutation = useMutation({
     mutationFn: (values: ApplyForm) =>
@@ -320,17 +322,15 @@ function Apply() {
 
             <PublicFieldShell id="phone" label={t('apply.phone', 'Phone')} required error={errors.phone?.message}>
               <span className="flex gap-2">
-                <select
-                  aria-label={t('apply.dialCode', 'Dialling code')}
-                  className={cn(publicControlClass, 'h-12 w-24 shrink-0 px-2.5 font-mono text-sm')}
-                  {...register('dial_code')}
-                >
-                  {DIAL_CODES.map((dial) => (
-                    <option key={dial} value={dial}>
-                      {dial}
-                    </option>
-                  ))}
-                </select>
+                <span className="w-28 shrink-0">
+                  <SearchableSelect
+                    tone="public"
+                    aria-label={t('apply.dialCode', 'Dialling code')}
+                    options={DIAL_CODES.map((dial) => ({ value: dial, label: dial }))}
+                    {...register('dial_code')}
+                    value={dialCode}
+                  />
+                </span>
                 <input
                   id="phone"
                   type="tel"
