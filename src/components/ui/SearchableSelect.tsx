@@ -307,11 +307,11 @@ export const SearchableSelect = forwardRef<HTMLSelectElement, SearchableSelectPr
             publicTone
               ? 'h-12 rounded-xl border border-[#dbe1ff] bg-white px-3 text-[15px] text-[#0b1c30] outline-none focus:border-[#004ac6] focus:ring-4 focus:ring-[#004ac6]/12'
               : cn(
-                  'rounded-xl border border-slate-200 bg-white',
+                  'rounded-xl border border-line bg-card text-ink',
                   compact ? 'px-3 py-1.5 text-xs' : 'px-3.5 py-2.5 text-sm',
-                  'focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500',
+                  'focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500',
                 ),
-            disabled && 'cursor-not-allowed bg-slate-50 text-slate-400',
+            disabled && 'cursor-not-allowed bg-page text-ink-muted',
             error &&
               (publicTone
                 ? 'border-rose-300 focus:border-rose-500 focus:ring-rose-500/15'
@@ -319,10 +319,10 @@ export const SearchableSelect = forwardRef<HTMLSelectElement, SearchableSelectPr
             className,
           )}
         >
-          <span className={cn('min-w-0 flex-1 truncate', !selected && 'text-slate-400')}>
+          <span className={cn('min-w-0 flex-1 truncate', !selected && 'text-ink-muted')}>
             {selected?.label || t('common.select', 'Select')}
           </span>
-          <ChevronDown className={cn('h-4 w-4 shrink-0 text-slate-400 transition', open && 'rotate-180')} />
+          <ChevronDown className={cn('h-4 w-4 shrink-0 text-ink-muted transition', open && 'rotate-180')} />
         </button>
         {open && panel
           ? createPortal(
@@ -336,13 +336,13 @@ export const SearchableSelect = forwardRef<HTMLSelectElement, SearchableSelectPr
                   zIndex: 70,
                 }}
                 className={cn(
-                  'flex flex-col overflow-hidden rounded-xl border bg-white shadow-lg',
-                  publicTone ? 'border-[#dbe1ff]' : 'border-slate-200',
+                  'flex flex-col overflow-hidden rounded-xl border bg-card shadow-lg',
+                  publicTone ? 'border-[#dbe1ff]' : 'border-line',
                 )}
               >
-                <div className={cn('border-b p-1.5', publicTone ? 'border-[#eef2ff]' : 'border-slate-100')}>
+                <div className={cn('border-b p-1.5', publicTone ? 'border-[#eef2ff]' : 'border-line')}>
                   <span className="relative block">
-                    <Search className="pointer-events-none absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                    <Search className="pointer-events-none absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2 text-ink-muted" />
                     <input
                       ref={searchRef}
                       id={searchId}
@@ -358,10 +358,10 @@ export const SearchableSelect = forwardRef<HTMLSelectElement, SearchableSelectPr
                       }}
                       onKeyDown={onSearchKey}
                       className={cn(
-                        'w-full rounded-lg border bg-white py-1.5 pr-2 pl-8 text-xs outline-none',
+                        'w-full rounded-lg border bg-card py-1.5 pr-2 pl-8 text-xs outline-none',
                         publicTone
                           ? 'border-[#dbe1ff] text-[#0b1c30] focus:border-[#004ac6] focus:ring-2 focus:ring-[#004ac6]/12'
-                          : 'border-slate-200 text-slate-800 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20',
+                          : 'border-line text-ink focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20',
                       )}
                     />
                   </span>
@@ -373,7 +373,7 @@ export const SearchableSelect = forwardRef<HTMLSelectElement, SearchableSelectPr
                   className="min-h-0 flex-1 overflow-y-auto py-1"
                 >
                   {filtered.length === 0 ? (
-                    <li className="px-3 py-2 text-xs text-slate-400">{t('common.noResults', 'No results')}</li>
+                    <li className="px-3 py-2 text-xs text-ink-muted">{t('common.noResults', 'No results')}</li>
                   ) : (
                     filtered.map((option, index) => {
                       const enabledIndex = enabled.indexOf(option)
@@ -394,10 +394,10 @@ export const SearchableSelect = forwardRef<HTMLSelectElement, SearchableSelectPr
                             onClick={() => pick(option.value)}
                             className={cn(
                               'flex w-full cursor-pointer px-3 py-1.5 text-left text-xs',
-                              publicTone ? 'text-[14px] text-[#0b1c30]' : 'text-slate-700',
-                              isActive && (publicTone ? 'bg-[#eff4ff] text-[#004ac6]' : 'bg-slate-100 text-slate-900'),
+                              publicTone ? 'text-[14px] text-[#0b1c30]' : 'text-ink',
+                              isActive && (publicTone ? 'bg-[#eff4ff] text-[#004ac6]' : 'bg-brand-50 text-brand-600'),
                               isSelected && 'font-semibold',
-                              option.disabled && 'cursor-not-allowed text-slate-400',
+                              option.disabled && 'cursor-not-allowed text-ink-muted',
                             )}
                           >
                             <span className="truncate">{option.label}</span>

@@ -20,6 +20,7 @@ import { Tooltip } from '../../components/ui/Tooltip'
 import { useToast } from '../../components/ui/Toast'
 import { t } from '../../i18n'
 import { cn } from '../../lib/cn'
+import { AVATAR_TONES, TONE_AMBER, TONE_GREEN, TONE_VIOLET } from '../../lib/status'
 import { downloadSaleDocumentSheet } from '../../lib/exportSaleSheet'
 import { formatDate } from '../../lib/format'
 import { formatCents } from '../../lib/money'
@@ -45,27 +46,27 @@ const rowAction =
 const THEMES: Record<IssuableType, Theme> = {
   factura: {
     icon: Receipt,
-    tile: 'bg-[#004ac6] text-white',
-    badge: 'bg-[#004ac6] text-white',
-    rowMark: 'bg-[#004ac6]',
+    tile: 'bg-brand-600 text-brand-on',
+    badge: 'bg-brand-600 text-brand-on',
+    rowMark: 'bg-brand-600',
   },
   albaran: {
     icon: Truck,
-    tile: 'border-2 border-[#004ac6] bg-white text-[#004ac6]',
-    badge: 'border border-[#004ac6] bg-white text-[#004ac6]',
-    rowMark: 'bg-[#004ac6]',
+    tile: 'border-2 border-brand-600 bg-card text-brand-600',
+    badge: 'border border-brand-600 bg-card text-brand-600',
+    rowMark: 'bg-brand-600',
   },
   quotation: {
     icon: FileText,
-    tile: 'border-2 border-[#004ac6] bg-[#eff4ff] text-[#004ac6]',
-    badge: 'border border-[#004ac6] bg-white text-[#004ac6]',
-    rowMark: 'bg-[#004ac6]',
+    tile: 'border-2 border-brand-600 bg-brand-50 text-brand-600',
+    badge: 'border border-brand-600 bg-card text-brand-600',
+    rowMark: 'bg-brand-600',
   },
   proforma: {
     icon: FileCheck2,
-    tile: 'bg-[#0f172a] text-white',
-    badge: 'bg-[#0f172a] text-white',
-    rowMark: 'bg-[#0f172a]',
+    tile: 'bg-sidebar text-sidebar-text',
+    badge: 'bg-sidebar text-sidebar-text',
+    rowMark: 'bg-sidebar',
   },
 }
 
@@ -82,13 +83,7 @@ function listHint(type: IssuableType): string {
   }
 }
 
-const AVATARS = [
-  'bg-[#eff4ff] text-[#004ac6]',
-  'bg-[#ecfdf5] text-[#047857]',
-  'bg-[#fffbeb] text-[#b45309]',
-  'bg-[#fdf2f8] text-[#be123c]',
-  'bg-[#f5f3ff] text-[#6d28d9]',
-]
+const AVATARS = AVATAR_TONES
 
 function initials(name: string): string {
   const parts = name.trim().split(/\s+/).slice(0, 2)
@@ -97,11 +92,11 @@ function initials(name: string): string {
 }
 
 function paymentBadge(status: SaleDisplayStatus): string {
-  if (status === 'voided') return 'bg-rose-50 text-rose-700 ring-1 ring-rose-200'
-  if (status === 'partial') return 'bg-sky-50 text-sky-800 ring-1 ring-sky-200'
+  if (status === 'voided') return 'bg-rose-50 text-rose-700 ring-1 ring-rose-200 app-dark:bg-rose-500/15 app-dark:text-rose-300 app-dark:ring-rose-500/30'
+  if (status === 'partial') return 'bg-sky-50 text-sky-800 ring-1 ring-sky-200 app-dark:bg-sky-500/15 app-dark:text-sky-300 app-dark:ring-sky-500/30'
   return status === 'paid'
-    ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200'
-    : 'bg-amber-50 text-amber-800 ring-1 ring-amber-200'
+    ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 app-dark:bg-emerald-500/15 app-dark:text-emerald-300 app-dark:ring-emerald-500/30'
+    : 'bg-amber-50 text-amber-800 ring-1 ring-amber-200 app-dark:bg-amber-500/15 app-dark:text-amber-300 app-dark:ring-amber-500/30'
 }
 
 function paymentChipLabel(status: SaleDisplayStatus): string {
@@ -137,7 +132,7 @@ function Stat({
   icon: ReactNode
 }) {
   return (
-    <div className="flex items-center gap-3 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs">
+    <div className="flex items-center gap-3 rounded-2xl border border-line/80 bg-card p-4 shadow-xs">
       <span className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-xl', tile)}>{icon}</span>
       <div className="min-w-0">
         <p className="text-[11px] font-semibold tracking-[0.06em] text-slate-500 uppercase">{label}</p>
@@ -161,7 +156,7 @@ function TypeBadges({ document, type }: { document: SaleDocument; type: Issuable
             {paymentChipLabel(document.payment_status)}
           </Badge>
           {document.payment_status === 'paid' && document.payment_method ? (
-            <Badge className="bg-[#eff4ff] text-[#004ac6] ring-1 ring-[#004ac6]/20">
+            <Badge className="bg-brand-50 text-brand-600 ring-1 ring-brand-600/20">
               {document.payment_method.name}
             </Badge>
           ) : null}
@@ -281,7 +276,7 @@ export function DocumentList({ type }: { type: IssuableType }) {
             type="button"
             aria-label={`${pdfLabel} ${document.number}`}
             disabled={busy}
-            className={cn(rowAction, 'hover:bg-[#eff4ff] hover:text-[#004ac6]')}
+            className={cn(rowAction, 'hover:bg-brand-50 hover:text-brand-600')}
             onClick={() => void exportRow(document, 'pdf')}
           >
             <FileDown className="h-4 w-4" />
@@ -292,7 +287,7 @@ export function DocumentList({ type }: { type: IssuableType }) {
             type="button"
             aria-label={`${imageLabel} ${document.number}`}
             disabled={busy}
-            className={cn(rowAction, 'hover:bg-[#eff4ff] hover:text-[#004ac6]')}
+            className={cn(rowAction, 'hover:bg-brand-50 hover:text-brand-600')}
             onClick={() => void exportRow(document, 'png')}
           >
             <ImageDown className="h-4 w-4" />
@@ -318,7 +313,7 @@ export function DocumentList({ type }: { type: IssuableType }) {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-6 shadow-xs">
+      <div className="relative overflow-hidden rounded-2xl border border-line/80 bg-card p-6 shadow-xs">
         <span className={cn('absolute inset-x-0 top-0 h-1.5', theme.rowMark)} />
         <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
           <div className="flex items-center gap-3">
@@ -337,7 +332,7 @@ export function DocumentList({ type }: { type: IssuableType }) {
           </div>
           <Link
             to={`/app/invoices/new?type=${type}`}
-            className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-[#004ac6] px-4 text-xs font-semibold text-white shadow-xs hover:bg-[#2563eb] sm:w-auto"
+            className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 text-xs font-semibold text-brand-on shadow-xs hover:bg-brand-500 sm:w-auto"
           >
             <Plus className="h-4 w-4" />
             {t('sales.newOf', 'New :type').replace(':type', typeLabel(type))}
@@ -350,14 +345,14 @@ export function DocumentList({ type }: { type: IssuableType }) {
           label={t('sales.documents', 'Documents')}
           value={counts.all}
           hint={t('sales.issuedSoFar', 'Issued so far')}
-          tile="bg-[#eff4ff] text-[#004ac6]"
+          tile="bg-brand-50 text-brand-600"
           icon={<Icon className="h-5 w-5" />}
         />
         <Stat
           label={t('sales.totalValue', 'Total value')}
           value={formatCents(stats.total_cents, currency)}
           hint={t('sales.allOpenDocs', 'Across every document')}
-          tile="bg-[#f5f3ff] text-[#6d28d9]"
+          tile={TONE_VIOLET}
           icon={<Receipt className="h-5 w-5" />}
         />
         {rules.settlesPayment ? (
@@ -366,14 +361,14 @@ export function DocumentList({ type }: { type: IssuableType }) {
               label={t('sales.paid', 'Paid')}
               value={stats.paid_count}
               hint={formatCents(stats.paid_cents, currency)}
-              tile="bg-[#ecfdf5] text-[#047857]"
+              tile={TONE_GREEN}
               icon={<FileCheck2 className="h-5 w-5" />}
             />
             <Stat
               label={t('sales.pending', 'Pending')}
               value={formatCents(stats.pending_cents, currency)}
               hint={`${stats.pending_count} ${t('sales.stillOpen', 'still open')}`}
-              tile="bg-[#fffbeb] text-[#b45309]"
+              tile={TONE_AMBER}
               icon={<FileText className="h-5 w-5" />}
             />
           </>
@@ -383,14 +378,14 @@ export function DocumentList({ type }: { type: IssuableType }) {
               label={t('sales.settled', 'Settled')}
               value={formatCents(stats.settled_cents, currency)}
               hint={t('sales.moneyReceived', 'Money recorded on these proformas')}
-              tile="bg-[#ecfdf5] text-[#047857]"
+              tile={TONE_GREEN}
               icon={<FileCheck2 className="h-5 w-5" />}
             />
             <Stat
               label={t('sales.pending', 'Pending')}
               value={counts.pending + counts.partial}
               hint={t('sales.stillOpen', 'still open')}
-              tile="bg-[#fffbeb] text-[#b45309]"
+              tile={TONE_AMBER}
               icon={<FileText className="h-5 w-5" />}
             />
           </>
@@ -400,7 +395,7 @@ export function DocumentList({ type }: { type: IssuableType }) {
               label={t('sales.thisMonth', 'This month')}
               value={stats.month_count}
               hint={formatCents(stats.month_cents, currency)}
-              tile="bg-[#ecfdf5] text-[#047857]"
+              tile={TONE_GREEN}
               icon={<FileCheck2 className="h-5 w-5" />}
             />
             <Stat
@@ -414,7 +409,7 @@ export function DocumentList({ type }: { type: IssuableType }) {
         )}
       </div>
 
-      <div className="rounded-2xl border border-slate-200/80 bg-white shadow-xs">
+      <div className="rounded-2xl border border-line/80 bg-card shadow-xs">
         <div className="flex flex-wrap items-center gap-3 rounded-t-2xl border-b border-slate-100 px-4 py-3">
           <span className="relative w-full max-w-[340px] flex-grow">
             <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
@@ -423,7 +418,7 @@ export function DocumentList({ type }: { type: IssuableType }) {
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder={t('sales.searchPlaceholder', 'Search number or client')}
-              className="h-[38px] w-full rounded-xl border border-slate-200 bg-white pr-3 pl-8.5 text-[13px] outline-none focus:border-[#004ac6] focus:ring-2 focus:ring-[#004ac6]/20"
+              className="h-[38px] w-full rounded-xl border border-line bg-card pr-3 pl-8.5 text-[13px] outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-600/20"
             />
           </span>
           {showsPaymentFilters ? (
@@ -442,12 +437,12 @@ export function DocumentList({ type }: { type: IssuableType }) {
                     className={cn(
                       'inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-[10px] px-3 text-xs font-semibold transition-colors',
                       on
-                        ? 'bg-[#eff4ff] text-[#004ac6]'
-                        : 'border border-slate-200 bg-white text-slate-500 hover:bg-slate-50',
+                        ? 'bg-brand-50 text-brand-600'
+                        : 'border border-line bg-card text-slate-500 hover:bg-slate-50',
                     )}
                   >
                     {chip.label}
-                    <span className={cn('font-mono text-[11px]', on ? 'text-[#2563eb]' : 'text-slate-400')}>
+                    <span className={cn('font-mono text-[11px]', on ? 'text-brand-500' : 'text-slate-400')}>
                       {chip.count}
                     </span>
                   </button>
@@ -485,7 +480,7 @@ export function DocumentList({ type }: { type: IssuableType }) {
             primaryAction={
               <Link
                 to={`/app/invoices/new?type=${type}`}
-                className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#004ac6] px-4 text-xs font-semibold text-white"
+                className="inline-flex h-10 items-center gap-2 rounded-xl bg-brand-600 px-4 text-xs font-semibold text-brand-on"
               >
                 <Plus className="h-4 w-4" />
                 {t('sales.newOf', 'New :type').replace(':type', typeLabel(type))}
@@ -522,7 +517,7 @@ export function DocumentList({ type }: { type: IssuableType }) {
               {rows.map((document) => (
                 <div
                   key={document.id}
-                  className="group relative flex items-center border-t border-slate-100 px-4 py-3.5 transition-colors hover:bg-[#f8fafc]"
+                  className="group relative flex items-center border-t border-slate-100 px-4 py-3.5 transition-colors hover:bg-page"
                 >
                   <span className={cn('absolute inset-y-3 left-0 w-0.5 rounded-full opacity-0 group-hover:opacity-100', theme.rowMark)} />
                   <span className="flex min-w-0 flex-1 items-center gap-3">
@@ -620,7 +615,7 @@ export function DocumentList({ type }: { type: IssuableType }) {
                         className={cn(
                           'flex h-8 w-8 items-center justify-center rounded-[10px] cursor-pointer',
                           number === meta.current_page
-                            ? 'bg-[#004ac6] font-semibold text-white'
+                            ? 'bg-brand-600 font-semibold text-brand-on'
                             : 'border border-slate-200 hover:bg-slate-50',
                         )}
                       >

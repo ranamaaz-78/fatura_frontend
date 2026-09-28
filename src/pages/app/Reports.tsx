@@ -31,6 +31,7 @@ import { Select } from '../../components/ui/Select'
 import { Skeleton, SkeletonStatGrid } from '../../components/ui/Skeleton'
 import { t } from '../../i18n'
 import { cn } from '../../lib/cn'
+import { TONE_AMBER, TONE_GREEN } from '../../lib/status'
 import { centsToExcelAmount, downloadWorkbook } from '../../lib/exportReport'
 import { formatDate } from '../../lib/format'
 import { formatCents } from '../../lib/money'
@@ -53,9 +54,9 @@ const headerButton =
   'inline-flex h-[38px] items-center gap-2 rounded-xl px-3.5 text-xs font-semibold transition-colors cursor-pointer'
 
 const dateInputClass =
-  'h-8 rounded-[10px] border border-slate-200 bg-white px-2 text-[12px] text-slate-700 outline-none focus:border-[#004ac6] focus:ring-2 focus:ring-[#004ac6]/20'
+  'h-8 rounded-[10px] border border-line bg-card px-2 text-[12px] text-slate-700 outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-600/20'
 
-const CHART = ['#004ac6', '#0f766e', '#b45309', '#0369a1', '#6d28d9', '#be123c', '#334155', '#047857']
+const CHART = ['var(--app-primary)', 'var(--app-secondary)', '#b45309', '#0369a1', '#6d28d9', '#be123c', '#334155', '#047857']
 
 const KIND_META: Record<ReportKind, { icon: LucideIcon }> = {
   sales: { icon: TrendingUp },
@@ -486,9 +487,9 @@ function kpisFor(kind: ReportKind, kpis: ReportKpis, currency: string): Tile[] {
 function tile(label: string, value: string, hint: string, tone: 'slate' | 'blue' | 'green' | 'amber', icon: ReactNode): Tile {
   const tones = {
     slate: 'bg-slate-100 text-slate-600',
-    blue: 'bg-[#eff4ff] text-[#004ac6]',
-    green: 'bg-[#ecfdf5] text-[#047857]',
-    amber: 'bg-[#fffbeb] text-[#b45309]',
+    blue: 'bg-brand-50 text-brand-600',
+    green: TONE_GREEN,
+    amber: TONE_AMBER,
   }
   return { label, value, hint, tile: tones[tone], icon }
 }
@@ -567,7 +568,7 @@ function Reports() {
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex flex-col items-start justify-between gap-4 rounded-2xl border border-slate-200/80 bg-white p-6 shadow-xs sm:flex-row sm:items-center">
+      <div className="flex flex-col items-start justify-between gap-4 rounded-2xl border border-line/80 bg-card p-6 shadow-xs sm:flex-row sm:items-center">
         <div>
           <h1 className="text-xl font-bold tracking-[-0.02em] text-slate-900">{t('nav.reports', 'Reports')}</h1>
           <p className="mt-0.5 text-xs text-slate-500">
@@ -582,12 +583,12 @@ function Reports() {
             if (data) exportPayload(kind, data, currency, period, from, to)
           }}
         >
-          <FileSpreadsheet className="h-4 w-4 text-[#004ac6]" />
+          <FileSpreadsheet className="h-4 w-4 text-brand-600" />
           {t('reports.export', 'Export Excel')}
         </button>
       </div>
 
-      <div className="rounded-2xl border border-slate-200/80 bg-white shadow-xs">
+      <div className="rounded-2xl border border-line/80 bg-card shadow-xs">
         <div
           role="tablist"
           aria-label={t('reports.kind', 'Report')}
@@ -604,7 +605,7 @@ function Reports() {
                 aria-selected={active}
                 className={cn(
                   'inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-semibold transition-colors',
-                  active ? 'bg-[#004ac6] text-white shadow-xs' : 'text-slate-600 hover:bg-slate-100',
+                  active ? 'bg-brand-600 text-brand-on shadow-xs' : 'text-slate-600 hover:bg-slate-100',
                 )}
                 onClick={() => setKind(option)}
               >
@@ -667,14 +668,14 @@ function Reports() {
       {query.isPending && data === undefined ? (
         <>
           <SkeletonStatGrid />
-          <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs">
+          <div className="rounded-2xl border border-line/80 bg-card p-4 shadow-xs">
             {Array.from({ length: 4 }).map((_item, index) => (
               <Skeleton key={index} className="mb-2 h-12 w-full" />
             ))}
           </div>
         </>
       ) : query.isError ? (
-        <div className="rounded-2xl border border-slate-200/80 bg-white shadow-xs">
+        <div className="rounded-2xl border border-line/80 bg-card shadow-xs">
           <EmptyState
             icon={AlertTriangle}
             title={t('common.error', 'Something went wrong')}
@@ -683,7 +684,7 @@ function Reports() {
           />
         </div>
       ) : data && isEmpty(data) ? (
-        <div className="rounded-2xl border border-slate-200/80 bg-white shadow-xs">
+        <div className="rounded-2xl border border-line/80 bg-card shadow-xs">
           <EmptyState
             icon={KIND_META[kind].icon}
             title={
@@ -708,7 +709,7 @@ function Reports() {
 
           <Charts kind={kind} data={data} currency={currency} />
 
-          <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-xs">
+          <div className="overflow-hidden rounded-2xl border border-line/80 bg-card shadow-xs">
             <div className="hidden overflow-x-auto md:block">
               <div className="flex items-center bg-slate-50 px-4 py-2.5 text-[11px] font-semibold tracking-[0.08em] text-slate-500 uppercase">
                 <span className="w-8 shrink-0">{t('reports.rank', '#')}</span>
@@ -836,8 +837,8 @@ function Charts({ kind, data, currency }: { kind: ReportKind; data: ReportPayloa
                 <BarChart data={bars} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                   <XAxis dataKey="name" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
                   <Tooltip cursor={{ fill: 'rgb(241 245 249)' }} formatter={(value, name) => [formatCents(Number(value), currency), name === 'tax' ? t('reports.taxAmount', 'Tax') : t('reports.base', 'Base')]} />
-                  <Bar dataKey="base" fill="#94a3b8" radius={[6, 6, 0, 0]} maxBarSize={28} />
-                  <Bar dataKey="tax" fill="#004ac6" radius={[6, 6, 0, 0]} maxBarSize={28} />
+                  <Bar dataKey="base" fill="var(--app-secondary)" radius={[6, 6, 0, 0]} maxBarSize={28} />
+                  <Bar dataKey="tax" fill="var(--app-primary)" radius={[6, 6, 0, 0]} maxBarSize={28} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -856,7 +857,7 @@ function Charts({ kind, data, currency }: { kind: ReportKind; data: ReportPayloa
     const bars = (data.rows ?? []).slice(0, 8).map((row) => ({
       name: asText(row.article),
       count: asNumber(row.quantity),
-      fill: '#004ac6',
+      fill: 'var(--app-primary)',
     }))
     const slices = rowSlices((row) => asText(row.article), 'total_cents')
     return (
@@ -906,7 +907,7 @@ function Charts({ kind, data, currency }: { kind: ReportKind; data: ReportPayloa
     const bars = (data.rows ?? []).map((row) => ({
       name: row.method_name ? asText(row.method_name) : t('payments.noMethod', 'No method'),
       count: asNumber(row.document_count),
-      fill: '#004ac6',
+      fill: 'var(--app-primary)',
     }))
     const slices: Slice[] = (data.rows ?? []).map((row, index) => ({
       name: row.method_name ? asText(row.method_name) : t('payments.noMethod', 'No method'),
@@ -980,7 +981,7 @@ function Charts({ kind, data, currency }: { kind: ReportKind; data: ReportPayloa
   const bars = (data.rows ?? []).map((row) => ({
     name: row.supplier_name ? asText(row.supplier_name) : t('reports.noSupplier', 'No supplier'),
     count: asNumber(row.product_count),
-    fill: '#004ac6',
+    fill: 'var(--app-primary)',
   }))
   const slices = rowSlices((row) => (row.supplier_name ? asText(row.supplier_name) : t('reports.noSupplier', 'No supplier')), 'stock_value_cents')
   return (
@@ -1001,7 +1002,7 @@ function Charts({ kind, data, currency }: { kind: ReportKind; data: ReportPayloa
 
 function ChartCard({ title, className, children }: { title: string; className?: string; children: ReactNode }) {
   return (
-    <div className={cn('rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs', className)}>
+    <div className={cn('rounded-2xl border border-line/80 bg-card p-4 shadow-xs', className)}>
       <p className="mb-3 text-[11px] font-semibold tracking-[0.08em] text-slate-500 uppercase">{title}</p>
       {children}
     </div>
@@ -1018,7 +1019,7 @@ function MoneyBars({ data, currency }: { data: Array<{ name: string; cents: numb
             cursor={{ fill: 'rgb(241 245 249)' }}
             formatter={(value) => [formatCents(Number(value), currency), t('reports.total', 'Total')]}
           />
-          <Bar dataKey="cents" fill="#004ac6" radius={[6, 6, 0, 0]} maxBarSize={48} />
+          <Bar dataKey="cents" fill="var(--app-primary)" radius={[6, 6, 0, 0]} maxBarSize={48} />
         </BarChart>
       </ResponsiveContainer>
     </div>
@@ -1036,7 +1037,7 @@ function CountBars({ data }: { data: Array<{ name: string; count: number; fill?:
         <BarChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
           <XAxis dataKey="name" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} interval="preserveStartEnd" tickFormatter={shortTick} />
           <Tooltip cursor={{ fill: 'rgb(241 245 249)' }} formatter={(value) => [String(value), t('reports.quantity', 'Quantity')]} />
-          <Bar dataKey="count" fill="#004ac6" radius={[6, 6, 0, 0]} maxBarSize={48}>
+          <Bar dataKey="count" fill="var(--app-primary)" radius={[6, 6, 0, 0]} maxBarSize={48}>
             {data.map((row, index) => (
               <Cell key={row.name} fill={row.fill ?? CHART[index % CHART.length]!} />
             ))}
@@ -1087,7 +1088,7 @@ function ShareBar({ value, total }: { value: number; total: number }) {
   return (
     <span className="inline-flex w-full min-w-0 items-center justify-end gap-2">
       <span className="h-1.5 w-16 overflow-hidden rounded-full bg-slate-100">
-        <span className="block h-full rounded-full bg-[#004ac6]" style={{ width: `${Math.min(pct, 100)}%` }} />
+        <span className="block h-full rounded-full bg-brand-600" style={{ width: `${Math.min(pct, 100)}%` }} />
       </span>
       <span className="w-10 text-right font-mono text-[11px] text-slate-500">{pct.toFixed(0)}%</span>
     </span>
@@ -1096,7 +1097,7 @@ function ShareBar({ value, total }: { value: number; total: number }) {
 
 function TypeChip({ type }: { type: string }) {
   return (
-    <span className="inline-flex h-6 items-center rounded-full bg-[#eff4ff] px-2.5 text-[10px] font-bold tracking-[0.04em] text-[#004ac6] uppercase ring-1 ring-[#bfdbfe]">
+    <span className="inline-flex h-6 items-center rounded-full bg-brand-50 px-2.5 text-[10px] font-bold tracking-[0.04em] text-brand-600 uppercase ring-1 ring-brand-200">
       {docTypeLabel(type)}
     </span>
   )
@@ -1128,7 +1129,7 @@ function DaysChip({ days }: { days: number }) {
 
 function Stat({ label, value, hint, tile, icon }: Tile) {
   return (
-    <div className="flex items-center gap-3 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs">
+    <div className="flex items-center gap-3 rounded-2xl border border-line/80 bg-card p-4 shadow-xs">
       <span className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-xl', tile)}>{icon}</span>
       <div className="min-w-0">
         <p className="text-[11px] font-semibold tracking-[0.06em] text-slate-500 uppercase">{label}</p>

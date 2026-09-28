@@ -158,7 +158,7 @@ function ProductImages() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col items-start justify-between gap-4 rounded-2xl border border-slate-200/80 bg-white p-6 shadow-xs sm:flex-row sm:items-center">
+      <div className="flex flex-col items-start justify-between gap-4 rounded-2xl border border-line/80 bg-card p-6 shadow-xs sm:flex-row sm:items-center">
         <div>
           <h1 className="text-xl font-bold tracking-[-0.02em] text-slate-900">
             {t('nav.productImages', 'Product images')}
@@ -171,7 +171,7 @@ function ProductImages() {
           type="button"
           disabled={uploadMutation.isPending}
           onClick={() => inputRef.current?.click()}
-          className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-xl bg-[#004ac6] px-4 text-xs font-semibold text-white shadow-xs transition-colors hover:bg-[#2563eb] disabled:cursor-not-allowed disabled:opacity-60"
+          className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-xl bg-brand-600 px-4 text-xs font-semibold text-brand-on shadow-xs transition-colors hover:bg-brand-500 disabled:cursor-not-allowed disabled:opacity-60"
         >
           <Upload className="h-4 w-4" />
           {uploadMutation.isPending
@@ -212,7 +212,7 @@ function ProductImages() {
         }}
         className={cn(
           'min-h-[320px] rounded-2xl border-2 border-dashed p-6 transition-colors',
-          over ? 'border-[#004ac6] bg-[#eff4ff]' : 'border-slate-200 bg-white',
+          over ? 'border-brand-600 bg-brand-50' : 'border-line bg-card',
         )}
       >
         {query.isPending ? (
@@ -242,7 +242,7 @@ function ProductImages() {
                     type="button"
                     aria-label={`${t('images.open', 'Open')} ${image.name}`}
                     onClick={() => setLightbox(image)}
-                    className="block h-[100px] w-[100px] cursor-pointer overflow-hidden rounded-xl border border-slate-200 bg-slate-50 transition-colors hover:border-[#004ac6]"
+                    className="block h-[100px] w-[100px] cursor-pointer overflow-hidden rounded-xl border border-line bg-page transition-colors hover:border-brand-600"
                   >
                     <ProtectedImage
                       fileUrl={image.file_url}
@@ -256,7 +256,7 @@ function ProductImages() {
                         type="button"
                         aria-label={`${t('common.delete', 'Delete')} ${image.name}`}
                         onClick={() => setDeleting(image)}
-                        className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 shadow-xs hover:bg-rose-50 hover:text-rose-600"
+                        className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-full border border-line bg-card text-slate-500 shadow-xs hover:bg-rose-50 hover:text-rose-600"
                       >
                         <X className="h-3.5 w-3.5" />
                       </button>
@@ -276,7 +276,7 @@ function ProductImages() {
                       if (event.key === 'Enter') event.currentTarget.blur()
                       if (event.key === 'Escape') cancelRename()
                     }}
-                    className="mt-2 w-full rounded-md border border-[#004ac6] px-1.5 py-1 text-center text-[11px] text-slate-800 outline-none"
+                    className="mt-2 w-full rounded-md border border-brand-600 px-1.5 py-1 text-center text-[11px] text-slate-800 outline-none"
                   />
                 ) : (
                   <button

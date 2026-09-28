@@ -167,7 +167,7 @@ export function SettleProformaModal({
 
         {step === 0 ? (
           drafts.length === 0 ? (
-            <p className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+            <p className="rounded-xl border border-line bg-page px-4 py-3 text-sm text-slate-600">
               {t('sales.settleNoneLeft', 'Every piece on this proforma is already settled.')}
             </p>
           ) : (
@@ -202,7 +202,7 @@ export function SettleProformaModal({
                       key={row.lineId}
                       className={cn(
                         'flex flex-col gap-2 border-t border-slate-100 px-3 py-3 sm:flex-row sm:items-center',
-                        row.selected ? 'bg-white' : 'bg-slate-50/70',
+                        row.selected ? 'bg-card' : 'bg-page/70',
                       )}
                     >
                       <span className="flex items-center gap-3 sm:w-8 sm:shrink-0">
@@ -266,7 +266,7 @@ export function SettleProformaModal({
         ) : methodRows.length === 0 ? (
           <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
             <p>{t('payments.noneActive', 'Add a payment method first.')}</p>
-            <Link to="/app/payments" className="mt-2 inline-block text-xs font-semibold text-[#004ac6]">
+            <Link to="/app/payments" className="mt-2 inline-block text-xs font-semibold text-brand-600">
               {t('payments.goToPayments', 'Open Payments')}
             </Link>
           </div>
@@ -286,15 +286,15 @@ export function SettleProformaModal({
                     className={cn(
                       'flex cursor-pointer items-center justify-between rounded-xl border px-4 py-3 text-left text-sm font-semibold',
                       on
-                        ? 'border-[#004ac6] bg-[#eff4ff] text-[#004ac6]'
-                        : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50',
+                        ? 'border-brand-600 bg-brand-50 text-brand-600'
+                        : 'border-line bg-card text-slate-700 hover:bg-slate-50',
                     )}
                   >
                     {method.name}
                     <span
                       className={cn(
                         'h-4 w-4 rounded-full border-2',
-                        on ? 'border-[#004ac6] bg-[#004ac6]' : 'border-slate-300 bg-white',
+                        on ? 'border-brand-600 bg-brand-600' : 'border-line bg-card',
                       )}
                     />
                   </button>

@@ -162,7 +162,7 @@ function InvoiceDetail() {
   const document = query.data
 
   if (query.isPending || !document) {
-    return <div className="h-64 animate-pulse rounded-2xl bg-white" />
+    return <div className="h-64 animate-pulse rounded-2xl bg-page" />
   }
 
   const issued = new Date(document.issued_at)
@@ -177,7 +177,7 @@ function InvoiceDetail() {
   return (
     <div className="flex flex-col gap-6 print:contents">
       <ConfettiBurst key={celebrateKey} play={celebrate} onDone={() => setCelebrate(false)} />
-      <div className="no-print flex flex-col items-start justify-between gap-4 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs lg:flex-row lg:items-center">
+      <div className="no-print flex flex-col items-start justify-between gap-4 rounded-2xl border border-line/80 bg-card p-5 shadow-xs lg:flex-row lg:items-center">
         <div>
           <Link to={rules.listPath} className="inline-flex items-center gap-1 text-xs font-semibold text-slate-500">
             <ArrowLeft className="h-3.5 w-3.5" />
@@ -191,7 +191,7 @@ function InvoiceDetail() {
               </span>
             ) : null}
             {!voided && document.payment_status === 'paid' && document.payment_method ? (
-              <span className="rounded-full bg-[#eff4ff] px-3 py-0.5 text-xs font-semibold text-[#004ac6]">
+              <span className="rounded-full bg-brand-50 px-3 py-0.5 text-xs font-semibold text-brand-600">
                 {document.payment_method.name}
               </span>
             ) : null}
@@ -253,7 +253,7 @@ function InvoiceDetail() {
                 type="button"
                 disabled={converting.isPending}
                 onClick={() => setConvertTarget('factura')}
-                className="inline-flex h-10 cursor-pointer items-center rounded-xl bg-[#004ac6] px-4 text-xs font-semibold text-white disabled:opacity-60"
+                className="inline-flex h-10 cursor-pointer items-center rounded-xl bg-brand-600 px-4 text-xs font-semibold text-brand-on disabled:opacity-60"
               >
                 {t('sales.convertInvoice', 'Convert to invoice')}
               </button>
@@ -261,7 +261,7 @@ function InvoiceDetail() {
                 type="button"
                 disabled={converting.isPending}
                 onClick={() => setConvertTarget('albaran')}
-                className="inline-flex h-10 cursor-pointer items-center rounded-xl border border-[#004ac6] bg-white px-4 text-xs font-semibold text-[#004ac6] disabled:opacity-60"
+                className="inline-flex h-10 cursor-pointer items-center rounded-xl border border-brand-600 bg-card px-4 text-xs font-semibold text-brand-600 disabled:opacity-60"
               >
                 {t('sales.convertAlbaran', 'Convert to delivery note')}
               </button>
@@ -282,7 +282,7 @@ function InvoiceDetail() {
               type="button"
               disabled={settling.isPending}
               onClick={() => setSettleOpen(true)}
-              className="inline-flex h-10 cursor-pointer items-center rounded-xl bg-[#004ac6] px-4 text-xs font-semibold text-white disabled:opacity-60"
+              className="inline-flex h-10 cursor-pointer items-center rounded-xl bg-brand-600 px-4 text-xs font-semibold text-brand-on disabled:opacity-60"
             >
               {settling.isPending
                 ? t('sales.savingPayment', 'Saving...')
@@ -294,7 +294,7 @@ function InvoiceDetail() {
               type="button"
               disabled={payment.isPending}
               onClick={() => setMethodOpen(true)}
-              className="inline-flex h-10 cursor-pointer items-center rounded-xl bg-[#004ac6] px-4 text-xs font-semibold text-white disabled:opacity-60"
+              className="inline-flex h-10 cursor-pointer items-center rounded-xl bg-brand-600 px-4 text-xs font-semibold text-brand-on disabled:opacity-60"
             >
               {payment.isPending
                 ? t('sales.savingPayment', 'Saving...')
@@ -305,7 +305,7 @@ function InvoiceDetail() {
       </div>
 
       {settlements.length > 0 ? (
-        <div className="no-print rounded-2xl border border-slate-200/80 bg-white px-5 py-4 shadow-xs">
+        <div className="no-print rounded-2xl border border-line/80 bg-card px-5 py-4 shadow-xs">
           <p className="text-[11px] font-semibold tracking-[0.06em] text-slate-500 uppercase">
             {t('sales.settlements', 'Settlements')}
           </p>

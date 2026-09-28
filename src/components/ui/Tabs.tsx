@@ -25,8 +25,8 @@ export function Tabs({ items, value, onChange, variant = 'underline', actions }:
             onClick={() => onChange(item.id)}
             className={cn(
               'px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors',
-              'focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:ring-offset-1',
-              value === item.id ? 'bg-blue-50 text-blue-700' : 'text-slate-500 hover:bg-slate-100',
+              'focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:ring-offset-1',
+              value === item.id ? 'bg-brand-50 text-brand-600' : 'text-ink-muted hover:bg-page',
             )}
           >
             {item.label}
@@ -38,7 +38,7 @@ export function Tabs({ items, value, onChange, variant = 'underline', actions }:
   }
 
   return (
-    <div className="flex items-center gap-1 border-b border-slate-200">
+    <div className="flex items-center gap-1 border-b border-line">
       {items.map((item) => (
         <button
           key={item.id}
@@ -46,10 +46,10 @@ export function Tabs({ items, value, onChange, variant = 'underline', actions }:
           onClick={() => onChange(item.id)}
           className={cn(
             'px-4 py-2.5 text-xs font-semibold border-b-2 -mb-px transition-colors',
-            'focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:ring-offset-1',
+            'focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:ring-offset-1',
             value === item.id
-              ? 'border-blue-600 text-blue-700'
-              : 'border-transparent text-slate-500 hover:text-slate-700',
+              ? 'border-brand-600 text-brand-600'
+              : 'border-transparent text-ink-muted hover:text-ink',
           )}
         >
           {item.label}

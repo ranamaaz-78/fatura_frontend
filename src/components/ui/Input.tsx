@@ -32,7 +32,7 @@ export function Input({
         <label
           htmlFor={inputId}
           className={cn(
-            'block font-semibold text-slate-700',
+            'block font-semibold text-ink',
             compact ? 'text-[11px] mb-1' : 'text-xs mb-1.5',
           )}
         >
@@ -47,11 +47,11 @@ export function Input({
           aria-invalid={Boolean(error)}
           aria-describedby={errorId ?? hintId}
           className={cn(
-            'w-full bg-white border border-slate-200 rounded-xl',
+            'w-full bg-card border border-line rounded-xl text-ink',
             compact ? 'px-3 py-1.5 text-xs' : 'px-3.5 py-2.5 text-sm',
-            'placeholder:text-slate-400',
-            'focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500',
-            'disabled:bg-slate-50 disabled:text-slate-400 transition',
+            'placeholder:text-ink-muted',
+            'focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500',
+            'disabled:bg-page disabled:text-ink-muted transition',
             suffix && 'pr-12',
             props.inputMode === 'decimal' && 'text-right font-mono',
             error && 'border-rose-300 focus:ring-rose-500/30 focus:border-rose-500',
@@ -60,7 +60,7 @@ export function Input({
           {...props}
         />
         {suffix ? (
-          <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-sm text-slate-400">{suffix}</span>
+          <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-sm text-ink-muted">{suffix}</span>
         ) : null}
       </div>
       {error ? (
@@ -68,7 +68,7 @@ export function Input({
           {error}
         </p>
       ) : hint ? (
-        <p id={hintId} className="text-[11px] text-slate-500 mt-1">
+        <p id={hintId} className="mt-1 text-[11px] text-ink-muted">
           {hint}
         </p>
       ) : null}

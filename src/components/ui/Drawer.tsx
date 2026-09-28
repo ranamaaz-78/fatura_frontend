@@ -62,16 +62,16 @@ export function Drawer({ open, onClose, children, side = 'left', width = 'w-72' 
     <div className="fixed inset-0 z-50">
       <div
         className={cn(
-          'modal-backdrop absolute inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity duration-300 ease-out',
+          'modal-backdrop absolute inset-0 bg-overlay backdrop-blur-xs transition-opacity duration-300 ease-out',
           shown ? 'opacity-100' : 'opacity-0',
         )}
         onClick={onClose}
       />
       <aside
         className={cn(
-          'fixed inset-y-0 z-50 bg-white shadow-lg overflow-y-auto transition-transform duration-300 ease-out',
+          'fixed inset-y-0 z-50 bg-card shadow-lg overflow-y-auto transition-transform duration-300 ease-out',
           width,
-          isLeft ? 'left-0 border-r border-slate-200' : 'right-0 border-l border-slate-200',
+          isLeft ? 'left-0 border-r border-line' : 'right-0 border-l border-line',
           shown ? 'translate-x-0' : isLeft ? '-translate-x-full' : 'translate-x-full',
         )}
       >

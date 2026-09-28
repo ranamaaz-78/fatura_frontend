@@ -65,7 +65,7 @@ export function Modal({
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex min-h-full items-end md:items-center justify-center p-0 md:p-4 text-center sm:p-0">
         <div
-          className="modal-backdrop fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity"
+          className="modal-backdrop fixed inset-0 bg-overlay backdrop-blur-xs transition-opacity"
           onClick={onClose}
         />
         <div
@@ -75,20 +75,20 @@ export function Modal({
           aria-labelledby={titleId}
           tabIndex={-1}
           className={cn(
-            'relative transform overflow-hidden bg-white text-left shadow-2xl transition-all w-full border border-slate-100 z-10',
+            'relative transform overflow-hidden bg-card text-left shadow-2xl transition-all w-full border border-line z-10',
             'rounded-t-2xl md:rounded-2xl md:my-8',
             widthClasses[maxWidth],
           )}
         >
           <div className="md:hidden flex justify-center pt-2">
-            <span className="h-1 w-10 rounded-full bg-slate-300" />
+              <span className={cn('h-1 w-10 rounded-full bg-line')} />
           </div>
-          <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4 bg-slate-50/50">
+          <div className="flex items-center justify-between border-b border-line px-6 py-4 bg-page/50">
             <div>
-              <h3 id={titleId} className="text-base font-semibold text-slate-900">
+              <h3 id={titleId} className="text-base font-semibold text-ink">
                 {title}
               </h3>
-              {subtitle ? <p className="text-xs text-slate-500 mt-0.5">{subtitle}</p> : null}
+              {subtitle ? <p className="mt-0.5 text-xs text-ink-muted">{subtitle}</p> : null}
             </div>
             <IconButton label={t('common.close', 'Close')} tooltipAlign="end" tooltipSide="bottom" onClick={onClose}>
               <X className="w-5 h-5" />
@@ -96,7 +96,7 @@ export function Modal({
           </div>
           <div className="px-6 py-5 max-h-[80vh] overflow-y-auto">{children}</div>
           {footer ? (
-            <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex justify-end gap-2">
+            <div className="px-6 py-4 border-t border-line bg-page/50 flex justify-end gap-2">
               {footer}
             </div>
           ) : null}

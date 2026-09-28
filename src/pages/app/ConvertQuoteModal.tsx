@@ -82,7 +82,7 @@ export function ConvertQuoteModal({
       ) : rows.length === 0 ? (
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
           <p>{t('payments.noneActive', 'Add a payment method first.')}</p>
-          <Link to="/app/payments" className="mt-2 inline-block text-xs font-semibold text-[#004ac6]">
+          <Link to="/app/payments" className="mt-2 inline-block text-xs font-semibold text-brand-600">
             {t('payments.goToPayments', 'Open Payments')}
           </Link>
         </div>
@@ -98,15 +98,15 @@ export function ConvertQuoteModal({
                 className={cn(
                   'flex cursor-pointer items-center justify-between rounded-xl border px-4 py-3 text-left text-sm font-semibold',
                   on
-                    ? 'border-[#004ac6] bg-[#eff4ff] text-[#004ac6]'
-                    : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50',
+                    ? 'border-brand-600 bg-brand-50 text-brand-600'
+                    : 'border-line bg-card text-slate-700 hover:bg-slate-50',
                 )}
               >
                 {method.name}
                 <span
                   className={cn(
                     'h-4 w-4 rounded-full border-2',
-                    on ? 'border-[#004ac6] bg-[#004ac6]' : 'border-slate-300 bg-white',
+                    on ? 'border-brand-600 bg-brand-600' : 'border-line bg-card',
                   )}
                 />
               </button>

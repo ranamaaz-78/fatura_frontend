@@ -3,8 +3,10 @@ import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { BottomTabs } from '../components/layout/BottomTabs'
 import { APP_NAV, TAB_ROOTS } from '../components/layout/nav'
 import { Sidebar } from '../components/layout/Sidebar'
+import { ThemeDock } from '../components/layout/ThemeDock'
 import { TopBar } from '../components/layout/TopBar'
 import { t } from '../i18n'
+import { ThemeProvider } from '../theme/ThemeProvider'
 
 function titleForPath(pathname: string): string {
   for (const group of APP_NAV) {
@@ -20,7 +22,7 @@ function titleForPath(pathname: string): string {
   return t('app.name', 'Fatura')
 }
 
-export function AppLayout() {
+function Shell() {
   const location = useLocation()
   const navigate = useNavigate()
   const [menuOpen, setMenuOpen] = useState(false)
@@ -28,18 +30,15 @@ export function AppLayout() {
   const title = useMemo(() => titleForPath(location.pathname), [location.pathname])
 
   return (
-    <div className="fixed inset-0 flex overflow-hidden bg-slate-50 print:contents">
-      <aside className="hidden w-64 shrink-0 border-r border-slate-800 bg-slate-900 text-slate-300 select-none lg:flex lg:flex-col print:hidden">
+    <>
+      <aside className="app-sidebar hidden w-64 shrink-0 select-none border-r border-sidebar-line bg-sidebar text-sidebar-text print:hidden lg:flex lg:flex-col">
         <Sidebar />
       </aside>
 
       {menuOpen ? (
         <div className="lg:hidden fixed inset-0 z-50 print:hidden">
-          <div
-            className="absolute inset-0 bg-slate-900/60 backdrop-blur-xs"
-            onClick={() => setMenuOpen(false)}
-          />
-          <div className="fixed inset-y-0 left-0 w-72 z-50">
+          <div className="absolute inset-0 bg-overlay backdrop-blur-xs" onClick={() => setMenuOpen(false)} />
+          <div className="app-sidebar fixed inset-y-0 left-0 z-50 w-72">
             <Sidebar onNavigate={() => setMenuOpen(false)} />
           </div>
         </div>
@@ -61,6 +60,16 @@ export function AppLayout() {
           <BottomTabs />
         </div>
       </div>
-    </div>
+
+      <ThemeDock />
+    </>
+  )
+}
+
+export function AppLayout() {
+  return (
+    <ThemeProvider>
+      <Shell />
+    </ThemeProvider>
   )
 }

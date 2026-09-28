@@ -25,6 +25,7 @@ import { Tooltip } from '../../components/ui/Tooltip'
 import { useToast } from '../../components/ui/Toast'
 import { t } from '../../i18n'
 import { cn } from '../../lib/cn'
+import { TONE_AMBER, TONE_GREEN, TONE_ROSE } from '../../lib/status'
 import { formatCents } from '../../lib/money'
 import { getErrorMessage } from '../../services/api'
 import { deleteProduct, listProducts } from '../../services/catalog'
@@ -71,9 +72,9 @@ function Thumb({ product, file }: { product: Product; file: ProductImage | null 
 }
 
 function stockTone(product: Product): string {
-  if (product.quantity <= 0) return 'bg-[#fff1f2] text-[#be123c]'
-  if (product.quantity <= product.minimum_stock) return 'bg-[#fffbeb] text-[#b45309]'
-  return 'bg-[#ecfdf5] text-[#047857]'
+  if (product.quantity <= 0) return TONE_ROSE
+  if (product.quantity <= product.minimum_stock) return TONE_AMBER
+  return TONE_GREEN
 }
 
 const headerButton =
@@ -98,7 +99,7 @@ function KpiCard({
   pill?: { text: string; className: string }
 }) {
   return (
-    <div className="rounded-xl border border-slate-200/80 bg-white p-5 shadow-xs">
+    <div className="rounded-xl border border-line/80 bg-card p-5 shadow-xs">
       <div className="flex items-center justify-between">
         <span className="text-xs font-medium tracking-[0.04em] text-slate-500 uppercase">{label}</span>
         <span className={cn('flex rounded-lg p-2.5', tile)}>{icon}</span>
@@ -255,7 +256,7 @@ function Products() {
           <button
             type="button"
             aria-label={`${printLabel} ${product.article}`}
-            className={cn(rowAction, 'hover:bg-[#eff4ff] hover:text-[#004ac6]')}
+            className={cn(rowAction, 'hover:bg-brand-50 hover:text-brand-600')}
             onClick={() => setLabelTargets([product])}
           >
             <Printer className="h-4 w-4" />
@@ -278,7 +279,7 @@ function Products() {
   return (
     <div className="flex flex-col gap-6">
       {/* Page header */}
-      <div className="flex flex-col items-start justify-between gap-4 rounded-2xl border border-slate-200/80 bg-white p-6 shadow-xs sm:flex-row sm:items-center">
+      <div className="flex flex-col items-start justify-between gap-4 rounded-2xl border border-line/80 bg-card p-6 shadow-xs sm:flex-row sm:items-center">
         <div>
           <h1 className="text-xl font-bold tracking-[-0.02em] text-slate-900">
             {t('nav.products', 'Products and barcodes')}
@@ -295,12 +296,12 @@ function Products() {
             className={cn(headerButton, 'bg-slate-100 text-slate-700 hover:bg-slate-200')}
             onClick={() => setCategoriesOpen(true)}
           >
-            <Tags className="h-4 w-4 text-[#004ac6]" />
+            <Tags className="h-4 w-4 text-brand-600" />
             {t('products.manageCategories', 'Manage categories')}
           </button>
           <button
             type="button"
-            className={cn(headerButton, 'bg-[#047857] text-white hover:bg-[#03694a]')}
+            className={cn(headerButton, 'bg-emerald-600 text-white hover:bg-emerald-700')}
             onClick={() => setImportOpen(true)}
           >
             <FileSpreadsheet className="h-4 w-4" />
@@ -311,14 +312,14 @@ function Products() {
             className={cn(headerButton, 'bg-slate-100 text-slate-700 hover:bg-slate-200')}
             onClick={openLabels}
           >
-            <Printer className="h-4 w-4 text-[#004ac6]" />
+            <Printer className="h-4 w-4 text-brand-600" />
             {t('labels.printLabels', 'Print labels')}
           </button>
           <button
             type="button"
             className={cn(
               headerButton,
-              'h-10 bg-[#004ac6] px-4 text-white shadow-xs hover:bg-[#2563eb]',
+              'h-10 bg-brand-600 px-4 text-brand-on shadow-xs hover:bg-brand-500',
             )}
             onClick={openNew}
           >
@@ -335,39 +336,39 @@ function Products() {
           value={counts.all}
           sub={t('products.kpiProductsSub', 'in your catalog')}
           icon={<Package className="h-5 w-5" />}
-          tile="bg-[#eff6ff] text-[#2563eb]"
+          tile="bg-brand-50 text-brand-500"
         />
         <KpiCard
           label={t('products.stockValue', 'Stock value')}
           value={formatCents(query.data?.stock_value ?? 0, currency)}
           sub={t('products.stockValueHint', 'At buying price')}
           icon={<Layers className="h-5 w-5" />}
-          tile="bg-[#eff6ff] text-[#2563eb]"
+          tile="bg-brand-50 text-brand-500"
         />
         <KpiCard
           label={t('products.lowStock', 'Low stock')}
           value={counts.low}
           sub={t('products.lowStockSub', 'below reorder point')}
           icon={<AlertTriangle className="h-5 w-5" />}
-          tile="bg-[#fffbeb] text-[#b45309]"
-          pill={counts.low > 0 ? { text: t('products.review', 'Review'), className: 'bg-[#fffbeb] text-[#b45309]' } : undefined}
+          tile={TONE_AMBER}
+          pill={counts.low > 0 ? { text: t('products.review', 'Review'), className: TONE_AMBER } : undefined}
         />
         <KpiCard
           label={t('products.kpiWithoutBarcode', 'Without barcode')}
           value={counts.no_barcode}
           sub={t('products.withoutBarcodeHint', 'Labels not printed yet')}
           icon={<ScanLine className="h-5 w-5" />}
-          tile="bg-[#fffbeb] text-[#b45309]"
+          tile={TONE_AMBER}
           pill={
             counts.no_barcode > 0
-              ? { text: t('products.generate', 'Generate'), className: 'bg-[#fffbeb] text-[#b45309]' }
+              ? { text: t('products.generate', 'Generate'), className: TONE_AMBER }
               : undefined
           }
         />
       </div>
 
       {/* Table card */}
-      <div className="rounded-2xl border border-slate-200/80 bg-white shadow-xs">
+      <div className="rounded-2xl border border-line/80 bg-card shadow-xs">
         <div className="flex flex-wrap items-center gap-3 rounded-t-2xl border-b border-slate-100 px-4 py-3">
           <span className="relative w-full max-w-[340px] flex-grow">
             <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
@@ -376,7 +377,7 @@ function Products() {
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder={t('products.searchPlaceholder', 'Search name, sr number or barcode')}
-              className="h-[38px] w-full rounded-xl border border-slate-200 bg-white pr-3 pl-8.5 text-[13px] outline-none focus:border-[#004ac6] focus:ring-2 focus:ring-[#004ac6]/20"
+              className="h-[38px] w-full rounded-xl border border-line bg-card pr-3 pl-8.5 text-[13px] outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-600/20"
             />
           </span>
           <Select
@@ -410,12 +411,12 @@ function Products() {
                   className={cn(
                     'inline-flex h-8 items-center gap-1.5 rounded-[10px] px-3 text-xs font-semibold transition-colors cursor-pointer',
                     on
-                      ? 'bg-[#eff4ff] text-[#004ac6]'
-                      : 'border border-slate-200 bg-white text-slate-500 hover:bg-slate-50',
+                      ? 'bg-brand-50 text-brand-600'
+                      : 'border border-line bg-card text-slate-500 hover:bg-slate-50',
                   )}
                 >
                   {chip.label}
-                  <span className={cn('font-mono text-[11px]', on ? 'text-[#2563eb]' : 'text-slate-400')}>
+                  <span className={cn('font-mono text-[11px]', on ? 'text-brand-500' : 'text-slate-400')}>
                     {chip.count}
                   </span>
                 </button>
@@ -437,7 +438,7 @@ function Products() {
             {/* Desktop rows */}
             <div className="hidden overflow-x-auto md:block">
               <div className="min-w-[1040px]">
-                <div className="flex items-center border-b border-slate-200 bg-slate-50 px-4 py-2.5 text-[11px] font-semibold tracking-[0.08em] text-slate-500 uppercase">
+                <div className="flex items-center border-b border-line bg-page px-4 py-2.5 text-[11px] font-semibold tracking-[0.08em] text-slate-500 uppercase">
                   <span className="w-8.5">
                     <input
                       ref={headBox}
@@ -445,7 +446,7 @@ function Products() {
                       aria-label={t('products.selectAll', 'Select every product on this page')}
                       checked={allChecked}
                       onChange={toggleAll}
-                      className="h-[15px] w-[15px] accent-[#004ac6]"
+                      className="h-[15px] w-[15px] accent-brand-600"
                     />
                   </span>
                   <span className="flex-grow">{t('products.product', 'Product')}</span>
@@ -462,7 +463,7 @@ function Products() {
                     key={product.id}
                     className={cn(
                       'flex items-center border-b border-slate-100 px-4 py-2.75 transition-colors hover:bg-slate-50/70',
-                      selected.includes(product.id) && 'bg-[#eff4ff]/50',
+                      selected.includes(product.id) && 'bg-brand-50/50',
                     )}
                   >
                     <span className="w-8.5">
@@ -471,7 +472,7 @@ function Products() {
                         aria-label={`${t('products.select', 'Select')} ${product.article}`}
                         checked={selected.includes(product.id)}
                         onChange={() => toggleRow(product.id)}
-                        className="h-[15px] w-[15px] accent-[#004ac6]"
+                        className="h-[15px] w-[15px] accent-brand-600"
                       />
                     </span>
                     <span className="flex min-w-0 flex-grow items-center gap-3">
@@ -480,7 +481,7 @@ function Products() {
                         <button
                           type="button"
                           onClick={() => setViewing(product)}
-                          className="block max-w-full cursor-pointer truncate text-left text-[13px] font-semibold text-slate-900 hover:text-[#004ac6]"
+                          className="block max-w-full cursor-pointer truncate text-left text-[13px] font-semibold text-slate-900 hover:text-brand-600"
                         >
                           {product.article}
                         </button>
@@ -505,7 +506,7 @@ function Products() {
                       {product.barcode_generated ? (
                         <span
                           title={t('products.autoBarcodeHint', 'We generated this code. Print its label.')}
-                          className="rounded-full border border-[#fde68a] bg-[#fffbeb] px-1.5 text-[10px] font-semibold text-[#b45309]"
+                          className={cn('rounded-full px-1.5 text-[10px] font-semibold', TONE_AMBER)}
                         >
                           {t('products.auto', 'Auto')}
                         </span>
@@ -542,7 +543,7 @@ function Products() {
                     aria-label={`${t('products.select', 'Select')} ${product.article}`}
                     checked={selected.includes(product.id)}
                     onChange={() => toggleRow(product.id)}
-                    className="mt-1 h-[15px] w-[15px] shrink-0 accent-[#004ac6]"
+                    className="mt-1 h-[15px] w-[15px] shrink-0 accent-brand-600"
                   />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-[13px] font-semibold text-slate-900">{product.article}</p>
@@ -599,7 +600,7 @@ function Products() {
                       className={cn(
                         'flex h-8 w-8 items-center justify-center rounded-[10px] cursor-pointer',
                         number === meta.current_page
-                          ? 'bg-[#004ac6] font-semibold text-white'
+                          ? 'bg-brand-600 font-semibold text-brand-on'
                           : 'border border-slate-200 hover:bg-slate-50',
                       )}
                     >

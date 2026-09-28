@@ -162,7 +162,7 @@ function SheetPreview({
   }, [])
 
   return (
-    <div ref={wrapRef} className="overflow-hidden rounded-2xl border border-slate-200/80 bg-slate-100 shadow-xs">
+    <div ref={wrapRef} className="overflow-hidden rounded-2xl border border-line/80 bg-page shadow-xs">
       <div className="overflow-hidden" style={{ height: A4_CSS_HEIGHT * scale }}>
         <div style={{ width: A4_CSS_WIDTH, transform: `scale(${scale})`, transformOrigin: 'top left' }}>
           <PrintSheet document={document} company={company} currency={currency} theme={theme} logoSrc={logoSrc} />
@@ -280,9 +280,9 @@ function Printables() {
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex flex-col items-start justify-between gap-4 rounded-2xl border border-slate-200/80 bg-white p-6 shadow-xs sm:flex-row sm:items-center">
+      <div className="flex flex-col items-start justify-between gap-4 rounded-2xl border border-line/80 bg-card p-6 shadow-xs sm:flex-row sm:items-center">
         <div className="flex items-center gap-3">
-          <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#eff4ff] text-[#004ac6]">
+          <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-brand-50 text-brand-600">
             <Printer className="h-5 w-5" />
           </span>
           <div>
@@ -296,7 +296,7 @@ function Printables() {
         </div>
       </div>
 
-      <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs">
+      <div className="rounded-2xl border border-line/80 bg-card p-4 shadow-xs">
         <p className="text-[11px] font-semibold tracking-[0.08em] text-slate-500 uppercase">
           {t('printables.logo', 'Company logo')}
         </p>
@@ -304,7 +304,7 @@ function Printables() {
           {t('printables.logoHint', 'Used on invoices, quotes and proformas when “Show logo” is on. Delivery notes never show a logo.')}
         </p>
         <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center">
-          <span className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+          <span className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-xl border border-line bg-page">
             {logoBlob.data ? (
               <img src={logoBlob.data} alt="" className="h-full w-full object-contain" />
             ) : (
@@ -334,7 +334,7 @@ function Printables() {
         </div>
       </div>
 
-      <div className="rounded-2xl border border-slate-200/80 bg-white shadow-xs">
+      <div className="rounded-2xl border border-line/80 bg-card shadow-xs">
         <div className="px-3 pt-2">
           <Tabs
             variant="pill"
@@ -356,12 +356,12 @@ function Printables() {
                     type="color"
                     value={isHex(draft.primary_color) ? draft.primary_color : '#004ac6'}
                     onChange={(event) => patch({ primary_color: event.target.value })}
-                    className="h-[38px] w-12 cursor-pointer rounded-lg border border-slate-200 bg-white p-1"
+                    className="h-[38px] w-12 cursor-pointer rounded-lg border border-line bg-card p-1"
                   />
                   <input
                     value={draft.primary_color}
                     onChange={(event) => patch({ primary_color: event.target.value })}
-                    className="h-[38px] min-w-0 flex-1 rounded-xl border border-slate-200 px-3 font-mono text-[13px] outline-none focus:border-[#004ac6] focus:ring-2 focus:ring-[#004ac6]/20"
+                    className="h-[38px] min-w-0 flex-1 rounded-xl border border-line bg-card px-3 font-mono text-[13px] text-ink outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-600/20"
                   />
                 </span>
               </label>

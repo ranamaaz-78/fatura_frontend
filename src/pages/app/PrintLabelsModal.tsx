@@ -108,11 +108,11 @@ export function PrintLabelsModal({ open, products, currency, onClose }: PrintLab
           </div>
         </div>
 
-        <div className="min-w-0 flex-1 rounded-2xl border border-slate-200 bg-slate-50 p-3.5">
+        <div className="min-w-0 flex-1 rounded-2xl border border-line bg-page p-3.5">
           <span className="text-[11px] font-bold tracking-[0.08em] text-slate-500 uppercase">
             {t('labels.preview', 'Preview')}
           </span>
-          <div className="mt-2.5 grid grid-cols-3 gap-2 rounded-lg bg-white p-2.5">
+          <div className="mt-2.5 grid grid-cols-3 gap-2 rounded-lg bg-card p-2.5">
             {preview.map((product) => (
               <div
                 key={product.id}

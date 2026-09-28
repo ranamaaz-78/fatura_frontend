@@ -11,6 +11,7 @@ import { Toggle } from '../../components/ui/Toggle'
 import { Tooltip } from '../../components/ui/Tooltip'
 import { t } from '../../i18n'
 import { cn } from '../../lib/cn'
+import { AVATAR_TONES, TONE_AMBER, TONE_GREEN } from '../../lib/status'
 import { getErrorMessage } from '../../services/api'
 import {
   createSupplier,
@@ -23,13 +24,7 @@ import type { Supplier } from '../../types/suppliers'
 
 const suppliersKey = ['app', 'suppliers', 'all']
 
-const AVATARS = [
-  'bg-[#eff4ff] text-[#004ac6]',
-  'bg-[#ecfdf5] text-[#047857]',
-  'bg-[#fffbeb] text-[#b45309]',
-  'bg-[#fdf2f8] text-[#be123c]',
-  'bg-[#f5f3ff] text-[#6d28d9]',
-]
+const AVATARS = AVATAR_TONES
 
 type Draft = {
   name: string
@@ -170,9 +165,9 @@ function Suppliers() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col items-start justify-between gap-4 rounded-2xl border border-slate-200/80 bg-white p-6 shadow-xs sm:flex-row sm:items-center">
+      <div className="flex flex-col items-start justify-between gap-4 rounded-2xl border border-line/80 bg-card p-6 shadow-xs sm:flex-row sm:items-center">
         <div className="flex items-center gap-3">
-          <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#eff4ff] text-[#004ac6]">
+          <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-brand-50 text-brand-600">
             <Truck className="h-5 w-5" />
           </span>
           <div>
@@ -189,7 +184,7 @@ function Suppliers() {
         <button
           type="button"
           onClick={startCreate}
-          className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-xl bg-[#004ac6] px-4 text-xs font-semibold text-white shadow-xs hover:bg-[#2563eb]"
+          className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-xl bg-brand-600 px-4 text-xs font-semibold text-brand-on shadow-xs hover:bg-brand-500"
         >
           <Plus className="h-4 w-4" />
           {t('suppliers.new', 'New supplier')}
@@ -201,19 +196,19 @@ function Suppliers() {
           label={t('suppliers.active', 'Active')}
           value={counts.active}
           hint={t('suppliers.activeHint', 'Can be picked on a product')}
-          tile="bg-[#ecfdf5] text-[#047857]"
+          tile={TONE_GREEN}
           icon={<Truck className="h-5 w-5" />}
         />
         <Stat
           label={t('suppliers.inactive', 'Inactive')}
           value={counts.inactive}
           hint={t('suppliers.inactiveHint', 'Hidden from the product list')}
-          tile="bg-[#fffbeb] text-[#b45309]"
+          tile={TONE_AMBER}
           icon={<Truck className="h-5 w-5" />}
         />
       </div>
 
-      <div className="rounded-2xl border border-slate-200/80 bg-white shadow-xs">
+      <div className="rounded-2xl border border-line/80 bg-card shadow-xs">
         <div className="flex flex-wrap items-center gap-3 rounded-t-2xl border-b border-slate-100 px-4 py-3">
           <span className="relative w-full max-w-[360px] flex-grow">
             <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
@@ -222,7 +217,7 @@ function Suppliers() {
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder={t('suppliers.search', 'Search name, company, phone, N.I.F/N.I.E or code')}
-              className="h-[38px] w-full rounded-xl border border-slate-200 bg-white pr-9 pl-8.5 text-[13px] outline-none focus:border-[#004ac6] focus:ring-2 focus:ring-[#004ac6]/20"
+              className="h-[38px] w-full rounded-xl border border-line bg-card pr-9 pl-8.5 text-[13px] outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-600/20"
             />
             {search ? (
               <Tooltip content={t('suppliers.clearSearch', 'Clear search')} align="end" className="absolute top-1/2 right-2 -translate-y-1/2">
@@ -249,12 +244,12 @@ function Suppliers() {
                   className={cn(
                     'inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-[10px] px-3 text-xs font-semibold transition-colors',
                     on
-                      ? 'bg-[#eff4ff] text-[#004ac6]'
-                      : 'border border-slate-200 bg-white text-slate-500 hover:bg-slate-50',
+                      ? 'bg-brand-50 text-brand-600'
+                      : 'border border-line bg-card text-slate-500 hover:bg-slate-50',
                   )}
                 >
                   {chip.label}
-                  <span className={cn('font-mono text-[11px]', on ? 'text-[#2563eb]' : 'text-slate-400')}>
+                  <span className={cn('font-mono text-[11px]', on ? 'text-brand-500' : 'text-slate-400')}>
                     {chip.count}
                   </span>
                 </button>
@@ -405,7 +400,7 @@ function Stat({
   icon: ReactNode
 }) {
   return (
-    <div className="flex items-center gap-3 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs">
+    <div className="flex items-center gap-3 rounded-2xl border border-line/80 bg-card p-4 shadow-xs">
       <span className={cn('flex h-10 w-10 items-center justify-center rounded-xl', tile)}>{icon}</span>
       <div className="min-w-0">
         <p className="text-[11px] font-semibold tracking-[0.06em] text-slate-500 uppercase">{label}</p>
@@ -433,7 +428,7 @@ function Identity({ supplier }: { supplier: Supplier }) {
           {supplier.name}
         </p>
         <p className="mt-0.5 flex items-center gap-1.5 truncate">
-          <span className="rounded-md bg-[#eff4ff] px-1.5 py-0.5 font-mono text-[10px] font-bold text-[#004ac6]">
+          <span className="rounded-md bg-brand-50 px-1.5 py-0.5 font-mono text-[10px] font-bold text-brand-600">
             {supplier.code}
           </span>
           {supplier.company_name ? (

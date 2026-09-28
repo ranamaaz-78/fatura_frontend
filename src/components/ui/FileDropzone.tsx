@@ -30,9 +30,9 @@ export function FileDropzone({ accept, onFile, children, disabled }: FileDropzon
       onDrop={handleDrop}
       className={cn(
         'flex flex-col items-center justify-center text-center cursor-pointer',
-        'border-2 border-dashed border-slate-300 rounded-2xl p-8',
+        'rounded-2xl border-2 border-dashed border-line p-8',
         'transition-colors',
-        over && 'border-blue-400 bg-blue-50/40',
+        over && 'border-brand-500 bg-brand-50/40',
         disabled && 'opacity-50 cursor-not-allowed',
       )}
     >
@@ -47,7 +47,7 @@ export function FileDropzone({ accept, onFile, children, disabled }: FileDropzon
         }}
       />
       {children ?? (
-        <p className="text-sm text-slate-500">{t('common.dropFile', 'Drop a file here or click to browse')}</p>
+        <p className="text-sm text-ink-muted">{t('common.dropFile', 'Drop a file here or click to browse')}</p>
       )}
     </label>
   )

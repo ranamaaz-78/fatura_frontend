@@ -336,7 +336,7 @@ function IvaTab() {
             value={name}
             onChange={(event) => setName(event.target.value)}
             placeholder={t('settings.rateNamePlaceholder', 'General')}
-            className="mt-1 h-[38px] w-full rounded-xl border border-slate-200 px-3 text-[13px] font-medium text-slate-900 outline-none focus:border-[#004ac6] focus:ring-2 focus:ring-[#004ac6]/20"
+            className="mt-1 h-[38px] w-full rounded-xl border border-line bg-card px-3 text-[13px] font-medium text-ink outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-600/20"
           />
         </label>
         <label className="w-full text-[11px] font-semibold text-slate-600 sm:w-28">
@@ -346,14 +346,14 @@ function IvaTab() {
             inputMode="decimal"
             onChange={(event) => setRate(event.target.value)}
             placeholder="21"
-            className="mt-1 h-[38px] w-full rounded-xl border border-slate-200 px-3 font-mono text-[13px] font-medium text-slate-900 outline-none focus:border-[#004ac6] focus:ring-2 focus:ring-[#004ac6]/20"
+            className="mt-1 h-[38px] w-full rounded-xl border border-line bg-card px-3 font-mono text-[13px] font-medium text-ink outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-600/20"
           />
         </label>
         <button
           type="button"
           disabled={!canAdd || add.isPending}
           onClick={() => add.mutate()}
-          className="inline-flex h-[38px] cursor-pointer items-center justify-center gap-1.5 rounded-xl bg-[#004ac6] px-4 text-xs font-semibold text-white hover:bg-[#2563eb] disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex h-[38px] cursor-pointer items-center justify-center gap-1.5 rounded-xl bg-brand-600 px-4 text-xs font-semibold text-brand-on hover:bg-brand-500 disabled:cursor-not-allowed disabled:opacity-50"
         >
           <Plus className="h-4 w-4" />
           {t('settings.addRate', 'Add')}
@@ -370,7 +370,7 @@ function IvaTab() {
         <ul className="divide-y divide-slate-100">
           {(rates.data ?? []).map((item) => (
             <li key={item.id} className="flex items-center gap-3 px-5 py-3">
-              <span className="w-16 font-mono text-sm font-bold text-[#004ac6]">{item.rate}%</span>
+              <span className="w-16 font-mono text-sm font-bold text-brand-600">{item.rate}%</span>
               <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-slate-800">{item.name}</span>
               <Tooltip content={t('common.delete', 'Delete')} align="end">
                 <button
@@ -424,7 +424,7 @@ function SubscriptionTab() {
   if (expired) {
     return (
       <div className="flex flex-col items-start gap-5 p-5 sm:flex-row">
-        <span className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-amber-50 text-amber-600">
+        <span className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-amber-50 text-amber-600 app-dark:bg-amber-500/15 app-dark:text-amber-300">
           <AlertTriangle className="h-6 w-6" />
         </span>
         <div className="flex-1">
@@ -448,7 +448,7 @@ function SubscriptionTab() {
                 href={`https://wa.me/${waDigits}`}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                className="inline-flex items-center gap-2 rounded-xl border border-line bg-card px-4 py-3 text-sm font-semibold text-ink hover:bg-page"
               >
                 <MessageCircle className="h-4 w-4 text-emerald-600" />
                 {support?.whatsapp}
@@ -457,9 +457,9 @@ function SubscriptionTab() {
             {support?.email ? (
               <a
                 href={`mailto:${support.email}`}
-                className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                className="inline-flex items-center gap-2 rounded-xl border border-line bg-card px-4 py-3 text-sm font-semibold text-ink hover:bg-page"
               >
-                <Mail className="h-4 w-4 text-blue-600" />
+                <Mail className="h-4 w-4 text-brand-600" />
                 {support.email}
               </a>
             ) : null}
@@ -515,21 +515,21 @@ function Page() {
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-4">
       <div className="flex items-center gap-3">
-        <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-blue-50 text-blue-700">
+        <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-brand-50 text-brand-600">
           <Settings className="h-5 w-5" />
         </span>
         <div>
-          <h1 className="text-xl font-bold tracking-[-0.02em] text-slate-900">{t('nav.settings', 'Settings')}</h1>
-          <p className="mt-0.5 text-xs text-slate-500">
+          <h1 className="text-xl font-bold tracking-[-0.02em] text-ink">{t('nav.settings', 'Settings')}</h1>
+          <p className="mt-0.5 text-xs text-ink-muted">
             {t('settings.subtitle', 'Company details, subscription, password and IVA rates.')}
           </p>
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-xs sm:flex">
+      <div className="overflow-hidden rounded-2xl border border-line/80 bg-card shadow-xs sm:flex">
         <nav
           aria-label={t('nav.settings', 'Settings')}
-          className="grid grid-cols-2 gap-1 border-b border-slate-100 bg-slate-50/80 p-2 sm:flex sm:w-56 sm:shrink-0 sm:flex-col sm:border-r sm:border-b-0 sm:p-3"
+          className="grid grid-cols-2 gap-1 border-b border-line bg-page/80 p-2 sm:flex sm:w-56 sm:shrink-0 sm:flex-col sm:border-r sm:border-b-0 sm:p-3"
         >
           {TABS.map((item) => {
             const Icon = item.icon
@@ -541,10 +541,10 @@ function Page() {
                 onClick={() => selectTab(item.id)}
                 className={cn(
                   'inline-flex w-full min-w-0 items-center justify-center gap-2 rounded-xl px-3 py-3 text-xs font-semibold sm:justify-start sm:py-2.5',
-                  'focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:ring-offset-1',
+                  'focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:ring-offset-1',
                   active
-                    ? 'bg-white text-blue-700 shadow-xs ring-1 ring-slate-200/80 sm:bg-blue-50 sm:shadow-none sm:ring-0'
-                    : 'text-slate-500 hover:bg-white/80 hover:text-slate-700 sm:hover:bg-slate-100',
+                    ? 'bg-card text-brand-600 shadow-xs ring-1 ring-line/80 sm:bg-brand-50 sm:shadow-none sm:ring-0'
+                    : 'text-ink-muted hover:bg-card/80 hover:text-ink sm:hover:bg-page',
                 )}
               >
                 <Icon className="h-4 w-4 shrink-0" />

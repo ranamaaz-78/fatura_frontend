@@ -13,7 +13,7 @@ export function PlaceholderScreen({ title, subtitle, icon }: PlaceholderScreenPr
   return (
     <div className="space-y-6">
       <PageHeader title={title} subtitle={subtitle} />
-      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs">
+      <div className="rounded-2xl border border-line/80 bg-card shadow-xs">
         <EmptyState
           icon={icon}
           title={t('common.empty', 'Nothing here yet')}

@@ -8,6 +8,7 @@ import { Select } from '../../components/ui/Select'
 import { Tooltip } from '../../components/ui/Tooltip'
 import { t } from '../../i18n'
 import { cn } from '../../lib/cn'
+import { AVATAR_TONES, TONE_AMBER, TONE_GREEN, TONE_ORANGE, TONE_ROSE, TONE_SKY, TONE_VIOLET } from '../../lib/status'
 import { formatDate } from '../../lib/format'
 import { formatCents } from '../../lib/money'
 import { listPaymentMethods } from '../../services/paymentMethods'
@@ -24,13 +25,7 @@ const headerButton =
 const rowAction =
   'flex h-[30px] w-[30px] items-center justify-center rounded-lg text-slate-400 transition-colors cursor-pointer'
 
-const AVATARS = [
-  'bg-[#eff4ff] text-[#004ac6]',
-  'bg-[#ecfdf5] text-[#047857]',
-  'bg-[#fffbeb] text-[#b45309]',
-  'bg-[#fdf2f8] text-[#be123c]',
-  'bg-[#f5f3ff] text-[#6d28d9]',
-]
+const AVATARS = AVATAR_TONES
 
 const emptyStats = {
   received_cents: 0,
@@ -45,7 +40,7 @@ const emptyStats = {
 const emptyCounts = { all: 0, month: 0, week: 0, day: 0 }
 
 const dateInputClass =
-  'h-8 rounded-[10px] border border-slate-200 bg-white px-2 text-[12px] text-slate-700 outline-none focus:border-[#004ac6] focus:ring-2 focus:ring-[#004ac6]/20'
+  'h-8 rounded-[10px] border border-line bg-card px-2 text-[12px] text-slate-700 outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-600/20'
 
 function localIso(date = new Date()): string {
   const year = date.getFullYear()
@@ -83,14 +78,14 @@ function statusLabel(status: PaymentStatusBadge): string {
 }
 
 const METHOD_TONES = [
-  'bg-[#eff4ff] text-[#004ac6] ring-1 ring-[#bfdbfe]',
-  'bg-[#ecfdf5] text-[#047857] ring-1 ring-[#a7f3d0]',
-  'bg-[#fff7ed] text-[#c2410c] ring-1 ring-[#fed7aa]',
-  'bg-[#f5f3ff] text-[#6d28d9] ring-1 ring-[#ddd6fe]',
-  'bg-[#fdf2f8] text-[#be123c] ring-1 ring-[#fecdd3]',
-  'bg-[#ecfeff] text-[#0e7490] ring-1 ring-[#a5f3fc]',
-  'bg-[#fefce8] text-[#a16207] ring-1 ring-[#fde68a]',
-  'bg-[#f1f5f9] text-[#334155] ring-1 ring-[#cbd5e1]',
+  'bg-brand-50 text-brand-600 ring-1 ring-brand-200 app-dark:ring-brand-500/30',
+  `${TONE_GREEN} ring-1 ring-emerald-200 app-dark:ring-emerald-500/30`,
+  `${TONE_ORANGE} ring-1 ring-orange-200 app-dark:ring-orange-500/30`,
+  `${TONE_VIOLET} ring-1 ring-violet-200 app-dark:ring-violet-500/30`,
+  `${TONE_ROSE} ring-1 ring-rose-200 app-dark:ring-rose-500/30`,
+  `${TONE_SKY} ring-1 ring-sky-200 app-dark:ring-sky-500/30`,
+  `${TONE_AMBER} ring-1 ring-amber-200 app-dark:ring-amber-500/30`,
+  'bg-slate-100 text-slate-700 ring-1 ring-slate-200 app-dark:bg-white/8 app-dark:text-slate-300 app-dark:ring-white/10',
 ]
 
 function methodTone(id: number): string {
@@ -166,7 +161,7 @@ function Payments() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col items-start justify-between gap-4 rounded-2xl border border-slate-200/80 bg-white p-6 shadow-xs sm:flex-row sm:items-center">
+      <div className="flex flex-col items-start justify-between gap-4 rounded-2xl border border-line/80 bg-card p-6 shadow-xs sm:flex-row sm:items-center">
         <div>
           <h1 className="text-xl font-bold tracking-[-0.02em] text-slate-900">
             {t('nav.payments', 'Payments')}
@@ -180,7 +175,7 @@ function Payments() {
           className={cn(headerButton, 'bg-slate-100 text-slate-700 hover:bg-slate-200')}
           onClick={() => setMethodsOpen(true)}
         >
-          <CreditCard className="h-4 w-4 text-[#004ac6]" />
+          <CreditCard className="h-4 w-4 text-brand-600" />
           {t('payments.manageMethods', 'Manage methods')}
         </button>
       </div>
@@ -190,21 +185,21 @@ function Payments() {
           label={t('payments.received', 'Received')}
           value={formatCents(stats.received_cents, currency)}
           hint={`${stats.received_count} ${t('payments.recorded', 'payments')}`}
-          tile="bg-[#ecfdf5] text-[#047857]"
+          tile={TONE_GREEN}
           icon={<Banknote className="h-5 w-5" />}
         />
         <Stat
           label={t('payments.pending', 'Pending')}
           value={stats.pending_count}
           hint={formatCents(stats.pending_cents, currency)}
-          tile="bg-[#fffbeb] text-[#b45309]"
+          tile={TONE_AMBER}
           icon={<FileClock className="h-5 w-5" />}
         />
         <Stat
           label={t('payments.outstanding', 'Outstanding')}
           value={formatCents(stats.outstanding_cents, currency)}
           hint={`${stats.outstanding_count} ${t('sales.stillOpen', 'still open')}`}
-          tile="bg-[#fffbeb] text-[#b45309]"
+          tile={TONE_AMBER}
           icon={<FileClock className="h-5 w-5" />}
         />
         <Stat
@@ -216,7 +211,7 @@ function Payments() {
         />
       </div>
 
-      <div className="rounded-2xl border border-slate-200/80 bg-white shadow-xs">
+      <div className="rounded-2xl border border-line/80 bg-card shadow-xs">
         <div className="flex flex-wrap items-center gap-3 rounded-t-2xl border-b border-slate-100 px-4 py-3">
           <span className="relative w-full max-w-[280px] flex-grow sm:max-w-[340px]">
             <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
@@ -225,7 +220,7 @@ function Payments() {
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder={t('payments.searchPlaceholder', 'Search client or document')}
-              className="h-[38px] w-full rounded-xl border border-slate-200 bg-white pr-3 pl-8.5 text-[13px] outline-none focus:border-[#004ac6] focus:ring-2 focus:ring-[#004ac6]/20"
+              className="h-[38px] w-full rounded-xl border border-line bg-card pr-3 pl-8.5 text-[13px] outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-600/20"
             />
           </span>
           <div className="flex flex-wrap items-center gap-2 md:ml-auto">
@@ -439,7 +434,7 @@ function Payments() {
                         className={cn(
                           'flex h-8 w-8 items-center justify-center rounded-[10px] cursor-pointer',
                           number === meta.current_page
-                            ? 'bg-[#004ac6] font-semibold text-white'
+                            ? 'bg-brand-600 font-semibold text-brand-on'
                             : 'border border-slate-200 hover:bg-slate-50',
                         )}
                       >
@@ -542,7 +537,7 @@ function Stat({
   icon: ReactNode
 }) {
   return (
-    <div className="flex items-center gap-3 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs">
+    <div className="flex items-center gap-3 rounded-2xl border border-line/80 bg-card p-4 shadow-xs">
       <span className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-xl', tile)}>{icon}</span>
       <div className="min-w-0">
         <p className="text-[11px] font-semibold tracking-[0.06em] text-slate-500 uppercase">{label}</p>

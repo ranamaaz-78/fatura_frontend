@@ -3,9 +3,9 @@ import type { ButtonHTMLAttributes, ReactNode } from 'react'
 import { cn } from '../../lib/cn'
 
 const variants = {
-  primary: 'bg-blue-600 hover:bg-blue-700 text-white active:bg-blue-700',
-  secondary: 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 active:bg-slate-100',
-  ghost: 'bg-slate-100 hover:bg-slate-200 text-slate-700 shadow-none active:bg-slate-200',
+  primary: 'bg-brand-600 hover:bg-brand-500 text-brand-on active:bg-brand-500',
+  secondary: 'bg-card hover:bg-page text-ink border border-line active:bg-page',
+  ghost: 'bg-page hover:bg-line text-ink shadow-none active:bg-line',
   danger: 'bg-rose-600 hover:bg-rose-700 text-white active:bg-rose-700',
   success: 'bg-emerald-600 hover:bg-emerald-700 text-white',
 } as const
@@ -46,7 +46,7 @@ export function Button({
         'inline-flex items-center justify-center gap-2 font-semibold rounded-xl',
         'shadow-xs transition-colors cursor-pointer disabled:opacity-50',
         'disabled:cursor-not-allowed focus:outline-none focus:ring-2',
-        'focus:ring-blue-500/30 focus:ring-offset-1',
+        'focus:ring-brand-500/30 focus:ring-offset-1 focus:ring-offset-card',
         variants[variant],
         sizes[size],
         fullWidth && 'w-full',

@@ -8,6 +8,7 @@ import { ProtectedImage } from '../../components/ui/ProtectedImage'
 import { Skeleton } from '../../components/ui/Skeleton'
 import { t } from '../../i18n'
 import { cn } from '../../lib/cn'
+import { TONE_AMBER, TONE_GREEN, TONE_ROSE } from '../../lib/status'
 import { formatCents } from '../../lib/money'
 import { getProduct } from '../../services/catalog'
 import type { Product } from '../../types/catalog'
@@ -31,7 +32,7 @@ function Line({ label, value, strong }: { label: string; value: string; strong?:
       <span
         className={cn(
           'font-mono tabular-nums',
-          strong ? 'text-base font-bold text-[#004ac6]' : 'text-[13px] text-slate-800',
+          strong ? 'text-base font-bold text-brand-600' : 'text-[13px] text-slate-800',
         )}
       >
         {value}
@@ -67,16 +68,16 @@ export function ProductDrawer({ product, currency, onClose, onEdit, onPrint, onD
   const file = findImage(current?.image_code ?? null)
   const stockTone =
     !current || current.quantity <= 0
-      ? 'bg-[#fff1f2] text-[#be123c]'
+      ? TONE_ROSE
       : current.quantity <= current.minimum_stock
-        ? 'bg-[#fffbeb] text-[#b45309]'
-        : 'bg-[#ecfdf5] text-[#047857]'
+        ? TONE_AMBER
+        : TONE_GREEN
 
   const profit = current ? current.selling_price - current.buying_price : 0
 
   return (
     <Drawer open={product !== null} onClose={onClose} side="right" width="w-full sm:w-[30rem]">
-      <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-slate-100 bg-white px-5 py-4">
+      <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-line bg-card px-5 py-4">
         <div className="min-w-0">
           <p className="text-[11px] tracking-wider text-slate-500 uppercase">
             {t('products.detail', 'Product')}
@@ -103,7 +104,7 @@ export function ProductDrawer({ product, currency, onClose, onEdit, onPrint, onD
               </span>
             ) : null}
             {current.supplier ? (
-              <span className="rounded-full bg-[#eff4ff] px-2.5 py-0.5 text-[11px] font-medium text-[#004ac6]">
+              <span className="rounded-full bg-brand-50 px-2.5 py-0.5 text-[11px] font-medium text-brand-600">
                 {current.supplier}
               </span>
             ) : null}
@@ -111,7 +112,7 @@ export function ProductDrawer({ product, currency, onClose, onEdit, onPrint, onD
               {current.quantity} {t('products.inStock', 'in stock')}
             </span>
             {current.barcode_generated ? (
-              <span className="rounded-full border border-[#fde68a] bg-[#fffbeb] px-2 py-0.5 text-[10px] font-semibold text-[#b45309]">
+              <span className={cn('rounded-full px-2 py-0.5 text-[10px] font-semibold', TONE_AMBER)}>
                 {t('products.auto', 'Auto')}
               </span>
             ) : null}
@@ -121,10 +122,10 @@ export function ProductDrawer({ product, currency, onClose, onEdit, onPrint, onD
             <ProtectedImage
               fileUrl={file.file_url}
               alt={current.article}
-              className="h-56 w-full rounded-2xl border border-slate-200 bg-slate-50 object-contain"
+              className="h-56 w-full rounded-2xl border border-line bg-page object-contain"
             />
           ) : (
-            <div className="flex h-32 flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-slate-200 bg-slate-50 text-center">
+            <div className="flex h-32 flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-line bg-page text-center">
               <ImageOff className="h-6 w-6 text-slate-300" />
               <p className="px-4 text-[11px] text-slate-500">
                 {current.image_code
@@ -137,7 +138,7 @@ export function ProductDrawer({ product, currency, onClose, onEdit, onPrint, onD
             </div>
           )}
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 text-center">
+          <div className="rounded-2xl border border-line bg-card p-4 text-center">
             <BarcodeSvg code={current.barcode} className="mx-auto h-20 w-full" />
           </div>
 
@@ -147,12 +148,12 @@ export function ProductDrawer({ product, currency, onClose, onEdit, onPrint, onD
               {t('common.edit', 'Edit')}
             </button>
             <button type="button" className={drawerAction} onClick={() => onPrint(current)}>
-              <Printer className="h-4 w-4 text-[#004ac6]" />
+              <Printer className="h-4 w-4 text-brand-600" />
               {t('labels.printOne', 'Print label')}
             </button>
           </div>
 
-          <div className="space-y-2.5 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+          <div className="space-y-2.5 rounded-2xl border border-line bg-page p-4">
             <span className="text-[10px] font-bold tracking-[0.08em] text-slate-500 uppercase">
               {t('products.pricing', 'Pricing')}
             </span>
@@ -174,7 +175,7 @@ export function ProductDrawer({ product, currency, onClose, onEdit, onPrint, onD
             <Line label={t('products.profitPerUnit', 'Profit per unit')} value={formatCents(profit, currency)} />
           </div>
 
-          <div className="space-y-2.5 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+          <div className="space-y-2.5 rounded-2xl border border-line bg-page p-4">
             <span className="text-[10px] font-bold tracking-[0.08em] text-slate-500 uppercase">
               {t('products.stockSection', 'Stock')}
             </span>

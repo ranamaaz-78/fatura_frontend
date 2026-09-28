@@ -327,7 +327,7 @@ export function ProductModal({ open, product, onClose }: ProductModalProps) {
           </div>
         </div>
 
-        <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+        <div className="rounded-xl border border-line bg-page p-3">
           <span className="text-[10px] font-bold tracking-[0.08em] text-slate-500 uppercase">
             {t('products.pricing', 'Pricing')}
           </span>
@@ -370,7 +370,7 @@ export function ProductModal({ open, product, onClose }: ProductModalProps) {
           </p>
         </div>
 
-        <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+        <div className="rounded-xl border border-line bg-page p-3">
           <span className="text-[10px] font-bold tracking-[0.08em] text-slate-500 uppercase">
             {t('products.stockSection', 'Stock')}
           </span>

@@ -8,6 +8,7 @@ import { Select } from '../../components/ui/Select'
 import { Tooltip } from '../../components/ui/Tooltip'
 import { t } from '../../i18n'
 import { cn } from '../../lib/cn'
+import { TONE_AMBER, TONE_GREEN, TONE_ROSE } from '../../lib/status'
 import { centsToInput, formatCents, lineTotals, parseAmountToCents, parseNumber } from '../../lib/money'
 import { getErrorMessage } from '../../services/api'
 import { listAllProducts, listTaxRates } from '../../services/catalog'
@@ -75,11 +76,11 @@ function initials(name: string): string {
 }
 
 const field =
-  'w-full box-border rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-900 outline-none focus:border-[#004ac6]'
+  'w-full box-border rounded-lg border border-line bg-card px-3 py-1.5 text-xs text-ink outline-none focus:border-brand-600'
 
 const label = 'mb-1 block text-[11px] font-semibold text-slate-600'
 
-const optionOn = 'bg-[#eff4ff]'
+const optionOn = 'bg-brand-50'
 
 function digits(value: string): string {
   return value.replace(/[\s-]+/g, '')
@@ -431,14 +432,14 @@ function InvoiceNew() {
   }
 
   if (editing && !hydrated) {
-    return <div className="h-64 animate-pulse rounded-2xl bg-white" />
+    return <div className="h-64 animate-pulse rounded-2xl bg-page" />
   }
 
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-6">
-      <div className="flex flex-col items-start justify-between gap-4 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs sm:flex-row sm:items-center">
+      <div className="flex flex-col items-start justify-between gap-4 rounded-2xl border border-line/80 bg-card p-5 shadow-xs sm:flex-row sm:items-center">
         <div className="flex items-center gap-3">
-          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#2563eb] text-white shadow-xs">
+          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-500 text-brand-on shadow-xs">
             <Receipt className="h-5 w-5" />
           </span>
           <div>
@@ -458,7 +459,7 @@ function InvoiceNew() {
               'inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold',
               rules.movesStock
                 ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                : 'border-slate-200 bg-slate-50 text-slate-600',
+                : 'border-line bg-page text-slate-600',
             )}
           >
             <ShieldCheck className="h-3.5 w-3.5" />
@@ -472,7 +473,7 @@ function InvoiceNew() {
               setDropdown(true)
               setCamera(true)
             }}
-            className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50 px-3.5 py-1.5 text-xs font-semibold text-blue-700"
+            className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-brand-200 bg-brand-50 px-3.5 py-1.5 text-xs font-semibold text-brand-600"
           >
             <Camera className="h-4 w-4" />
             {t('sales.camera', 'Scan code')}
@@ -480,12 +481,12 @@ function InvoiceNew() {
         </div>
       </div>
 
-      <div className="flex flex-col gap-8 rounded-3xl border border-slate-200 bg-white p-4 shadow-md sm:p-8 lg:p-10">
+      <div className="flex flex-col gap-8 rounded-3xl border border-line bg-card p-4 shadow-md sm:p-8 lg:p-10">
         <div className="grid gap-6 border-b border-slate-100 pb-6 lg:grid-cols-2">
           {rules.showsCompanyContact ? (
             <div>
               <div className="flex items-center gap-2.5">
-                <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#004ac6] font-mono text-sm font-bold text-white">
+                <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-600 font-mono text-sm font-bold text-brand-on">
                   {initials(company?.name ?? 'Fatura')}
                 </span>
                 <div>
@@ -506,11 +507,11 @@ function InvoiceNew() {
             </div>
           )}
 
-          <div className="grid grid-cols-1 gap-3 rounded-2xl border border-slate-200/80 bg-slate-50 p-4 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 rounded-2xl border border-line/80 bg-page p-4 sm:grid-cols-3">
             <div className="sm:col-span-3">
               <span className={label}>{t('sales.document', 'Document')}</span>
               {editing ? (
-                <span className="block rounded-lg bg-[#004ac6] px-2 py-1.5 text-xs font-bold text-white">
+                <span className="block rounded-lg bg-brand-600 px-2 py-1.5 text-xs font-bold text-brand-on">
                   {typeLabel('quotation')}
                 </span>
               ) : (
@@ -522,7 +523,7 @@ function InvoiceNew() {
                       onClick={() => setType(option)}
                       className={cn(
                         'cursor-pointer rounded-lg px-2 py-1.5 text-xs font-bold',
-                        type === option ? 'bg-[#004ac6] text-white' : 'border border-slate-300 bg-white text-slate-700',
+                        type === option ? 'bg-brand-600 text-brand-on' : 'border border-line bg-card text-ink',
                       )}
                     >
                       {typeLabel(option)}
@@ -533,7 +534,7 @@ function InvoiceNew() {
             </div>
             <div>
               <span className={label}>{t('sales.number', 'Number')}</span>
-              <span className="block rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 font-mono text-xs font-bold text-slate-800">
+              <span className="block rounded-lg border border-line bg-card px-2.5 py-1.5 font-mono text-xs font-bold text-ink">
                 {editing ? (existing.data?.number ?? '—') : (preview.data?.number ?? '—')}
               </span>
             </div>
@@ -543,7 +544,7 @@ function InvoiceNew() {
                 type="datetime-local"
                 value={issuedAt}
                 onChange={(event) => setIssuedAt(event.target.value)}
-                className="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 font-mono text-xs text-slate-800 outline-none"
+                className="w-full rounded-lg border border-line bg-card px-2.5 py-1.5 font-mono text-xs text-ink outline-none"
               />
             </div>
             {!editing && rules.settlesPayment ? (
@@ -561,7 +562,7 @@ function InvoiceNew() {
                           ? status === 'paid'
                             ? 'bg-emerald-600 text-white'
                             : 'bg-amber-500 text-white'
-                          : 'border border-slate-300 bg-white text-slate-600',
+                          : 'border border-line bg-card text-ink',
                       )}
                     >
                       {status === 'paid' ? t('sales.paid', 'Paid') : t('sales.pending', 'Pending')}
@@ -573,15 +574,15 @@ function InvoiceNew() {
           </div>
         </div>
 
-        <div className="flex flex-col gap-4 rounded-2xl border border-blue-100 bg-[#f8f9ff] p-5">
+        <div className="flex flex-col gap-4 rounded-2xl border border-brand-100 bg-page p-5">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h3 className="flex items-center gap-2 text-sm font-bold tracking-[0.06em] text-slate-800 uppercase">
-              <UserRound className="h-4 w-4 text-[#2563eb]" />
+              <UserRound className="h-4 w-4 text-brand-500" />
               {t('sales.clientHeading', 'Client')}
             </h3>
             <div className="flex items-center gap-2 text-xs">
               {customerId === null ? (
-                <span className="rounded-full bg-blue-100 px-2.5 py-0.5 font-semibold text-blue-800">
+                <span className="rounded-full bg-brand-100 px-2.5 py-0.5 font-semibold text-brand-600">
                   {t('sales.newClient', 'New client')}
                 </span>
               ) : null}
@@ -602,7 +603,7 @@ function InvoiceNew() {
                 className={cn(field, 'font-mono')}
               />
               {customerId === null && phoneMatches.length > 0 ? (
-                <div className="absolute top-full left-0 z-20 mt-1 w-[min(22rem,calc(100vw-2.5rem))] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
+                <div className="absolute top-full left-0 z-20 mt-1 w-[min(22rem,calc(100vw-2.5rem))] overflow-hidden rounded-xl border border-line bg-card shadow-lg">
                   {phoneMatches.map((customer, index) => (
                     <button
                       key={customer.id}
@@ -657,7 +658,7 @@ function InvoiceNew() {
           </span>
           <div className="flex gap-2">
             <span className="relative min-w-0 flex-1">
-              <ScanLine className="absolute top-3 left-3.5 h-5 w-5 text-[#2563eb]" />
+              <ScanLine className="absolute top-3 left-3.5 h-5 w-5 text-brand-500" />
               <input
                 value={productQuery}
                 onChange={(event) => {
@@ -667,12 +668,12 @@ function InvoiceNew() {
                 onKeyDown={onProductKeyDown}
                 onFocus={() => setDropdown(true)}
                 placeholder={t('sales.productPlaceholder', 'Name, sr number or barcode')}
-                className="w-full rounded-xl border-2 border-blue-400/40 bg-white py-3 pr-3 pl-11 text-sm font-medium outline-none"
+                className="w-full rounded-xl border-2 border-brand-500/40 bg-card py-3 pr-3 pl-11 text-sm font-medium outline-none"
               />
             </span>
           </div>
           {dropdown && !camera && productQuery.trim() !== '' ? (
-            <div className="absolute top-full right-0 left-0 z-20 mt-1.5 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl">
+            <div className="absolute top-full right-0 left-0 z-20 mt-1.5 overflow-hidden rounded-2xl border border-line bg-card shadow-xl">
               {catalog.isPending ? (
                 <p className="px-4 py-3 text-xs text-slate-500">{t('sales.phoneSearching', 'Searching…')}</p>
               ) : productMatches.length === 0 ? (
@@ -755,10 +756,10 @@ function InvoiceNew() {
                     remaining === null
                       ? ''
                       : remaining <= 0
-                        ? 'bg-[#fff1f2] text-[#be123c]'
+                        ? TONE_ROSE
                         : line.stock !== null && remaining <= Math.max(1, Math.floor(line.stock * 0.1))
-                          ? 'bg-[#fffbeb] text-[#b45309]'
-                          : 'bg-[#ecfdf5] text-[#047857]'
+                          ? TONE_AMBER
+                          : TONE_GREEN
                   return (
                     <div key={line.key} className="flex items-center border-t border-slate-100 px-3 py-2.5">
                       <span className="w-10 text-center font-mono text-xs text-slate-400">{index + 1}</span>
@@ -815,7 +816,7 @@ function InvoiceNew() {
                           aria-label={`${t('sales.dto', 'Dto %')} ${line.article}`}
                           value={line.discount}
                           onChange={(event) => changeLine(line.key, { discount: event.target.value })}
-                          className="ml-2 w-14 rounded-lg border border-slate-300 px-2 py-1 text-right font-mono text-xs outline-none"
+                          className="ml-2 w-14 rounded-lg border border-line bg-card px-2 py-1 text-right font-mono text-xs text-ink outline-none"
                         />
                       ) : null}
                       {rules.carriesTax ? (
@@ -839,7 +840,7 @@ function InvoiceNew() {
                           <span className="w-28 text-right font-mono text-sm font-bold text-slate-900">
                             {formatCents(math.base, currency)}
                           </span>
-                          <span className="w-28 text-right font-mono text-sm font-bold text-[#004ac6]">
+                          <span className="w-28 text-right font-mono text-sm font-bold text-brand-600">
                             {formatCents(math.total, currency)}
                           </span>
                         </>
@@ -875,10 +876,10 @@ function InvoiceNew() {
               rows={3}
               value={notes}
               onChange={(event) => setNotes(event.target.value)}
-              className="w-full resize-none rounded-xl border border-slate-300 px-3 py-2 text-xs outline-none"
+              className="w-full resize-none rounded-xl border border-line bg-card px-3 py-2 text-xs text-ink outline-none"
             />
           </div>
-          <div className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-6 lg:col-span-5">
+          <div className="flex flex-col gap-4 rounded-2xl border border-line bg-page p-6 lg:col-span-5">
             <h4 className="border-b border-slate-200 pb-2 text-xs font-bold tracking-[0.06em] text-slate-900 uppercase">
               {t('sales.settlement', 'Settlement')}
             </h4>
@@ -890,7 +891,7 @@ function InvoiceNew() {
               {rules.carriesTax ? (
                 <>
                   {totals.groups.map(([rate, group]) => (
-                    <span key={rate} className="flex justify-between border-l-2 border-blue-400 pl-2 text-[11px] text-slate-500">
+                    <span key={rate} className="flex justify-between border-l-2 border-brand-500 pl-2 text-[11px] text-ink-muted">
                       <span>IVA {rate}% ({formatCents(group.base, currency)})</span>
                       <span className="font-mono text-slate-700">{formatCents(group.tax, currency)}</span>
                     </span>
@@ -909,14 +910,14 @@ function InvoiceNew() {
               ) : null}
               <span className="mt-1 flex items-baseline justify-between border-t-2 border-slate-200 pt-3">
                 <span className="text-sm font-black text-slate-900">{t('sales.grandTotal', 'Total')}</span>
-                <span className="font-mono text-2xl font-black text-[#2563eb]">{formatCents(totals.total, currency)}</span>
+                <span className="font-mono text-2xl font-black text-brand-500">{formatCents(totals.total, currency)}</span>
               </span>
             </div>
             <button
               type="button"
               disabled={save.isPending}
               onClick={submit}
-              className="flex w-full cursor-pointer items-center justify-center rounded-xl bg-[#004ac6] px-4 py-3.5 text-sm font-bold text-white shadow-md disabled:cursor-not-allowed disabled:opacity-60"
+              className="flex w-full cursor-pointer items-center justify-center rounded-xl bg-brand-600 px-4 py-3.5 text-sm font-bold text-brand-on shadow-md disabled:cursor-not-allowed disabled:opacity-60"
             >
               {save.isPending
                 ? editing
@@ -929,9 +930,9 @@ function InvoiceNew() {
       </div>
 
       {camera ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4">
-          <div role="dialog" aria-label={t('sales.camera', 'Scan code')} className="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-overlay p-4">
+          <div role="dialog" aria-label={t('sales.camera', 'Scan code')} className="w-full max-w-md overflow-hidden rounded-2xl bg-card shadow-2xl">
+            <div className="flex items-center justify-between border-b border-line px-5 py-4">
               <h3 className="text-base font-semibold">{t('sales.cameraTitle', 'Find by barcode')}</h3>
               <Tooltip content={t('common.close', 'Close')} align="end" side="bottom">
                 <button type="button" aria-label={t('common.close', 'Close')} onClick={() => setCamera(false)} className="cursor-pointer text-slate-400">
@@ -958,7 +959,7 @@ function InvoiceNew() {
                 placeholder={t('sales.barcodePlaceholder', 'Type or scan the barcode')}
                 className={cn(field, 'font-mono')}
               />
-              <button type="submit" className="cursor-pointer rounded-lg bg-[#2563eb] px-4 text-xs font-semibold text-white">
+              <button type="submit" className="cursor-pointer rounded-lg bg-brand-500 px-4 text-xs font-semibold text-brand-on">
                 {t('sales.add', 'Add')}
               </button>
             </form>

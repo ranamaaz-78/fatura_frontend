@@ -13,7 +13,7 @@ export type TopBarProps = {
 
 export function TopBar({ title, showBack, onBack, onMenu }: TopBarProps) {
   return (
-    <header className="lg:hidden h-14 bg-white border-b border-slate-200 flex items-center justify-between px-4 sticky top-0 z-40 pt-[env(safe-area-inset-top)]">
+    <header className="lg:hidden h-14 bg-card border-b border-line flex items-center justify-between px-4 sticky top-0 z-40 pt-[env(safe-area-inset-top)]">
       <div className="w-11 flex items-center">
         {showBack ? (
           <IconButton label={t('common.back', 'Back')} onClick={onBack}>
@@ -27,7 +27,7 @@ export function TopBar({ title, showBack, onBack, onMenu }: TopBarProps) {
           </Tooltip>
         )}
       </div>
-      <h1 className="text-[15px] font-semibold text-slate-900 truncate text-center flex-1 px-2">{title}</h1>
+      <h1 className="text-[15px] font-semibold text-ink truncate text-center flex-1 px-2">{title}</h1>
       <div className="w-11" />
     </header>
   )

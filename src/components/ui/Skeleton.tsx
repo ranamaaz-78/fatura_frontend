@@ -5,7 +5,7 @@ export type SkeletonProps = {
 }
 
 export function Skeleton({ className }: SkeletonProps) {
-  return <div className={cn('bg-slate-100 animate-pulse rounded-xl', className)} />
+  return <div className={cn('bg-page animate-pulse rounded-xl', className)} />
 }
 
 export function SkeletonTable({ rows = 5 }: { rows?: number }) {
@@ -30,7 +30,7 @@ export function SkeletonStatGrid() {
 
 export function SkeletonCard() {
   return (
-    <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-6 space-y-3">
+    <div className="bg-card rounded-2xl border border-line/80 shadow-xs p-6 space-y-3">
       <Skeleton className="h-5 w-40" />
       <Skeleton className="h-4 w-full" />
       <Skeleton className="h-4 w-5/6" />

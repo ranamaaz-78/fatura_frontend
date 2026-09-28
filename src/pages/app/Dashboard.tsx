@@ -34,7 +34,7 @@ import type { DashboardDocument, DashboardStockRow } from '../../types/module01'
 import type { SaleType } from '../../types/sales'
 import { rulesFor, typeLabel } from './documentTypes'
 
-const CHART = ['#004ac6', '#0f766e', '#b45309', '#0369a1', '#6d28d9', '#be123c', '#334155', '#047857']
+const CHART = ['var(--app-primary)', 'var(--app-secondary)', '#b45309', '#0369a1', '#6d28d9', '#be123c', '#334155', '#047857']
 
 const headerButton =
   'inline-flex h-[38px] items-center gap-2 rounded-xl px-3.5 text-xs font-semibold transition-colors cursor-pointer'
@@ -70,9 +70,9 @@ function paymentLabel(status: string): string {
 }
 
 function paymentTone(status: string): string {
-  if (status === 'paid') return 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200'
-  if (status === 'partial') return 'bg-sky-50 text-sky-800 ring-1 ring-sky-200'
-  return 'bg-amber-50 text-amber-800 ring-1 ring-amber-200'
+  if (status === 'paid') return 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 app-dark:bg-emerald-500/15 app-dark:text-emerald-300 app-dark:ring-emerald-500/30'
+  if (status === 'partial') return 'bg-sky-50 text-sky-800 ring-1 ring-sky-200 app-dark:bg-sky-500/15 app-dark:text-sky-300 app-dark:ring-sky-500/30'
+  return 'bg-amber-50 text-amber-800 ring-1 ring-amber-200 app-dark:bg-amber-500/15 app-dark:text-amber-300 app-dark:ring-amber-500/30'
 }
 
 function statusColor(status: string): string {
@@ -111,7 +111,7 @@ function Dashboard() {
     return (
       <>
         <PageHeader title={greeting} />
-        <div className="rounded-2xl border border-slate-200/80 bg-white shadow-xs">
+        <div className="rounded-2xl border border-line/80 bg-card shadow-xs">
           <EmptyState
             icon={AlertTriangle}
             title={t('common.error', 'Something went wrong')}
@@ -158,14 +158,14 @@ function Dashboard() {
       value: formatCents(kpis.profit_cents ?? 0, currency),
       hint: `${t('dashboard.afterCost', 'after buying cost')} ${formatCents(kpis.cost_cents ?? 0, currency)}`,
       icon: Banknote,
-      tile: 'bg-[#ecfdf5] text-[#047857]',
+      tile: 'bg-emerald-50 text-emerald-700 app-dark:bg-emerald-500/15 app-dark:text-emerald-300',
     },
     {
       label: t('dashboard.paidThisMonth', 'Paid this month'),
       value: formatCents(kpis.paid_this_month, currency),
       hint: `${kpis.paid_count ?? 0} ${t('reports.paid', 'Paid').toLowerCase()}`,
       icon: CreditCard,
-      tile: 'bg-[#eff4ff] text-[#004ac6]',
+      tile: 'bg-brand-50 text-brand-600',
     },
   ]
 
@@ -176,10 +176,10 @@ function Dashboard() {
         subtitle={data.company.name ?? t('dashboard.subtitle', 'This month at a glance — sales, unpaid documents and stock.')}
         actions={
           <span className="flex flex-wrap items-center gap-2">
-            <Link to="/app/reports" className={cn(headerButton, 'bg-slate-100 text-slate-700 hover:bg-slate-200')}>
+            <Link to="/app/reports" className={cn(headerButton, 'bg-page text-ink hover:bg-line')}>
               {t('dashboard.viewReports', 'View reports')}
             </Link>
-            <Link to="/app/invoices/new" className={cn(headerButton, 'bg-blue-600 text-white hover:bg-blue-700')}>
+            <Link to="/app/invoices/new" className={cn(headerButton, 'bg-brand-600 text-brand-on hover:bg-brand-500')}>
               <Plus className="h-4 w-4" />
               {t('dashboard.newInvoice', 'New invoice')}
             </Link>
@@ -188,22 +188,22 @@ function Dashboard() {
       />
 
       <div className="grid gap-4 lg:grid-cols-12">
-        <div className="relative overflow-hidden rounded-2xl bg-blue-700 p-6 text-white shadow-xs lg:col-span-5">
-          <TrendingUp className="pointer-events-none absolute -right-2 -bottom-3 h-28 w-28 text-white/10" aria-hidden />
-          <p className="text-[11px] font-semibold tracking-[0.12em] text-blue-100 uppercase">
+        <div className="relative overflow-hidden rounded-2xl bg-brand-600 p-6 text-brand-on shadow-xs lg:col-span-5">
+          <TrendingUp className="pointer-events-none absolute -right-2 -bottom-3 h-28 w-28 text-brand-on/10" aria-hidden />
+          <p className="text-[11px] font-semibold tracking-[0.12em] text-brand-on/80 uppercase">
             {t('dashboard.revenue', 'Revenue')}
           </p>
           <p className="mt-3 font-mono text-[28px] font-bold tracking-tight sm:text-[34px]">
             {formatCents(kpis.total_cents ?? 0, currency)}
           </p>
-          <p className="mt-2 text-[13px] text-blue-100">{t('dashboard.salesThisMonth', 'Sales this month')}</p>
+          <p className="mt-2 text-[13px] text-brand-on/80">{t('dashboard.salesThisMonth', 'Sales this month')}</p>
         </div>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 lg:col-span-7">
           {sideTiles.map((tile) => {
             const Icon = tile.icon
             return (
-              <div key={tile.label} className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs">
+              <div key={tile.label} className="rounded-2xl border border-line/80 bg-card p-5 shadow-xs">
                 <div className="flex items-start justify-between gap-3">
                   <p className="text-[11px] font-semibold tracking-[0.08em] text-slate-400 uppercase">{tile.label}</p>
                   <span className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-lg', tile.tile)}>
@@ -221,7 +221,7 @@ function Dashboard() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-5">
-        <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs lg:col-span-3">
+        <div className="rounded-2xl border border-line/80 bg-card p-4 shadow-xs lg:col-span-3">
           <p className="mb-3 text-[11px] font-semibold tracking-[0.08em] text-slate-500 uppercase">
             {t('dashboard.salesThisMonth', 'Sales this month')}
           </p>
@@ -236,14 +236,14 @@ function Dashboard() {
                     cursor={{ fill: 'rgb(241 245 249)' }}
                     formatter={(value) => [formatCents(Number(value), currency), t('reports.total', 'Total')]}
                   />
-                  <Bar dataKey="cents" fill="#004ac6" radius={[6, 6, 0, 0]} maxBarSize={48} />
+                  <Bar dataKey="cents" fill="var(--app-primary)" radius={[6, 6, 0, 0]} maxBarSize={48} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
           )}
         </div>
 
-        <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs lg:col-span-2">
+        <div className="rounded-2xl border border-line/80 bg-card p-4 shadow-xs lg:col-span-2">
           <p className="mb-3 text-[11px] font-semibold tracking-[0.08em] text-slate-500 uppercase">
             {t('dashboard.byStatus', 'This month by status')}
           </p>
@@ -288,12 +288,12 @@ function Dashboard() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-5">
-        <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-xs lg:col-span-3">
+        <div className="overflow-hidden rounded-2xl border border-line/80 bg-card shadow-xs lg:col-span-3">
           <div className="flex items-center justify-between px-4 py-3">
             <p className="text-[11px] font-semibold tracking-[0.08em] text-slate-500 uppercase">
               {t('dashboard.recent', 'Latest documents')}
             </p>
-            <Link to="/app/invoices" className="text-[11px] font-semibold text-blue-700">
+            <Link to="/app/invoices" className="text-[11px] font-semibold text-brand-600">
               {t('nav.invoices', 'Invoices')}
             </Link>
           </div>
@@ -370,10 +370,10 @@ function AttentionCard({
   const hasItems = items.filter(Boolean).length > 0
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-xs">
+    <div className="overflow-hidden rounded-2xl border border-line/80 bg-card shadow-xs">
       <div className="flex items-center justify-between px-4 py-3">
         <p className="text-[11px] font-semibold tracking-[0.08em] text-slate-500 uppercase">{title}</p>
-        <Link to={href} className="text-[11px] font-semibold text-blue-700">
+        <Link to={href} className="text-[11px] font-semibold text-brand-600">
           {linkLabel}
         </Link>
       </div>

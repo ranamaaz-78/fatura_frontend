@@ -27,7 +27,9 @@ export function ConfirmDialog({
   loading = false,
 }: ConfirmDialogProps) {
   const iconWrap =
-    tone === 'danger' ? 'rounded-2xl p-3 bg-rose-50 text-rose-600' : 'rounded-2xl p-3 bg-amber-50 text-amber-600'
+    tone === 'danger'
+      ? 'rounded-2xl bg-rose-50 p-3 text-rose-600 app-dark:bg-rose-500/15 app-dark:text-rose-300'
+      : 'rounded-2xl bg-amber-50 p-3 text-amber-600 app-dark:bg-amber-500/15 app-dark:text-amber-300'
 
   const footer: ReactNode = (
     <>
@@ -50,7 +52,7 @@ export function ConfirmDialog({
         <div className={cn(iconWrap)}>
           <AlertTriangle className="w-5 h-5" />
         </div>
-        <p className="text-sm text-slate-700">{description}</p>
+        <p className="text-sm text-ink">{description}</p>
       </div>
     </Modal>
   )

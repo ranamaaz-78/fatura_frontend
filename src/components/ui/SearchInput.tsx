@@ -56,7 +56,7 @@ export function SearchInput({
 
   return (
     <div className={cn('relative flex-1 max-w-md', className)}>
-      <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+      <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-ink-muted" />
       <input
         value={value}
         onChange={(event) => {
@@ -72,13 +72,13 @@ export function SearchInput({
         role="combobox"
         aria-expanded={open && hasResults}
         aria-controls={listId}
-        className="w-full pl-9 pr-3 py-2 text-sm bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition"
+        className="w-full rounded-xl border border-line bg-card py-2 pr-3 pl-9 text-sm text-ink transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none"
       />
       {open && hasResults && results ? (
         <div
           id={listId}
           role="listbox"
-          className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-slate-200 rounded-2xl shadow-2xl z-30 overflow-hidden divide-y divide-slate-100 max-h-80 overflow-y-auto"
+          className="absolute left-0 right-0 top-full mt-1.5 bg-card border border-line rounded-2xl shadow-2xl z-30 overflow-hidden divide-y divide-line max-h-80 overflow-y-auto"
         >
           {results.map((item, index) => (
             <button
@@ -87,8 +87,8 @@ export function SearchInput({
               role="option"
               aria-selected={index === activeIndex}
               className={cn(
-                'w-full text-left px-4 py-2.5 text-sm text-slate-700',
-                index === activeIndex ? 'bg-blue-50/60' : 'hover:bg-slate-50',
+                'w-full text-left px-4 py-2.5 text-sm text-ink',
+                index === activeIndex ? 'bg-brand-50/60' : 'hover:bg-page',
               )}
               onMouseDown={(event) => event.preventDefault()}
               onClick={() => onSelect?.(item.id)}

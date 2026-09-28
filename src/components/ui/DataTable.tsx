@@ -57,8 +57,8 @@ export function DataTable<T>({
   summary,
 }: DataTableProps<T>) {
   return (
-    <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs">
-      <div className="px-4 py-3 border-b border-slate-100 flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
+    <div className="bg-card rounded-2xl border border-line/80 shadow-xs">
+      <div className="px-4 py-3 border-b border-line flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
         {onSearch ? <SearchInput value={search ?? ''} onChange={onSearch} /> : <div />}
         <div className="flex items-center gap-2">
           {filters}
@@ -74,7 +74,7 @@ export function DataTable<T>({
         <>
           <div className="overflow-x-auto hidden md:block">
             <table className="w-full text-sm">
-              <thead className="bg-slate-50 border-b border-slate-200">
+              <thead className="bg-page border-b border-line">
                 <tr>
                   {columns.map((column) => {
                     const active = sortKey === column.key
@@ -85,7 +85,7 @@ export function DataTable<T>({
                         className={cn(
                           'px-4 py-3 text-[11px] font-semibold uppercase tracking-wider',
                           column.align === 'right' || column.numeric ? 'text-right' : 'text-left',
-                          active ? 'text-slate-700' : 'text-slate-500',
+                          active ? 'text-ink' : 'text-ink-muted',
                         )}
                       >
                         {column.sortable && onSort ? (
@@ -107,10 +107,10 @@ export function DataTable<T>({
                       </th>
                     )
                   })}
-                  {rowActions ? <th scope="col" className="px-4 py-3 text-right text-[11px] font-semibold text-slate-500 uppercase tracking-wider" /> : null}
+                  {rowActions ? <th scope="col" className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-ink-muted" /> : null}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-line">
                 {rows.map((row) => {
                   const key = rowKey(row)
                   const selected = selectedKeys.includes(key)
@@ -118,15 +118,15 @@ export function DataTable<T>({
                     <tr
                       key={key}
                       className={cn(
-                        'group hover:bg-slate-50/70 transition-colors',
-                        selected && 'bg-blue-50/60',
+                        'group transition-colors hover:bg-page/70',
+                        selected && 'bg-brand-50/60',
                       )}
                     >
                       {columns.map((column) => (
                         <td
                           key={column.key}
                           className={cn(
-                            'px-4 py-3 text-slate-700',
+                            'px-4 py-3 text-ink',
                             (column.align === 'right' || column.numeric) && 'text-right',
                             column.numeric && 'font-mono tabular-nums',
                             column.mono && 'font-mono text-xs',
@@ -149,17 +149,17 @@ export function DataTable<T>({
             </table>
           </div>
 
-          <div className="md:hidden divide-y divide-slate-100">
+          <div className="divide-y divide-line md:hidden">
             {rows.map((row) => {
               const key = rowKey(row)
               return (
                 <div key={key} className="p-4 space-y-2">
                   {columns.map((column) => (
                     <div key={column.key} className="flex items-start justify-between gap-3">
-                      <span className="text-[11px] uppercase text-slate-500">{column.header}</span>
+                      <span className="text-[11px] text-ink-muted uppercase">{column.header}</span>
                       <span
                         className={cn(
-                          'text-sm text-slate-700 text-right',
+                          'text-right text-sm text-ink',
                           column.numeric && 'font-mono tabular-nums',
                           column.mono && 'font-mono text-xs',
                         )}
@@ -177,7 +177,7 @@ export function DataTable<T>({
       )}
 
       {page && pageCount && onPageChange ? (
-        <div className="border-t border-slate-100">
+        <div className="border-t border-line">
           <Pagination
             page={page}
             pageCount={pageCount}

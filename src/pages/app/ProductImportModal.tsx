@@ -392,8 +392,8 @@ export function ProductImportModal({ open, onClose, onImported }: ProductImportM
                                 )
                               }
                               className={cn(
-                                'rounded border border-transparent bg-white/70 px-1.5 py-1 text-xs',
-                                'focus:border-blue-400 focus:bg-white focus:outline-none',
+                                'rounded border border-transparent bg-card/70 px-1.5 py-1 text-xs',
+                                'focus:border-brand-500 focus:bg-card focus:outline-none',
                                 CELL_WIDTH[field],
                               )}
                             />

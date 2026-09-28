@@ -25,16 +25,16 @@ export function Stepper({ steps, current }: StepperProps) {
                 className={cn(
                   'w-8 h-8 rounded-full inline-flex items-center justify-center text-xs font-semibold border',
                   done && 'bg-emerald-600 text-white border-emerald-600',
-                  active && 'bg-blue-600 text-white border-blue-600',
-                  !done && !active && 'bg-white text-slate-500 border-slate-200',
+                  active && 'bg-brand-600 text-brand-on border-brand-600',
+                  !done && !active && 'bg-card text-ink-muted border-line',
                 )}
               >
                 {done ? <Check className="w-4 h-4" /> : index + 1}
               </span>
-              <span className="text-[11px] font-medium text-slate-500 text-center">{step.label}</span>
+              <span className="text-center text-[11px] font-medium text-ink-muted">{step.label}</span>
             </div>
             {index < steps.length - 1 ? (
-              <div className={cn('flex-1 h-px mx-2', index < current ? 'bg-emerald-600' : 'bg-slate-200')} />
+              <div className={cn('mx-2 h-px flex-1', index < current ? 'bg-emerald-600' : 'bg-line')} />
             ) : null}
           </li>
         )

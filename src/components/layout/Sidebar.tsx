@@ -23,19 +23,19 @@ export function Sidebar({ accent = 'blue', onNavigate }: SidebarProps) {
       : session?.role === 'staff'
         ? t('nav.roleStaff', 'Staff')
         : t('nav.roleOwner', 'Owner')
-  const brand = isAdmin ? 'bg-indigo-600' : 'bg-blue-600'
-  const active = isAdmin ? 'bg-indigo-600 text-white shadow-xs' : 'bg-blue-600 text-white shadow-xs'
+  const brand = isAdmin ? 'bg-indigo-600 text-white' : 'bg-brand-600 text-brand-on'
+  const active = isAdmin ? 'bg-indigo-600 text-white shadow-xs' : 'bg-brand-600 text-brand-on shadow-xs'
   const highlightIdle = isAdmin
     ? 'text-indigo-400 bg-indigo-600/10'
-    : 'text-blue-400 bg-blue-600/10'
-  const versionColor = isAdmin ? 'text-indigo-400' : 'text-blue-400'
+    : 'text-brand-500 bg-brand-600/10'
+  const versionColor = isAdmin ? 'text-indigo-400' : 'text-brand-500'
   const companyIcon = isAdmin
     ? 'bg-indigo-600/30 text-indigo-400'
-    : 'bg-blue-600/30 text-blue-400'
+    : 'bg-brand-600/30 text-brand-500'
 
   return (
-    <div className="flex flex-col h-full bg-slate-900 text-slate-300 select-none">
-      <div className="p-4 border-b border-slate-800 bg-slate-950/60 flex items-center gap-2.5">
+    <div className="app-sidebar flex h-full select-none flex-col bg-sidebar text-sidebar-text">
+      <div className="flex items-center gap-2.5 border-b border-sidebar-line bg-black/30 p-4">
         <div className={cn('w-8 h-8 rounded-lg text-white inline-flex items-center justify-center', brand)}>
           {isAdmin ? <ShieldCheck className="w-4 h-4" /> : <ScanLine className="w-4 h-4" />}
         </div>
@@ -50,7 +50,7 @@ export function Sidebar({ accent = 'blue', onNavigate }: SidebarProps) {
         </div>
       </div>
 
-      <div className="mx-3 mt-3 bg-slate-800/80 rounded-xl p-2.5 border border-slate-700/60 flex items-center gap-2.5">
+      <div className="mx-3 mt-3 flex items-center gap-2.5 rounded-xl border border-sidebar-line bg-white/5 p-2.5">
         <div className={cn('w-7 h-7 rounded-lg inline-flex items-center justify-center', companyIcon)}>
           <Building2 className="w-4 h-4" />
         </div>
@@ -58,7 +58,7 @@ export function Sidebar({ accent = 'blue', onNavigate }: SidebarProps) {
           <p className="text-xs font-semibold text-white truncate">
             {isAdmin ? t('app.name', 'Fatura') : (company?.name ?? t('nav.companyName', 'Fatura Demo'))}
           </p>
-          <p className="text-[10px] text-slate-400 font-mono truncate">
+          <p className="truncate font-mono text-[10px] text-sidebar-muted">
             {isAdmin ? t('nav.roleAdmin', 'Platform admin') : (company?.email ?? t('nav.taxId', '-'))}
           </p>
         </div>
@@ -67,7 +67,7 @@ export function Sidebar({ accent = 'blue', onNavigate }: SidebarProps) {
       <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-5">
         {groups.map((group) => (
           <div key={group.titleKey}>
-            <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider px-2 mb-2">
+            <p className="mb-2 px-2 text-[10px] font-semibold tracking-wider text-sidebar-muted uppercase">
               {t(group.titleKey, group.titleFallback)}
             </p>
             <div className="space-y-1">
@@ -85,8 +85,8 @@ export function Sidebar({ accent = 'blue', onNavigate }: SidebarProps) {
                         isActive
                           ? active
                           : item.highlight
-                            ? cn(highlightIdle, 'hover:bg-slate-800 hover:text-white')
-                            : 'text-slate-400 hover:bg-slate-800 hover:text-white',
+                            ? cn(highlightIdle, 'hover:bg-sidebar-hover hover:text-white')
+                            : 'text-sidebar-muted hover:bg-sidebar-hover hover:text-white',
                       )
                     }
                   >
@@ -100,11 +100,11 @@ export function Sidebar({ accent = 'blue', onNavigate }: SidebarProps) {
         ))}
       </nav>
 
-      <div className="p-3 border-t border-slate-800 flex items-center gap-2.5">
+      <div className="flex items-center gap-2.5 border-t border-sidebar-line p-3">
         <Avatar name={userName} size="sm" />
         <div className="min-w-0 flex-1">
           <p className="text-xs font-semibold text-white truncate">{userName}</p>
-          <p className="text-[10px] text-slate-400 truncate">{roleLabel}</p>
+          <p className="truncate text-[10px] text-sidebar-muted">{roleLabel}</p>
         </div>
         <button
           type="button"
@@ -114,7 +114,7 @@ export function Sidebar({ accent = 'blue', onNavigate }: SidebarProps) {
           }}
           title={t('nav.logout', 'Log out')}
           aria-label={t('nav.logout', 'Log out')}
-          className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+          className="rounded-lg p-2 text-sidebar-muted transition-colors hover:bg-sidebar-hover hover:text-white"
         >
           <LogOut className="w-4 h-4" />
         </button>

@@ -40,7 +40,7 @@ export function Select({
         <label
           htmlFor={selectId}
           className={cn(
-            'mb-1.5 block font-semibold text-slate-700',
+            'mb-1.5 block font-semibold text-ink',
             compact ? 'mb-1 text-[11px]' : 'text-xs',
           )}
         >
@@ -69,7 +69,7 @@ export function Select({
           {error}
         </p>
       ) : hint ? (
-        <p id={hintId} className="mt-1 text-[11px] text-slate-500">
+        <p id={hintId} className="mt-1 text-[11px] text-ink-muted">
           {hint}
         </p>
       ) : null}

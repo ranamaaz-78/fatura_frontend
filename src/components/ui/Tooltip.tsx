@@ -20,7 +20,7 @@ export function Tooltip({ content, children, className, align = 'center', side =
           align === 'end' ? 'right-0' : 'left-1/2 -translate-x-1/2',
         )}
       >
-        <span className="whitespace-nowrap rounded-lg bg-slate-900 px-2 py-1 text-[11px] text-white">{content}</span>
+        <span className="whitespace-nowrap rounded-lg bg-sidebar px-2 py-1 text-[11px] text-sidebar-text">{content}</span>
       </span>
     </span>
   )
