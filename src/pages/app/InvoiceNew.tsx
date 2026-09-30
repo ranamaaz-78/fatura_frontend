@@ -1,5 +1,5 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { Camera, Minus, Plus, Receipt, ScanLine, ShieldCheck, Trash2, UserRound, X } from 'lucide-react'
+import { Camera, MessageCircle, Minus, Plus, Receipt, ScanLine, ShieldCheck, Trash2, UserRound, X } from 'lucide-react'
 import { useEffect, useMemo, useState, type KeyboardEvent } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../auth/AuthProvider'
@@ -10,9 +10,11 @@ import { t } from '../../i18n'
 import { cn } from '../../lib/cn'
 import { TONE_AMBER, TONE_GREEN, TONE_ROSE } from '../../lib/status'
 import { centsToInput, formatCents, lineTotals, parseAmountToCents, parseNumber } from '../../lib/money'
+import { generateSaleDocumentPdfBase64 } from '../../lib/exportSaleSheet'
 import { getErrorMessage } from '../../services/api'
 import { listAllProducts, listTaxRates } from '../../services/catalog'
 import { createSale, getSale, listActiveCustomers, previewSale, updateSale } from '../../services/sales'
+import { getWhatsAppStatus, sendWhatsAppDocument } from '../../services/whatsapp'
 import type { Product } from '../../types/catalog'
 import type { Customer, IssuableType, PaymentStatus, SaleDocument, SaleInput } from '../../types/sales'
 import { isSaleConverted } from '../../types/sales'
@@ -127,6 +129,13 @@ function InvoiceNew() {
   const [dropdown, setDropdown] = useState(false)
   const [camera, setCamera] = useState(false)
   const [lines, setLines] = useState<DraftLine[]>([])
+  const [sendViaWhatsApp, setSendViaWhatsApp] = useState(true)
+
+  const whatsAppStatus = useQuery({
+    queryKey: ['whatsapp-status'],
+    queryFn: getWhatsAppStatus,
+    staleTime: 30000,
+  })
 
   // Each list opens this screen with its own ?type=, and the route is shared,
   // so the screen is not remounted when one list sends us to another.
@@ -247,6 +256,52 @@ function InvoiceNew() {
     mutationFn: (input: SaleInput) => (editing ? updateSale(editingId, input) : createSale(input)),
     onSuccess: (document) => {
       setMethodOpen(false)
+
+      if (
+        !editing &&
+        sendViaWhatsApp &&
+        document.client_phone &&
+        whatsAppStatus.data?.status === 'connected' &&
+        whatsAppStatus.data?.auto_send !== false
+      ) {
+        void (async () => {
+          try {
+            const fileBase64 = await generateSaleDocumentPdfBase64(document, session?.company ?? null, currency)
+            const tmpl = whatsAppStatus.data?.message_template
+            const docType = document.type.charAt(0).toUpperCase() + document.type.slice(1)
+            const totalStr = formatCents(document.total_cents, currency)
+            const compName = session?.company?.name || 'Fatura'
+            const custName = document.client_name || 'Customer'
+            const caption = tmpl
+              ? tmpl
+                  .replace(/\{customer_name\}/g, custName)
+                  .replace(/\{document_type\}/g, docType)
+                  .replace(/\{document_number\}/g, document.number)
+                  .replace(/\{total_amount\}/g, totalStr)
+                  .replace(/\{company_name\}/g, compName)
+              : `Dear ${custName},\n\nPlease find attached your ${docType} *#${document.number}* from *${compName}* for *${totalStr}*.\n\nThank you for choosing us!`
+
+            await sendWhatsAppDocument({
+              sale_id: document.id,
+              number: document.client_phone,
+              fileBase64,
+              filename: `${document.number}.pdf`,
+              caption,
+            })
+
+            push({
+              tone: 'success',
+              title: t('whatsapp.autoSentToast', `Document #${document.number} and PDF sent to customer via WhatsApp!`),
+            })
+          } catch (err) {
+            push({
+              tone: 'warning',
+              title: t('whatsapp.autoSendFailedToast', `Document created, but WhatsApp delivery failed: ${getErrorMessage(err)}`),
+            })
+          }
+        })()
+      }
+
       navigate(`${rulesFor(document.type).listPath}/${document.id}`, {
         state:
           !editing && celebratesPayment(document.type) && document.payment_status === 'paid'
@@ -621,6 +676,18 @@ function InvoiceNew() {
                     </button>
                   ))}
                 </div>
+              ) : null}
+              {clientPhone.trim() && whatsAppStatus.data?.status === 'connected' ? (
+                <label className="mt-1.5 flex items-center gap-1.5 text-[11px] font-medium text-emerald-700 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={sendViaWhatsApp}
+                    onChange={(e) => setSendViaWhatsApp(e.target.checked)}
+                    className="h-3.5 w-3.5 rounded border-emerald-300 text-emerald-600 focus:ring-emerald-500"
+                  />
+                  <MessageCircle className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                  <span>{t('whatsapp.sendDocToNumber', 'Send printable PDF via WhatsApp on save')}</span>
+                </label>
               ) : null}
             </div>
             <div>

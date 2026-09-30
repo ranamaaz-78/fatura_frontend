@@ -1,4 +1,4 @@
-import { toBlob } from 'html-to-image'
+import { toBlob, toJpeg } from 'html-to-image'
 import { jsPDF } from 'jspdf'
 
 /** On-screen A4 frame (210mm × 297mm at 96dpi). */
@@ -101,4 +101,17 @@ export async function downloadSheetPdf(filename: string, node?: HTMLElement | nu
   const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
   pdf.addImage(dataUrl, 'PNG', 0, 0, 210, 297)
   pdf.save(filename)
+}
+
+export async function generateSheetPdfBase64(node?: HTMLElement | null): Promise<string> {
+  const target = sheetNode(node)
+  await waitForSheetAssets(target)
+  const jpegDataUrl = await Promise.race([
+    toJpeg(target, { ...captureOptions, quality: 0.88 }),
+    withTimeout(12000).then(() => null),
+  ])
+  if (!jpegDataUrl) throw new Error('Could not render the document for WhatsApp.')
+  const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true })
+  pdf.addImage(jpegDataUrl, 'JPEG', 0, 0, 210, 297, undefined, 'FAST')
+  return pdf.output('datauristring')
 }

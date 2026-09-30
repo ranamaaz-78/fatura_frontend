@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, FileDown, ImageDown, Pencil, Printer } from 'lucide-react'
+import { ArrowLeft, FileDown, ImageDown, MessageCircle, Pencil, Printer } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../../auth/AuthProvider'
@@ -28,6 +28,7 @@ import { RecordPaymentModal } from './RecordPaymentModal'
 import { EditProformaSettlementModal } from './EditProformaSettlementModal'
 import { SettleProformaModal } from './SettleProformaModal'
 import { VoidSaleModal } from './VoidSaleModal'
+import { SendWhatsAppModal } from './SendWhatsAppModal'
 
 function paymentClass(status: SaleDisplayStatus): string {
   if (status === 'voided') return 'bg-rose-50 text-rose-700 border border-rose-200'
@@ -58,6 +59,7 @@ function InvoiceDetail() {
   const [settleOpen, setSettleOpen] = useState(false)
   const [editingSettlement, setEditingSettlement] = useState<SaleSettlement | null>(null)
   const [voidOpen, setVoidOpen] = useState(false)
+  const [whatsAppOpen, setWhatsAppOpen] = useState(false)
   const [convertTarget, setConvertTarget] = useState<SaleType | null>(null)
   const [celebrate, setCelebrate] = useState(false)
   const [celebrateKey, setCelebrateKey] = useState(0)
@@ -241,6 +243,14 @@ function InvoiceDetail() {
               ? t('sales.savingImage', 'Saving image...')
               : t('sales.downloadImage', 'Download as image')}
           </button>
+          <button
+            type="button"
+            onClick={() => setWhatsAppOpen(true)}
+            className="inline-flex h-[38px] cursor-pointer items-center gap-2 rounded-xl border border-emerald-300 bg-emerald-50 px-3.5 text-xs font-semibold text-emerald-800 hover:bg-emerald-100 transition-colors shadow-2xs"
+          >
+            <MessageCircle className="h-4 w-4 text-emerald-600" />
+            {t('whatsapp.sendBtn', 'WhatsApp')}
+          </button>
           {openQuote ? (
             <>
               <Link
@@ -399,6 +409,13 @@ function InvoiceDetail() {
           if (convertTarget !== 'factura' && convertTarget !== 'albaran') return
           converting.mutate({ target: convertTarget, status: 'paid', methodId })
         }}
+      />
+      <SendWhatsAppModal
+        open={whatsAppOpen}
+        onClose={() => setWhatsAppOpen(false)}
+        document={document}
+        company={company ?? null}
+        currency={currency}
       />
     </div>
   )

@@ -3,7 +3,7 @@ import { flushSync } from 'react-dom'
 import type { Company } from '../types/module01'
 import type { SaleDocument } from '../types/sales'
 import { PrintSheetView } from '../pages/app/printSheets'
-import { A4_CSS_HEIGHT, A4_CSS_WIDTH, downloadSheetImage, downloadSheetPdf, sheetFileName } from './downloadSheetImage'
+import { A4_CSS_HEIGHT, A4_CSS_WIDTH, downloadSheetImage, downloadSheetPdf, generateSheetPdfBase64, sheetFileName } from './downloadSheetImage'
 import { getPrintTemplates, loadLogoBlob } from '../services/printables'
 import { waitForPrintFont } from './printFonts'
 import { pickPrintTemplate } from './printTheme'
@@ -79,6 +79,57 @@ export async function downloadSaleDocumentSheet(
     } else {
       await downloadSheetImage(sheetFileName(sale.number), node)
     }
+  } finally {
+    root.unmount()
+    host.remove()
+  }
+}
+
+export async function generateSaleDocumentPdfBase64(
+  sale: SaleDocument,
+  company: Company | null,
+  currency: string,
+): Promise<string> {
+  const payload = await getPrintTemplates()
+  const theme = pickPrintTemplate(payload.templates, sale.type)
+  await waitForPrintFont(theme.font_key)
+  const logoSrc =
+    theme.show_logo && sale.type !== 'albaran'
+      ? await loadLogoBlob(payload.logo_url ?? company?.logo_url ?? null)
+      : null
+
+  const host = window.document.createElement('div')
+  host.setAttribute('aria-hidden', 'true')
+  host.style.cssText = [
+    'position:fixed',
+    'left:0',
+    'top:0',
+    `width:${A4_CSS_WIDTH}px`,
+    `height:${A4_CSS_HEIGHT}px`,
+    'overflow:hidden',
+    'pointer-events:none',
+    'z-index:-1',
+  ].join(';')
+  window.document.body.appendChild(host)
+
+  const root = createRoot(host)
+  flushSync(() => {
+    root.render(
+      <PrintSheetView
+        document={sale}
+        company={company}
+        currency={currency}
+        theme={theme}
+        logoSrc={logoSrc}
+      />,
+    )
+  })
+
+  try {
+    const node = await waitForSheetNode(host)
+    await waitForPrintFont(theme.font_key)
+    await waitForPaint()
+    return await generateSheetPdfBase64(node)
   } finally {
     root.unmount()
     host.remove()

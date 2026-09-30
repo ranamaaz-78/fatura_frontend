@@ -23,7 +23,9 @@ import { updateCompany } from '../../services/company'
 import type { TaxRate } from '../../types/catalog'
 import type { Company } from '../../types/module01'
 
-type TabId = 'company' | 'subscription' | 'password' | 'iva'
+import { WhatsAppTab } from './WhatsAppTab'
+
+type TabId = 'company' | 'subscription' | 'password' | 'iva' | 'whatsapp'
 
 type CompanyDraft = {
   name: string
@@ -41,10 +43,11 @@ const TABS: { id: TabId; label: string; icon: LucideIcon }[] = [
   { id: 'subscription', label: t('settings.tabSubscription', 'Subscription'), icon: CreditCard },
   { id: 'password', label: t('settings.tabPassword', 'Password'), icon: KeyRound },
   { id: 'iva', label: t('settings.tabIva', 'IVA'), icon: Percent },
+  { id: 'whatsapp', label: t('settings.tabWhatsApp', 'WhatsApp'), icon: MessageCircle },
 ]
 
 function parseTab(value: string | null): TabId {
-  if (value === 'subscription' || value === 'password' || value === 'iva') return value
+  if (value === 'subscription' || value === 'password' || value === 'iva' || value === 'whatsapp') return value
   return 'company'
 }
 
@@ -558,6 +561,7 @@ function Page() {
           {tab === 'subscription' ? <SubscriptionTab /> : null}
           {tab === 'password' ? <PasswordTab /> : null}
           {tab === 'iva' ? <IvaTab /> : null}
+          {tab === 'whatsapp' ? <WhatsAppTab /> : null}
         </div>
       </div>
     </div>
