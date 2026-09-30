@@ -15,7 +15,6 @@ import {
 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useAuth } from '../../auth/AuthProvider'
-import { BarcodeSvg } from '../../components/ui/BarcodeSvg'
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { ProtectedImage } from '../../components/ui/ProtectedImage'
@@ -25,7 +24,7 @@ import { Tooltip } from '../../components/ui/Tooltip'
 import { useToast } from '../../components/ui/Toast'
 import { t } from '../../i18n'
 import { cn } from '../../lib/cn'
-import { TONE_AMBER, TONE_GREEN, TONE_ROSE } from '../../lib/status'
+import { TONE_AMBER, TONE_GREEN, TONE_PRIMARY, TONE_ROSE } from '../../lib/status'
 import { formatCents } from '../../lib/money'
 import { getErrorMessage } from '../../services/api'
 import { deleteProduct, listProducts } from '../../services/catalog'
@@ -437,7 +436,7 @@ function Products() {
           <>
             {/* Desktop rows */}
             <div className="hidden overflow-x-auto md:block">
-              <div className="min-w-[1040px]">
+              <div className="min-w-[1230px]">
                 <div className="flex items-center border-b border-line bg-page px-4 py-2.5 text-[11px] font-semibold tracking-[0.08em] text-slate-500 uppercase">
                   <span className="w-8.5">
                     <input
@@ -450,10 +449,13 @@ function Products() {
                     />
                   </span>
                   <span className="flex-grow">{t('products.product', 'Product')}</span>
+                  <span className="w-[130px]">{t('products.imageCode', 'Image code')}</span>
                   <span className="w-[130px]">{t('products.category', 'Category')}</span>
-                  <span className="w-[160px]">{t('products.barcode', 'Bar code')}</span>
-                  <span className="w-[90px] text-right">{t('products.cost', 'Cost')}</span>
-                  <span className="w-[100px] text-right">{t('products.price', 'Price')}</span>
+                  <span className="w-[120px] text-center whitespace-nowrap">{t('products.cost', 'Buying price')}</span>
+                  <span className="w-[140px] text-center whitespace-nowrap">
+                    {t('products.lastBuyingPrice', 'Last buying price')}
+                  </span>
+                  <span className="w-[100px] text-right whitespace-nowrap">{t('products.sellingPrice', 'Selling price')}</span>
                   <span className="w-[90px] text-right">{t('products.stock', 'Stock')}</span>
                   <span className="w-[150px] text-right">{t('products.actions', 'Actions')}</span>
                 </div>
@@ -491,6 +493,15 @@ function Products() {
                         </span>
                       </span>
                     </span>
+                    <span className="w-[130px] pr-2">
+                      {product.image_code ? (
+                        <span title={product.image_code} className="block truncate font-mono text-[11px] text-slate-700">
+                          {product.image_code}
+                        </span>
+                      ) : (
+                        <span className="text-[11px] text-slate-400">—</span>
+                      )}
+                    </span>
                     <span className="w-[130px]">
                       {product.category ? (
                         <span className="inline-block rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-medium text-slate-700">
@@ -500,23 +511,18 @@ function Products() {
                         <span className="text-[11px] text-slate-400">—</span>
                       )}
                     </span>
-                    <span className="flex w-[160px] items-center gap-2">
-                      <BarcodeSvg code={product.barcode} digits={false} className="h-3.5 w-4.5 shrink-0" />
-                      <span className="font-mono text-[11px] text-slate-700">{product.barcode}</span>
-                      {product.barcode_generated ? (
-                        <span
-                          title={t('products.autoBarcodeHint', 'We generated this code. Print its label.')}
-                          className={cn('rounded-full px-1.5 text-[10px] font-semibold', TONE_AMBER)}
-                        >
-                          {t('products.auto', 'Auto')}
-                        </span>
-                      ) : null}
+                    <span className="w-[120px] text-center">
+                      <span className={cn('inline-block rounded-full px-2.5 py-0.5 font-mono text-xs font-semibold', TONE_PRIMARY)}>
+                        {formatCents(product.buying_price, currency)}
+                      </span>
                     </span>
-                    <span className="w-[90px] text-right font-mono text-xs text-slate-500">
-                      {formatCents(product.buying_price, currency)}
+                    <span className="w-[140px] text-center font-mono text-xs text-slate-500">
+                      {product.last_buying_price === null ? '—' : formatCents(product.last_buying_price, currency)}
                     </span>
-                    <span className="w-[100px] text-right font-mono text-[13px] font-semibold text-slate-900">
-                      {formatCents(product.selling_price, currency)}
+                    <span className="w-[100px] text-right">
+                      <span className={cn('inline-block rounded-full px-2.5 py-0.5 font-mono text-xs font-semibold', TONE_AMBER)}>
+                        {formatCents(product.selling_price, currency)}
+                      </span>
                     </span>
                     <span className="w-[90px] text-right">
                       <span

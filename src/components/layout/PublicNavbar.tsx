@@ -53,7 +53,7 @@ export function PublicNavbar() {
               onHero ? 'text-white' : 'text-[#0b1c30]',
             )}
           >
-            {t('app.name', 'Fatura')}
+            {t('app.name', 'YK Digital Solutions')}
           </span>
         </Link>
 

@@ -40,7 +40,7 @@ export function HeroMockup() {
           <span className="h-2.5 w-2.5 rounded-full bg-amber-300" />
           <span className="h-2.5 w-2.5 rounded-full bg-emerald-300" />
           <span className="ml-4 flex h-5 max-w-[260px] flex-1 items-center rounded-md border border-slate-200 bg-white px-2 font-mono text-[10px] text-[#64748b]">
-            app.fatura.com/dashboard
+            app.ykdigitalsolutions.com/dashboard
           </span>
         </div>
 

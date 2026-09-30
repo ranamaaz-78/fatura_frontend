@@ -24,6 +24,9 @@ export const STATUS_FALLBACK = 'bg-slate-100 text-slate-700 border-slate-200 app
 
 export const TONE_GREEN =
   'bg-emerald-50 text-emerald-700 app-dark:bg-emerald-500/15 app-dark:text-emerald-300'
+/** The workspace's primary colour, as a soft badge. Follows the theme. */
+export const TONE_PRIMARY =
+  'bg-brand-50 text-brand-600 app-dark:bg-brand-600/20 app-dark:text-brand-500'
 export const TONE_AMBER =
   'bg-amber-50 text-amber-700 app-dark:bg-amber-500/15 app-dark:text-amber-300'
 export const TONE_ROSE =

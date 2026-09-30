@@ -53,7 +53,7 @@ function Login() {
         {t('auth.loginTitle', 'Welcome back')}
       </h1>
       <p className="mt-1.5 text-[15px] text-[#434655]">
-        {t('auth.loginSubtitle', 'Sign in to your Fatura workspace.')}
+        {t('auth.loginSubtitle', 'Sign in to your YK Digital Solutions workspace.')}
       </p>
 
       <div className="mt-8 flex flex-col gap-4.5">

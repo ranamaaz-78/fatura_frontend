@@ -24,6 +24,10 @@ export type SearchableSelectOption = {
   value: string
   label: string
   disabled?: boolean
+  /** Extra words the search box matches on, not shown. */
+  keywords?: string
+  /** Shorter text for the closed control, when the list row is longer. */
+  triggerLabel?: string
 }
 
 export type SearchableSelectTone = 'app' | 'public'
@@ -140,7 +144,10 @@ export const SearchableSelect = forwardRef<HTMLSelectElement, SearchableSelectPr
       const needle = normalize(query.trim())
       if (needle === '') return options
       return options.filter(
-        (option) => normalize(option.label).includes(needle) || normalize(option.value).includes(needle),
+        (option) =>
+          normalize(option.label).includes(needle) ||
+          normalize(option.value).includes(needle) ||
+          normalize(option.keywords ?? '').includes(needle),
       )
     }, [options, query])
 
@@ -320,7 +327,7 @@ export const SearchableSelect = forwardRef<HTMLSelectElement, SearchableSelectPr
           )}
         >
           <span className={cn('min-w-0 flex-1 truncate', !selected && 'text-ink-muted')}>
-            {selected?.label || t('common.select', 'Select')}
+            {selected?.triggerLabel || selected?.label || t('common.select', 'Select')}
           </span>
           <ChevronDown className={cn('h-4 w-4 shrink-0 text-ink-muted transition', open && 'rotate-180')} />
         </button>

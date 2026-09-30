@@ -19,7 +19,7 @@ function titleForPath(pathname: string): string {
   if (pathname === '/app/invoices/new') return t('sales.newTitle', 'New sale')
   if (pathname.endsWith('/edit') && pathname.includes('/quotes/')) return t('sales.editQuote', 'Edit quotation')
   if (pathname.startsWith('/app/invoices/')) return t('nav.invoice', 'Invoice')
-  return t('app.name', 'Fatura')
+  return t('app.name', 'YK Digital Solutions')
 }
 
 function Shell() {

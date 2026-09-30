@@ -58,6 +58,31 @@ export function lineTotals(
   return { base, tax, total: base + tax }
 }
 
+/**
+ * Splits a discount over amounts in proportion to their size, to the cent, so the shares add up
+ * to exactly the discount. Leftover cents go to the largest remainders, earlier items first.
+ * The server uses the same rule, which is why the form's totals match the issued document.
+ */
+export function allocateDiscount(bases: number[], discountCents: number): number[] {
+  const total = bases.reduce((sum, base) => sum + base, 0)
+  const shares = bases.map(() => 0)
+  if (discountCents <= 0 || total <= 0) return shares
+
+  const remainders = bases.map(() => 0)
+  let given = 0
+  bases.forEach((base, index) => {
+    const exact = discountCents * base
+    shares[index] = Math.floor(exact / total)
+    remainders[index] = exact % total
+    given += shares[index]
+  })
+
+  const order = bases.map((_base, index) => index).sort((a, b) => remainders[b] - remainders[a] || a - b)
+  for (let i = 0; i < discountCents - given; i++) shares[order[i]] += 1
+
+  return shares
+}
+
 /** Split a gross amount into the net price. Catalog selling prices are already net. */
 export function netOfIva(sellingCents: number, ivaPercent: number): number {
   if (ivaPercent <= 0) return sellingCents

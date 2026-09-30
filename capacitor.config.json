@@ -1,6 +1,6 @@
 {
   "appId": "com.fatura.app",
-  "appName": "Fatura",
+  "appName": "YK Digital Solutions",
   "webDir": "dist",
   "android": {
     "allowMixedContent": true

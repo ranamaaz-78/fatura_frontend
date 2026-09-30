@@ -1,15 +1,13 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { AlertTriangle, Building2, CreditCard, KeyRound, Mail, MessageCircle, Percent, Plus, Settings, Trash2, type LucideIcon } from 'lucide-react'
+import { useMutation, useQuery } from '@tanstack/react-query'
+import { AlertTriangle, Building2, Coins, CreditCard, KeyRound, Mail, MessageCircle, Percent, Settings, type LucideIcon } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../auth/AuthProvider'
 import { Badge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
-import { ConfirmDialog } from '../../components/ui/ConfirmDialog'
 import { Input } from '../../components/ui/Input'
 import { Select } from '../../components/ui/Select'
 import { Textarea } from '../../components/ui/Textarea'
-import { Tooltip } from '../../components/ui/Tooltip'
 import { useToast } from '../../components/ui/Toast'
 import { t } from '../../i18n'
 import { cn } from '../../lib/cn'
@@ -18,14 +16,23 @@ import { formatCurrency, formatDate } from '../../lib/format'
 import { getAppSubscription } from '../../services/app'
 import { changePassword } from '../../services/auth'
 import { getErrorMessage, mapValidationErrors } from '../../services/api'
-import { createTaxRate, deleteTaxRate, listTaxRates } from '../../services/catalog'
+import {
+  createRecargoRate,
+  createTaxRate,
+  deleteRecargoRate,
+  deleteTaxRate,
+  listRecargoRates,
+  listTaxRates,
+  updateRecargoRate,
+  updateTaxRate,
+} from '../../services/catalog'
 import { updateCompany } from '../../services/company'
-import type { TaxRate } from '../../types/catalog'
 import type { Company } from '../../types/module01'
 
+import { RatesManager, type RatesApi } from './RatesManager'
 import { WhatsAppTab } from './WhatsAppTab'
 
-type TabId = 'company' | 'subscription' | 'password' | 'iva' | 'whatsapp'
+type TabId = 'company' | 'subscription' | 'password' | 'iva' | 'recargo' | 'whatsapp'
 
 type CompanyDraft = {
   name: string
@@ -43,11 +50,12 @@ const TABS: { id: TabId; label: string; icon: LucideIcon }[] = [
   { id: 'subscription', label: t('settings.tabSubscription', 'Subscription'), icon: CreditCard },
   { id: 'password', label: t('settings.tabPassword', 'Password'), icon: KeyRound },
   { id: 'iva', label: t('settings.tabIva', 'IVA'), icon: Percent },
+  { id: 'recargo', label: t('settings.tabRecargo', 'Recargo'), icon: Coins },
   { id: 'whatsapp', label: t('settings.tabWhatsApp', 'WhatsApp'), icon: MessageCircle },
 ]
 
 function parseTab(value: string | null): TabId {
-  if (value === 'subscription' || value === 'password' || value === 'iva' || value === 'whatsapp') return value
+  if (value === 'subscription' || value === 'password' || value === 'iva' || value === 'recargo' || value === 'whatsapp') return value
   return 'company'
 }
 
@@ -292,117 +300,58 @@ function PasswordTab() {
   )
 }
 
+const IVA_API: RatesApi = {
+  list: listTaxRates,
+  create: createTaxRate,
+  update: updateTaxRate,
+  remove: deleteTaxRate,
+}
+
+const RECARGO_API: RatesApi = {
+  list: listRecargoRates,
+  create: createRecargoRate,
+  update: updateRecargoRate,
+  remove: deleteRecargoRate,
+}
+
 function IvaTab() {
-  const queryClient = useQueryClient()
-  const { push } = useToast()
-  const rates = useQuery({ queryKey: ['app', 'tax-rates'], queryFn: listTaxRates })
-  const [name, setName] = useState('')
-  const [rate, setRate] = useState('')
-  const [removing, setRemoving] = useState<TaxRate | null>(null)
-
-  async function refresh() {
-    await queryClient.invalidateQueries({ queryKey: ['app', 'tax-rates'] })
-  }
-
-  const add = useMutation({
-    mutationFn: () => createTaxRate({ name: name.trim(), rate: Number(rate) }),
-    onSuccess: () => {
-      setName('')
-      setRate('')
-      void refresh()
-      push({ tone: 'success', title: t('settings.rateAdded', 'IVA rate added.') })
-    },
-    onError: (error) => push({ tone: 'danger', title: getErrorMessage(error) }),
-  })
-
-  const remove = useMutation({
-    mutationFn: (item: TaxRate) => deleteTaxRate(item.id),
-    onSuccess: () => {
-      setRemoving(null)
-      void refresh()
-      push({ tone: 'success', title: t('settings.rateRemoved', 'IVA rate removed.') })
-    },
-    onError: (error) => push({ tone: 'danger', title: getErrorMessage(error) }),
-  })
-
-  const canAdd = name.trim() !== '' && rate.trim() !== '' && !Number.isNaN(Number(rate))
-
   return (
-    <div>
-      <p className="border-b border-slate-100 px-5 py-3 text-xs text-slate-500">
-        {t('settings.ivaHint', 'These IVA rates appear on products and on the invoice.')}
-      </p>
-      <div className="flex flex-col gap-2 border-b border-slate-100 px-5 py-3 sm:flex-row sm:items-end">
-        <label className="min-w-0 flex-1 text-[11px] font-semibold text-slate-600">
-          {t('settings.rateName', 'Name')}
-          <input
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            placeholder={t('settings.rateNamePlaceholder', 'General')}
-            className="mt-1 h-[38px] w-full rounded-xl border border-line bg-card px-3 text-[13px] font-medium text-ink outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-600/20"
-          />
-        </label>
-        <label className="w-full text-[11px] font-semibold text-slate-600 sm:w-28">
-          {t('settings.ratePercent', 'Percent')}
-          <input
-            value={rate}
-            inputMode="decimal"
-            onChange={(event) => setRate(event.target.value)}
-            placeholder="21"
-            className="mt-1 h-[38px] w-full rounded-xl border border-line bg-card px-3 font-mono text-[13px] font-medium text-ink outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-600/20"
-          />
-        </label>
-        <button
-          type="button"
-          disabled={!canAdd || add.isPending}
-          onClick={() => add.mutate()}
-          className="inline-flex h-[38px] cursor-pointer items-center justify-center gap-1.5 rounded-xl bg-brand-600 px-4 text-xs font-semibold text-brand-on hover:bg-brand-500 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          <Plus className="h-4 w-4" />
-          {t('settings.addRate', 'Add')}
-        </button>
-      </div>
-
-      {rates.isPending ? (
-        <div className="space-y-2 p-5">
-          {Array.from({ length: 4 }).map((_item, index) => (
-            <span key={index} className="block h-10 animate-pulse rounded-xl bg-slate-100" />
-          ))}
-        </div>
-      ) : (
-        <ul className="divide-y divide-slate-100">
-          {(rates.data ?? []).map((item) => (
-            <li key={item.id} className="flex items-center gap-3 px-5 py-3">
-              <span className="w-16 font-mono text-sm font-bold text-brand-600">{item.rate}%</span>
-              <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-slate-800">{item.name}</span>
-              <Tooltip content={t('common.delete', 'Delete')} align="end">
-                <button
-                  type="button"
-                  aria-label={`${t('common.delete', 'Delete')} ${item.rate}%`}
-                  onClick={() => setRemoving(item)}
-                  className="flex h-[30px] w-[30px] cursor-pointer items-center justify-center rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-600"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              </Tooltip>
-            </li>
-          ))}
-        </ul>
+    <RatesManager
+      queryKey={['app', 'tax-rates']}
+      api={IVA_API}
+      hint={t('settings.ivaHint', 'These IVA rates appear on products and on the invoice.')}
+      namePlaceholder={t('settings.rateNamePlaceholder', 'General')}
+      ratePlaceholder="21"
+      added={t('settings.rateAdded', 'IVA rate added.')}
+      updated={t('settings.rateUpdated', 'IVA rate updated.')}
+      removed={t('settings.rateRemoved', 'IVA rate removed.')}
+      deleteTitle={t('settings.deleteRateTitle', 'Remove this IVA rate?')}
+      deleteBody={t(
+        'settings.deleteRateBody',
+        ':name will disappear from the product and invoice lists. Products that already use it keep their rate.',
       )}
+    />
+  )
+}
 
-      <ConfirmDialog
-        open={removing !== null}
-        onClose={() => setRemoving(null)}
-        onConfirm={() => removing && remove.mutate(removing)}
-        loading={remove.isPending}
-        title={t('settings.deleteRateTitle', 'Remove this IVA rate?')}
-        description={t(
-          'settings.deleteRateBody',
-          ':name will disappear from the product and invoice lists. Products that already use it keep their rate.',
-        ).replace(':name', removing ? `${removing.rate}% (${removing.name})` : '')}
-        confirmLabel={t('common.delete', 'Delete')}
-      />
-    </div>
+function RecargoTab() {
+  return (
+    <RatesManager
+      queryKey={['app', 'recargo-rates']}
+      api={RECARGO_API}
+      hint={t(
+        'settings.recargoHint',
+        'Recargo de equivalencia is the surcharge some retailers pay on top of IVA. Keep the rates you use here.',
+      )}
+      namePlaceholder={t('settings.recargoNamePlaceholder', 'General')}
+      ratePlaceholder="5.2"
+      added={t('settings.recargoAdded', 'Recargo rate added.')}
+      updated={t('settings.recargoUpdated', 'Recargo rate updated.')}
+      removed={t('settings.recargoRemoved', 'Recargo rate removed.')}
+      deleteTitle={t('settings.deleteRecargoTitle', 'Remove this recargo rate?')}
+      deleteBody={t('settings.deleteRecargoBody', ':name will be removed from your recargo list.')}
+      emptyText={t('settings.noRecargo', 'No recargo rates yet. Add the ones your business uses.')}
+    />
   )
 }
 
@@ -561,6 +510,7 @@ function Page() {
           {tab === 'subscription' ? <SubscriptionTab /> : null}
           {tab === 'password' ? <PasswordTab /> : null}
           {tab === 'iva' ? <IvaTab /> : null}
+          {tab === 'recargo' ? <RecargoTab /> : null}
           {tab === 'whatsapp' ? <WhatsAppTab /> : null}
         </div>
       </div>

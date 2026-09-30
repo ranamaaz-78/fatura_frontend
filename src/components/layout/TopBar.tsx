@@ -22,7 +22,7 @@ export function TopBar({ title, showBack, onBack, onMenu }: TopBarProps) {
         ) : (
           <Tooltip content={t('nav.companyMenu', 'Company menu')}>
             <button type="button" onClick={onMenu} className="rounded-full" aria-label={t('nav.companyMenu', 'Company menu')}>
-              <Avatar name={t('nav.companyName', 'Fatura Demo')} size="sm" />
+              <Avatar name={t('nav.companyName', 'YK Digital Solutions')} size="sm" />
             </button>
           </Tooltip>
         )}

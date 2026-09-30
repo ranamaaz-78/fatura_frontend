@@ -109,6 +109,11 @@ function sampleDocument(type: PrintableType): SaleDocument {
     notes: t('printables.sampleNote', 'Sample note printed on this document.'),
     base_cents: base,
     tax_cents: tax,
+    discount_type: null,
+    discount_value: null,
+    discount_cents: 0,
+    recargo_percent: null,
+    recargo_cents: 0,
     total_cents: base + tax,
     settled_cents: 0,
     is_partial: false,
@@ -121,6 +126,7 @@ function toInput(row: PrintTemplate): PrintTemplateInput {
     primary_color: row.primary_color,
     font_key: row.font_key,
     footer_notes: row.footer_notes,
+    notes: row.notes,
     show_logo: row.show_logo,
     show_signature: row.show_signature,
   }
@@ -220,7 +226,7 @@ function Printables() {
     onSuccess: async (payload) => {
       setConfirm(null)
       await applyPayload(payload)
-      push({ tone: 'success', title: t('printables.resetDone', 'Reset to Fatura defaults.') })
+      push({ tone: 'success', title: t('printables.resetDone', 'Reset to YK Digital Solutions defaults.') })
     },
     onError: (error) => push({ tone: 'danger', title: getErrorMessage(error) }),
   })
@@ -264,7 +270,15 @@ function Printables() {
   const previewTheme: PrintTemplate | null = draft
     ? { type, ...draft }
     : saved ?? null
-  const sample = useMemo(() => sampleDocument(type), [type])
+  // The preview prints the note being typed, or a sample line while there is none.
+  const draftNotes = draft?.notes.trim() ?? ''
+  const sample = useMemo(
+    () => ({
+      ...sampleDocument(type),
+      notes: draftNotes || t('printables.sampleNote', 'Sample note printed on this document.'),
+    }),
+    [type, draftNotes],
+  )
   const canSave = Boolean(draft && isHex(draft.primary_color))
 
   useEffect(() => {
@@ -381,9 +395,22 @@ function Printables() {
 
               <Textarea
                 compact
+                rows={4}
+                maxLength={2000}
+                label={t('printables.notesField', 'Notes')}
+                hint={t(
+                  'printables.notesHint',
+                  'Added to every new document of this type and printed under Notes. It can only be changed here.',
+                )}
+                value={draft.notes}
+                onChange={(event) => patch({ notes: event.target.value })}
+              />
+
+              <Textarea
+                compact
                 rows={5}
                 label={t('printables.termsField', 'Terms and notes')}
-                hint={t('printables.termsHint', 'Printed on every document of this type. Sale notes still print above this.')}
+                hint={t('printables.termsHint', 'Printed on every document of this type, under the notes.')}
                 value={draft.footer_notes}
                 onChange={(event) => patch({ footer_notes: event.target.value })}
               />
@@ -430,7 +457,7 @@ function Printables() {
         tone="warning"
         loading={reset.isPending}
         title={t('printables.resetTitle', 'Reset this printable?')}
-        description={t('printables.resetBody', 'Colour, font, terms and toggles go back to the Fatura defaults. The logo is not removed.')}
+        description={t('printables.resetBody', 'Colour, font, terms and toggles go back to the YK Digital Solutions defaults. The logo is not removed.')}
         confirmLabel={t('printables.reset', 'Reset')}
         onClose={() => setConfirm(null)}
         onConfirm={() => reset.mutate()}

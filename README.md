@@ -1,4 +1,4 @@
-# Fatura Frontend
+# YK Digital Solutions Frontend
 
 React + Vite web app, packaged for Android and iOS with Capacitor.
 

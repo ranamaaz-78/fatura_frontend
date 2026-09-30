@@ -161,6 +161,10 @@ export function ProductDrawer({ product, currency, onClose, onEdit, onPrint, onD
               label={t('products.buyingPrice', 'Buying price')}
               value={formatCents(current.buying_price, currency)}
             />
+            <Line
+              label={t('products.lastBuyingPrice', 'Last buying price')}
+              value={current.last_buying_price === null ? '—' : formatCents(current.last_buying_price, currency)}
+            />
             <Line label={t('products.iva', '% IVA')} value={`${current.iva_percent}%`} />
             <div className="border-t border-slate-200 pt-2.5">
               <Line

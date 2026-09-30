@@ -1,7 +1,7 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { Camera, MessageCircle, Minus, Plus, Receipt, ScanLine, ShieldCheck, Trash2, UserRound, X } from 'lucide-react'
+import { Camera, Check, MessageCircle, Minus, Plus, Receipt, ScanLine, Search, ShieldCheck, Trash2, UserRound, X } from 'lucide-react'
 import { useEffect, useMemo, useState, type KeyboardEvent } from 'react'
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../auth/AuthProvider'
 import { useToast } from '../../components/ui/Toast'
 import { Select } from '../../components/ui/Select'
@@ -9,16 +9,19 @@ import { Tooltip } from '../../components/ui/Tooltip'
 import { t } from '../../i18n'
 import { cn } from '../../lib/cn'
 import { TONE_AMBER, TONE_GREEN, TONE_ROSE } from '../../lib/status'
-import { centsToInput, formatCents, lineTotals, parseAmountToCents, parseNumber } from '../../lib/money'
+import { allocateDiscount, centsToInput, formatCents, lineTotals, parseAmountToCents, parseNumber } from '../../lib/money'
 import { generateSaleDocumentPdfBase64 } from '../../lib/exportSaleSheet'
 import { getErrorMessage } from '../../services/api'
-import { listAllProducts, listTaxRates } from '../../services/catalog'
+import { listAllProducts, listRecargoRates, listTaxRates } from '../../services/catalog'
 import { createSale, getSale, listActiveCustomers, previewSale, updateSale } from '../../services/sales'
+import { getPrintTemplates } from '../../services/printables'
 import { getWhatsAppStatus, sendWhatsAppDocument } from '../../services/whatsapp'
 import type { Product } from '../../types/catalog'
-import type { Customer, IssuableType, PaymentStatus, SaleDocument, SaleInput } from '../../types/sales'
+import type { Customer, DiscountType, IssuableType, PaymentStatus, SaleDocument, SaleInput } from '../../types/sales'
 import { isSaleConverted } from '../../types/sales'
 import { ISSUABLE_TYPES, celebratesPayment, isIssuable, rulesFor, typeLabel } from './documentTypes'
+import { DiscountEditor } from './DiscountEditor'
+import { RecargoPicker } from './RecargoPicker'
 import { RecordPaymentModal } from './RecordPaymentModal'
 
 type DraftLine = {
@@ -82,6 +85,12 @@ const field =
 
 const label = 'mb-1 block text-[11px] font-semibold text-slate-600'
 
+// The client card has room to breathe: taller fields, a visible focus ring, a roomier label.
+const clientLabel = 'mb-1.5 block text-xs font-semibold text-slate-600'
+
+const clientField =
+  'h-10 w-full box-border rounded-xl border border-line bg-card px-3 text-[13px] text-ink outline-none transition focus:border-brand-600 focus:ring-2 focus:ring-brand-600/20'
+
 const optionOn = 'bg-brand-50'
 
 function digits(value: string): string {
@@ -113,11 +122,15 @@ function InvoiceNew() {
   const requested = params.get('type')
   const [type, setType] = useState<IssuableType>(editing ? 'quotation' : isIssuable(requested) ? requested : 'factura')
   const [hydrated, setHydrated] = useState(false)
+  const [recargoRestored, setRecargoRestored] = useState(false)
   const rules = rulesFor(type)
   const [issuedAt, setIssuedAt] = useState(nowLocal)
   const [payment, setPayment] = useState<PaymentStatus>('pending')
   const [methodOpen, setMethodOpen] = useState(false)
-  const [notes, setNotes] = useState('')
+  const [recargoId, setRecargoId] = useState<number | null>(null)
+  const [discountOpen, setDiscountOpen] = useState(false)
+  const [discountKind, setDiscountKind] = useState<DiscountType>('percent')
+  const [discountInput, setDiscountInput] = useState('')
 
   const [customerId, setCustomerId] = useState<number | null>(null)
   const [clientName, setClientName] = useState('')
@@ -130,6 +143,10 @@ function InvoiceNew() {
   const [camera, setCamera] = useState(false)
   const [lines, setLines] = useState<DraftLine[]>([])
   const [sendViaWhatsApp, setSendViaWhatsApp] = useState(true)
+
+  // The note on a document comes from Printables. A new document is stamped with the one for its
+  // type when it is issued; a saved quotation shows the note it was issued with.
+  const printTemplates = useQuery({ queryKey: ['app', 'print-templates'], queryFn: getPrintTemplates })
 
   const whatsAppStatus = useQuery({
     queryKey: ['whatsapp-status'],
@@ -174,6 +191,18 @@ function InvoiceNew() {
     queryFn: listTaxRates,
   })
 
+  // Recargo de equivalencia is offered on invoices only, from the rates kept in Settings.
+  const recargoRates = useQuery({
+    queryKey: ['app', 'recargo-rates'],
+    queryFn: listRecargoRates,
+    enabled: rules.allowsRecargo,
+  })
+
+  const selectedCustomer = customerId === null ? null : ((customers.data ?? []).find((customer) => customer.id === customerId) ?? null)
+  const hasClientData =
+    customerId !== null ||
+    [clientPhone, clientName, clientCompany, clientNif].some((value) => value.trim() !== '')
+
   const phoneNeedle = digits(clientPhone)
   const phoneMatches = useMemo(() => {
     if (phoneNeedle.length < 3) return []
@@ -214,24 +243,62 @@ function InvoiceNew() {
     return byKey
   }, [lines, rules.carriesDiscount, rules.carriesTax])
 
+  // A discount on the whole bill (percent, or an amount). It comes off the taxable base, and IVA
+  // is worked out on what is left. Split over the lines with the same rule the server uses.
+  const grossBase = useMemo(
+    () => lines.reduce((sum, line) => sum + (lineMath.get(line.key)?.base ?? 0), 0),
+    [lines, lineMath],
+  )
+  const typedDiscount = discountOpen && rules.carriesDiscount ? Math.max(parseNumber(discountInput) ?? 0, 0) : 0
+  const discountCents =
+    discountKind === 'percent'
+      ? Math.round((grossBase * Math.min(typedDiscount, 100)) / 100)
+      : Math.min(Math.round(typedDiscount * 100), grossBase)
+  const discountError =
+    typedDiscount <= 0
+      ? null
+      : discountKind === 'percent' && typedDiscount > 100
+        ? t('sales.discountTooHigh', 'A discount cannot be more than 100%.')
+        : discountKind === 'amount' && Math.round(typedDiscount * 100) > grossBase
+          ? t('sales.discountOverBill', 'The discount cannot be more than the bill.')
+          : null
+
   const totals = useMemo(() => {
     const groups = new Map<number, { base: number; tax: number }>()
+    const counted = lines.filter((line) => lineMath.has(line.key))
+    const shares = allocateDiscount(
+      counted.map((line) => lineMath.get(line.key)?.base ?? 0),
+      discountCents,
+    )
     let base = 0
     let tax = 0
 
-    for (const line of lines) {
+    counted.forEach((line, index) => {
       const math = lineMath.get(line.key)
-      if (!math) continue
-      base += math.base
-      tax += math.tax
+      if (!math) return
+      const net = math.base - shares[index]
+      const lineTax = Math.round(net * (math.iva / 100))
+      base += net
+      tax += lineTax
       const group = groups.get(math.iva) ?? { base: 0, tax: 0 }
-      group.base += math.base
-      group.tax += math.tax
+      group.base += net
+      group.tax += lineTax
       groups.set(math.iva, group)
-    }
+    })
 
-    return { base, tax, total: base + tax, groups: [...groups.entries()] }
-  }, [lines, lineMath])
+    return { gross: grossBase, discount: discountCents, base, tax, total: base + tax, groups: [...groups.entries()] }
+  }, [lines, lineMath, grossBase, discountCents])
+
+  // The same rounding the server applies: a percentage of the taxable base, to the cent.
+  const recargo = rules.allowsRecargo ? ((recargoRates.data ?? []).find((rate) => rate.id === recargoId) ?? null) : null
+  const recargoCents = recargo ? Math.round((totals.base * recargo.rate) / 100) : 0
+  const grandTotal = totals.total + recargoCents
+
+  const noteText = (
+    editing
+      ? (existing.data?.notes ?? '')
+      : (printTemplates.data?.templates.find((template) => template.type === type)?.notes ?? '')
+  ).trim()
 
   useEffect(() => {
     const document = existing.data
@@ -242,7 +309,13 @@ function InvoiceNew() {
     }
     setType('quotation')
     setIssuedAt(toLocalInput(document.issued_at))
-    setNotes(document.notes ?? '')
+    if (document.discount_type && document.discount_cents > 0) {
+      setDiscountOpen(true)
+      setDiscountKind(document.discount_type)
+      setDiscountInput(
+        document.discount_type === 'amount' ? centsToInput(document.discount_value ?? 0) : String(document.discount_value ?? ''),
+      )
+    }
     setCustomerId(document.customer_id)
     setClientName(document.client_name)
     setClientCompany(document.client_company ?? '')
@@ -251,6 +324,27 @@ function InvoiceNew() {
     setLines(linesFromDocument(document, catalog.data ?? []))
     setHydrated(true)
   }, [catalog.data, existing.data, hydrated, navigate])
+
+  // Reopening a saved quotation: pick its recargo rate again once the rates have loaded.
+  useEffect(() => {
+    const document = existing.data
+    if (!editing || !document || recargoRestored || !recargoRates.data) return
+    setRecargoRestored(true)
+
+    if (!document.recargo_percent) return
+    const match = recargoRates.data.find((rate) => rate.rate === document.recargo_percent)
+    if (match) {
+      setRecargoId(match.id)
+    } else {
+      push({
+        tone: 'danger',
+        title: t(
+          'sales.recargoMissing',
+          'This quotation had a recargo of :rate%, which is no longer in Settings. Add it back to keep it.',
+        ).replace(':rate', String(document.recargo_percent)),
+      })
+    }
+  }, [editing, existing.data, push, recargoRates.data, recargoRestored])
 
   const save = useMutation({
     mutationFn: (input: SaleInput) => (editing ? updateSale(editingId, input) : createSale(input)),
@@ -270,7 +364,7 @@ function InvoiceNew() {
             const tmpl = whatsAppStatus.data?.message_template
             const docType = document.type.charAt(0).toUpperCase() + document.type.slice(1)
             const totalStr = formatCents(document.total_cents, currency)
-            const compName = session?.company?.name || 'Fatura'
+            const compName = session?.company?.name || 'YK Digital Solutions'
             const custName = document.client_name || 'Customer'
             const caption = tmpl
               ? tmpl
@@ -411,6 +505,11 @@ function InvoiceNew() {
       return null
     }
 
+    if (discountError) {
+      push({ tone: 'danger', title: discountError })
+      return null
+    }
+
     const typedPhone = digits(clientPhone)
     if (customerId === null && typedPhone.length >= 3) {
       const exact = (customers.data ?? []).find((customer) => digits(customer.phone ?? '') === typedPhone)
@@ -450,7 +549,10 @@ function InvoiceNew() {
       client_phone: clientPhone.trim() || null,
       client_nif: clientNif.trim() || null,
       client_nie: null,
-      notes: notes.trim() || null,
+      discount_type: discountCents > 0 ? discountKind : null,
+      discount_value:
+        discountCents > 0 ? (discountKind === 'amount' ? Math.round(typedDiscount * 100) : typedDiscount) : null,
+      recargo_rate_id: recargo ? recargo.id : null,
       lines: prepared,
     }
   }
@@ -542,7 +644,7 @@ function InvoiceNew() {
             <div>
               <div className="flex items-center gap-2.5">
                 <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-600 font-mono text-sm font-bold text-brand-on">
-                  {initials(company?.name ?? 'Fatura')}
+                  {initials(company?.name ?? 'YK Digital Solutions')}
                 </span>
                 <div>
                   <h2 className="text-lg font-bold text-slate-900">{company?.name ?? '—'}</h2>
@@ -631,91 +733,157 @@ function InvoiceNew() {
 
         <div className="flex flex-col gap-4 rounded-2xl border border-brand-100 bg-page p-5">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h3 className="flex items-center gap-2 text-sm font-bold tracking-[0.06em] text-slate-800 uppercase">
-              <UserRound className="h-4 w-4 text-brand-500" />
+            <h3 className="flex items-center gap-2.5 text-sm font-bold tracking-[0.06em] text-slate-800 uppercase">
+              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
+                <UserRound className="h-4 w-4" />
+              </span>
               {t('sales.clientHeading', 'Client')}
             </h3>
             <div className="flex items-center gap-2 text-xs">
-              {customerId === null ? (
+              {customerId !== null ? (
+                <span
+                  className={cn(
+                    'inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 font-semibold',
+                    TONE_GREEN,
+                  )}
+                >
+                  <Check className="h-3 w-3" strokeWidth={3} />
+                  {t('sales.savedClient', 'Saved client')}
+                  {selectedCustomer ? <span className="font-mono">· {selectedCustomer.code}</span> : null}
+                </span>
+              ) : hasClientData ? (
                 <span className="rounded-full bg-brand-100 px-2.5 py-0.5 font-semibold text-brand-600">
                   {t('sales.newClient', 'New client')}
                 </span>
               ) : null}
-              <button type="button" onClick={clearCustomer} className="cursor-pointer font-medium text-slate-400 hover:text-slate-600">
-                {t('sales.clearClient', 'Clear')}
-              </button>
+              {hasClientData ? (
+                <button
+                  type="button"
+                  onClick={clearCustomer}
+                  className="inline-flex cursor-pointer items-center gap-1 rounded-lg px-2 py-1 font-semibold text-slate-500 transition hover:bg-rose-50 hover:text-rose-600"
+                >
+                  <X className="h-3.5 w-3.5" />
+                  {t('sales.clearClient', 'Clear')}
+                </button>
+              ) : null}
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2">
             <div className="relative">
-              <span className={label}>{t('sales.phone', 'Telephone')}</span>
-              <input
-                value={clientPhone}
-                onChange={(event) => onPhoneChange(event.target.value)}
-                onKeyDown={onPhoneKeyDown}
-                placeholder={t('sales.phoneSearch', 'Search by phone number')}
-                className={cn(field, 'font-mono')}
-              />
+              <span className={clientLabel}>{t('sales.phone', 'Telephone')}</span>
+              <span className="relative block">
+                <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <input
+                  value={clientPhone}
+                  onChange={(event) => onPhoneChange(event.target.value)}
+                  onKeyDown={onPhoneKeyDown}
+                  inputMode="tel"
+                  autoComplete="off"
+                  placeholder={t('sales.phoneSearch', 'Search by phone number')}
+                  className={cn(clientField, 'pl-9 font-mono')}
+                />
+              </span>
               {customerId === null && phoneMatches.length > 0 ? (
-                <div className="absolute top-full left-0 z-20 mt-1 w-[min(22rem,calc(100vw-2.5rem))] overflow-hidden rounded-xl border border-line bg-card shadow-lg">
+                <div className="absolute top-full left-0 z-20 mt-1.5 w-[min(24rem,calc(100vw-2.5rem))] overflow-hidden rounded-xl border border-line bg-card shadow-lg">
                   {phoneMatches.map((customer, index) => (
                     <button
                       key={customer.id}
                       type="button"
                       onClick={() => pickCustomer(customer)}
                       className={cn(
-                        'flex w-full cursor-pointer flex-col gap-0.5 border-b border-slate-100 px-3 py-2 text-left last:border-0 hover:bg-slate-50',
+                        'flex w-full cursor-pointer items-center gap-3 border-b border-slate-100 px-3 py-2.5 text-left last:border-0 hover:bg-slate-50',
                         index === 0 && optionOn,
                       )}
                     >
-                      <span className="text-xs font-bold text-slate-900">{customer.name}</span>
-                      <span className="text-[11px] text-slate-500">
-                        {[customer.company_name, customer.phone, customer.nif || customer.nie].filter(Boolean).join(' · ')}
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-50 text-[11px] font-bold text-brand-600">
+                        {customer.name.slice(0, 2).toUpperCase()}
                       </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-xs font-bold text-slate-900">{customer.name}</span>
+                        <span className="block truncate text-[11px] text-slate-500">
+                          {[customer.company_name, customer.phone, customer.nif || customer.nie].filter(Boolean).join(' · ')}
+                        </span>
+                      </span>
+                      <span className="shrink-0 font-mono text-[10px] font-semibold text-slate-400">{customer.code}</span>
                     </button>
                   ))}
                 </div>
               ) : null}
-              {clientPhone.trim() && whatsAppStatus.data?.status === 'connected' ? (
-                <label className="mt-1.5 flex items-center gap-1.5 text-[11px] font-medium text-emerald-700 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={sendViaWhatsApp}
-                    onChange={(e) => setSendViaWhatsApp(e.target.checked)}
-                    className="h-3.5 w-3.5 rounded border-emerald-300 text-emerald-600 focus:ring-emerald-500"
-                  />
-                  <MessageCircle className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                  <span>{t('whatsapp.sendDocToNumber', 'Send printable PDF via WhatsApp on save')}</span>
-                </label>
-              ) : null}
             </div>
+
             <div>
-              <span className={label}>{t('sales.clientName', 'Name')}</span>
-              <input value={clientName} onChange={(event) => setClientName(event.target.value)} className={cn(field, 'font-semibold')} />
+              <span className={clientLabel}>
+                {t('sales.clientName', 'Name')}
+                <span className="ml-0.5 text-rose-500">*</span>
+              </span>
+              <input
+                value={clientName}
+                onChange={(event) => setClientName(event.target.value)}
+                autoComplete="off"
+                className={cn(clientField, 'font-semibold')}
+              />
             </div>
+
             <div>
-              <span className={label}>{t('sales.clientCompany', 'Company name')}</span>
-              <input value={clientCompany} onChange={(event) => setClientCompany(event.target.value)} className={field} />
+              <span className={clientLabel}>{t('sales.clientCompany', 'Company name')}</span>
+              <input
+                value={clientCompany}
+                onChange={(event) => setClientCompany(event.target.value)}
+                autoComplete="off"
+                className={clientField}
+              />
             </div>
+
             <div>
-              <span className={label}>{t('sales.taxId', 'N.I.F/N.I.E')}</span>
+              <span className={clientLabel}>{t('sales.taxId', 'N.I.F/N.I.E')}</span>
               <input
                 value={clientNif}
                 onChange={(event) => setClientNif(event.target.value.toUpperCase())}
-                className={cn(field, 'font-mono uppercase')}
+                autoComplete="off"
+                className={cn(clientField, 'font-mono uppercase')}
               />
             </div>
           </div>
 
           {customerId === null && phoneNeedle.length >= 3 ? (
-            <p className="text-[11px] font-medium text-slate-500">
+            <p
+              className={cn(
+                'flex items-start gap-1.5 text-[11px] font-medium',
+                !customers.isPending && phoneMatches.length === 0 ? 'text-brand-600' : 'text-slate-500',
+              )}
+            >
+              <span
+                aria-hidden="true"
+                className={cn(
+                  'mt-[5px] h-1.5 w-1.5 shrink-0 rounded-full',
+                  !customers.isPending && phoneMatches.length === 0 ? 'bg-brand-500' : 'bg-slate-300',
+                )}
+              />
               {customers.isPending
                 ? t('sales.phoneSearching', 'Searching…')
                 : phoneMatches.length === 0
                   ? t('sales.phoneNew', 'No client on this number. Fill in the details — they will be saved as a new client.')
                   : t('sales.phoneEnter', 'Press Enter to use the highlighted client.')}
             </p>
+          ) : null}
+
+          {clientPhone.trim() && whatsAppStatus.data?.status === 'connected' ? (
+            <label
+              className={cn(
+                'flex cursor-pointer select-none items-center gap-2.5 rounded-xl border px-3 py-2.5 text-xs font-medium',
+                'border-emerald-200 bg-emerald-50 text-emerald-700 app-dark:border-emerald-500/30 app-dark:bg-emerald-500/15 app-dark:text-emerald-300',
+              )}
+            >
+              <input
+                type="checkbox"
+                checked={sendViaWhatsApp}
+                onChange={(e) => setSendViaWhatsApp(e.target.checked)}
+                className="h-4 w-4 shrink-0 rounded border-emerald-300 accent-emerald-600"
+              />
+              <MessageCircle className="h-4 w-4 shrink-0" />
+              <span>{t('whatsapp.sendDocToNumber', 'Send printable PDF via WhatsApp on save')}</span>
+            </label>
           ) : null}
         </div>
 
@@ -936,15 +1104,25 @@ function InvoiceNew() {
 
         <div className="grid gap-8 border-t border-slate-100 pt-4 lg:grid-cols-12">
           <div className="flex flex-col gap-3 lg:col-span-7">
-            <span className="text-xs font-bold tracking-[0.06em] text-slate-700 uppercase">
-              {t('sales.notes', 'Notes')}
+            <span className="flex items-center justify-between gap-3">
+              <span className="text-xs font-bold tracking-[0.06em] text-slate-700 uppercase">
+                {t('sales.notes', 'Notes')}
+              </span>
+              <Link to="/app/printables" className="text-[11px] font-semibold text-brand-600 hover:underline">
+                {t('sales.notesEdit', 'Edit in Printables')}
+              </Link>
             </span>
-            <textarea
-              rows={3}
-              value={notes}
-              onChange={(event) => setNotes(event.target.value)}
-              className="w-full resize-none rounded-xl border border-line bg-card px-3 py-2 text-xs text-ink outline-none"
-            />
+            <div className="min-h-[76px] rounded-xl border border-line bg-page px-3 py-2.5">
+              {noteText ? (
+                <p className="m-0 text-xs leading-relaxed whitespace-pre-wrap text-slate-700">{noteText}</p>
+              ) : (
+                <p className="m-0 text-xs leading-relaxed text-slate-400">
+                  {printTemplates.isPending
+                    ? t('common.loading', 'Loading')
+                    : t('sales.notesNone', 'No note set for this document type. Add one in Printables.')}
+                </p>
+              )}
+            </div>
           </div>
           <div className="flex flex-col gap-4 rounded-2xl border border-line bg-page p-6 lg:col-span-5">
             <h4 className="border-b border-slate-200 pb-2 text-xs font-bold tracking-[0.06em] text-slate-900 uppercase">
@@ -952,9 +1130,36 @@ function InvoiceNew() {
             </h4>
             <div className="flex flex-col gap-2 text-xs">
               <span className="flex justify-between text-slate-600">
-                <span>{rules.carriesTax ? t('sales.base', 'Taxable base') : t('sales.subtotal', 'Subtotal')}</span>
-                <span className="font-mono font-bold text-slate-800">{formatCents(totals.base, currency)}</span>
+                <span>
+                  {rules.carriesTax && !discountOpen ? t('sales.base', 'Taxable base') : t('sales.subtotal', 'Subtotal')}
+                </span>
+                <span className="font-mono font-bold text-slate-800">
+                  {formatCents(discountOpen ? totals.gross : totals.base, currency)}
+                </span>
               </span>
+              {rules.carriesDiscount ? (
+                <DiscountEditor
+                  open={discountOpen}
+                  kind={discountKind}
+                  value={discountInput}
+                  appliedCents={discountError ? 0 : totals.discount}
+                  currency={currency}
+                  error={discountError}
+                  onOpen={() => setDiscountOpen(true)}
+                  onClear={() => {
+                    setDiscountOpen(false)
+                    setDiscountInput('')
+                  }}
+                  onKind={setDiscountKind}
+                  onValue={setDiscountInput}
+                />
+              ) : null}
+              {discountOpen && rules.carriesTax ? (
+                <span className="flex justify-between text-slate-600">
+                  <span>{t('sales.base', 'Taxable base')}</span>
+                  <span className="font-mono font-bold text-slate-800">{formatCents(totals.base, currency)}</span>
+                </span>
+              ) : null}
               {rules.carriesTax ? (
                 <>
                   {totals.groups.map(([rate, group]) => (
@@ -975,9 +1180,19 @@ function InvoiceNew() {
                   ) : null}
                 </>
               ) : null}
+              {rules.allowsRecargo ? (
+                <RecargoPicker
+                  rates={recargoRates.data ?? []}
+                  loading={recargoRates.isPending}
+                  selectedId={recargo?.id ?? null}
+                  onSelect={setRecargoId}
+                  amountCents={recargoCents}
+                  currency={currency}
+                />
+              ) : null}
               <span className="mt-1 flex items-baseline justify-between border-t-2 border-slate-200 pt-3">
                 <span className="text-sm font-black text-slate-900">{t('sales.grandTotal', 'Total')}</span>
-                <span className="font-mono text-2xl font-black text-brand-500">{formatCents(totals.total, currency)}</span>
+                <span className="font-mono text-2xl font-black text-brand-500">{formatCents(grandTotal, currency)}</span>
               </span>
             </div>
             <button

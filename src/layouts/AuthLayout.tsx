@@ -29,7 +29,7 @@ export function AuthLayout() {
           <span className="inline-flex h-9 w-9 items-center justify-center rounded-[10px] bg-[#004ac6] text-white">
             <ScanLine className="h-[18px] w-[18px]" />
           </span>
-          <span className="text-xl font-bold tracking-[-0.02em] text-white">{t('app.name', 'Fatura')}</span>
+          <span className="text-xl font-bold tracking-[-0.02em] text-white">{t('app.name', 'YK Digital Solutions')}</span>
         </Link>
 
         <h2 className="mt-12 text-[32px] leading-[1.12] font-extrabold tracking-[-0.03em] sm:text-[40px] lg:mt-16">

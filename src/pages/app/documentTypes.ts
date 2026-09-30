@@ -7,6 +7,8 @@ export type DocumentRules = {
   /** Quotations promise nothing, so they never move stock. */
   movesStock: boolean
   carriesTax: boolean
+  /** Recargo de equivalencia can be added to an invoice or a quotation, and to nothing else. */
+  allowsRecargo: boolean
   carriesDiscount: boolean
   /** A proforma is issued at the price the user types, not the catalog one. */
   manualPrice: boolean
@@ -27,6 +29,7 @@ export type DocumentRules = {
 const RULES: Record<SaleType, DocumentRules> = {
   factura: {
     title: 'Invoice',
+    allowsRecargo: true,
     movesStock: true,
     carriesTax: true,
     carriesDiscount: true,
@@ -40,6 +43,7 @@ const RULES: Record<SaleType, DocumentRules> = {
   },
   albaran: {
     title: 'Albarán',
+    allowsRecargo: false,
     movesStock: true,
     carriesTax: false,
     carriesDiscount: true,
@@ -53,6 +57,7 @@ const RULES: Record<SaleType, DocumentRules> = {
   },
   quotation: {
     title: 'Quotation',
+    allowsRecargo: true,
     movesStock: false,
     carriesTax: true,
     carriesDiscount: true,
@@ -66,6 +71,7 @@ const RULES: Record<SaleType, DocumentRules> = {
   },
   proforma: {
     title: 'Proforma',
+    allowsRecargo: false,
     movesStock: true,
     carriesTax: false,
     carriesDiscount: false,
@@ -79,6 +85,7 @@ const RULES: Record<SaleType, DocumentRules> = {
   },
   abono: {
     title: 'Abono',
+    allowsRecargo: false,
     movesStock: true,
     carriesTax: true,
     carriesDiscount: true,

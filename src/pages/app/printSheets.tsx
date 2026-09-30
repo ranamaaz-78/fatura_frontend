@@ -106,6 +106,33 @@ function qtyText(value: number): string {
   return Number.isInteger(value) ? String(value) : String(value)
 }
 
+/** A line as the customer reads it: quantity x price less the line discount, before the bill discount. */
+function grossOf(line: SaleLine): { base: number; total: number } {
+  const base = line.base_cents + (line.bill_discount_cents ?? 0)
+  return { base, total: base + Math.round(base * (line.iva_percent / 100)) }
+}
+
+/** Subtotal and discount rows for a bill that has a discount on the whole bill. */
+function DiscountRows({ document, currency }: { document: SaleDocument; currency: string }) {
+  if (!document.discount_cents) return null
+
+  return (
+    <>
+      <span className="flex justify-between">
+        <span>{t('sales.subtotal', 'Subtotal')}</span>
+        <span className="font-mono">{formatCents(document.base_cents + document.discount_cents, currency)}</span>
+      </span>
+      <span className="flex justify-between">
+        <span>
+          {t('sales.discount', 'Discount')}
+          {document.discount_type === 'percent' ? ` ${document.discount_value}%` : ''}
+        </span>
+        <span className="font-mono">-{formatCents(document.discount_cents, currency)}</span>
+      </span>
+    </>
+  )
+}
+
 function taxGroups(lines: SaleLine[]): { rate: number; base: number; tax: number }[] {
   const groups = new Map<number, { base: number; tax: number }>()
   for (const line of lines) {
@@ -368,7 +395,7 @@ function InvoiceSheet({ document, company, currency, lines, issued, theme, logoS
               <span className="w-[54px] text-right font-mono text-xs text-[#64748b]">{line.discount_percent}</span>
               <span className="w-[54px] text-right font-mono text-xs text-[#64748b]">{line.iva_percent}</span>
               <span className="w-24 text-right font-mono text-[12.5px] font-bold">
-                {formatCents(line.total_cents, currency)}
+                {formatCents(grossOf(line).total, currency)}
               </span>
             </div>
           ))}
@@ -408,6 +435,7 @@ function InvoiceSheet({ document, company, currency, lines, issued, theme, logoS
           <div className="w-[286px] shrink-0">
             <div className="overflow-hidden rounded-[10px] border border-[#e2e8f0]">
               <div className="flex flex-col gap-2 px-4 py-3 text-xs text-[#475569]">
+                <DiscountRows document={document} currency={currency} />
                 <span className="flex justify-between">
                   <span>{t('sales.taxableBase', 'Taxable base')}</span>
                   <span className="font-mono">{formatCents(document.base_cents, currency)}</span>
@@ -416,6 +444,14 @@ function InvoiceSheet({ document, company, currency, lines, issued, theme, logoS
                   <span>{t('sales.taxTotal', 'Tax')}</span>
                   <span className="font-mono">{formatCents(document.tax_cents, currency)}</span>
                 </span>
+                {document.recargo_cents > 0 ? (
+                  <span className="flex justify-between">
+                    <span>
+                      {t('sales.recargo', 'Recargo de equivalencia')} {document.recargo_percent}%
+                    </span>
+                    <span className="font-mono">{formatCents(document.recargo_cents, currency)}</span>
+                  </span>
+                ) : null}
               </div>
               <div className="flex items-baseline justify-between border-t-2 border-[var(--print-accent)] bg-[var(--print-soft)] px-4 py-3.5">
                 <span className="text-xs font-extrabold tracking-[0.06em] uppercase">{t('sales.total', 'Total')}</span>
@@ -528,9 +564,14 @@ function AlbaranSheet({ document, company, currency, lines, issued, theme }: She
               <span className="w-[70px] text-right font-mono text-[15px] font-bold">{qtyText(line.quantity)}</span>
               <span className="w-24 text-right font-mono">{formatCents(line.unit_price, currency)}</span>
               <span className="w-[70px] text-right font-mono text-[#64748b]">{line.discount_percent}</span>
-              <span className="w-[110px] text-right font-mono font-bold">{formatCents(line.total_cents, currency)}</span>
+              <span className="w-[110px] text-right font-mono font-bold">{formatCents(grossOf(line).total, currency)}</span>
             </div>
           ))}
+          {document.discount_cents ? (
+            <div className="flex flex-col gap-1.5 border-t border-[#e2e8f0] px-3 py-2.5 text-xs text-[#475569]">
+              <DiscountRows document={document} currency={currency} />
+            </div>
+          ) : null}
           <div className="flex items-center border-t-2 border-[var(--print-accent)] bg-[#f8fafc] px-3 py-3">
             <span className="min-w-0 flex-1 text-xs font-extrabold tracking-[0.06em] uppercase">
               {t('sales.totalDelivered', 'Total delivered (net)')}
@@ -629,12 +670,6 @@ function QuotationSheet({ document, company, currency, lines, issued, theme, log
             <span className="mt-[7px] block text-sm font-bold">{clientTitle(document)}</span>
             <ClientLines document={document} inline />
           </div>
-          {document.notes ? (
-            <div className="flex-1 rounded-[10px] border border-dashed border-[#94a3b8] px-[18px] py-4">
-              <Label>{t('sales.subject', 'Subject')}</Label>
-              <span className="mt-[7px] block text-xs leading-relaxed text-[#475569]">{document.notes}</span>
-            </div>
-          ) : null}
         </div>
 
         <div className="mt-5 overflow-hidden rounded-[10px] border border-[var(--print-border)]">
@@ -668,10 +703,10 @@ function QuotationSheet({ document, company, currency, lines, issued, theme, log
               <span className="w-12 text-right font-mono text-xs text-[#64748b]">{line.discount_percent}</span>
               <span className="w-12 text-right font-mono text-xs text-[#64748b]">{line.iva_percent}</span>
               <span className="w-[90px] text-right font-mono text-xs text-[#475569]">
-                {formatCents(line.base_cents, currency)}
+                {formatCents(grossOf(line).base, currency)}
               </span>
               <span className="w-[92px] text-right font-mono text-[12.5px] font-bold">
-                {formatCents(line.total_cents, currency)}
+                {formatCents(grossOf(line).total, currency)}
               </span>
             </div>
           ))}
@@ -679,6 +714,14 @@ function QuotationSheet({ document, company, currency, lines, issued, theme, log
 
         <div className="mt-5 flex items-start gap-[22px]">
           <div className="min-w-0 flex-1 rounded-[10px] border border-[#e2e8f0] px-4 py-3.5">
+            {document.notes?.trim() ? (
+              <>
+                <Label>{t('sales.notes', 'Notes')}</Label>
+                <span className="mt-[7px] mb-3.5 block text-[11.5px] leading-[1.75] whitespace-pre-wrap text-[#475569]">
+                  {document.notes.trim()}
+                </span>
+              </>
+            ) : null}
             <Label>{t('sales.scope', 'Scope and conditions')}</Label>
             <span className="mt-[7px] block text-[11.5px] leading-[1.75] whitespace-pre-wrap text-[#475569]">
               {theme.footer_notes.trim() ||
@@ -687,6 +730,7 @@ function QuotationSheet({ document, company, currency, lines, issued, theme, log
           </div>
           <div className="w-[286px] shrink-0 overflow-hidden rounded-[10px] border border-[var(--print-border)]">
             <div className="flex flex-col gap-2 px-4 py-3 text-xs text-[#475569]">
+              <DiscountRows document={document} currency={currency} />
               <span className="flex justify-between">
                 <span>{t('sales.totalWithoutTax', 'Total without tax')}</span>
                 <span className="font-mono">{formatCents(document.base_cents, currency)}</span>
@@ -695,6 +739,14 @@ function QuotationSheet({ document, company, currency, lines, issued, theme, log
                 <span>{t('sales.taxTotal', 'Tax')}</span>
                 <span className="font-mono">{formatCents(document.tax_cents, currency)}</span>
               </span>
+              {document.recargo_cents > 0 ? (
+                <span className="flex justify-between">
+                  <span>
+                    {t('sales.recargo', 'Recargo de equivalencia')} {document.recargo_percent}%
+                  </span>
+                  <span className="font-mono">{formatCents(document.recargo_cents, currency)}</span>
+                </span>
+              ) : null}
             </div>
             <div className="flex items-baseline justify-between bg-[var(--print-accent)] px-4 py-3.5 text-white">
               <span className="text-[11px] font-extrabold tracking-[0.08em] uppercase">

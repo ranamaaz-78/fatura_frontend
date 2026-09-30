@@ -17,8 +17,29 @@ export function createTaxRate(input: { name: string; rate: number }): Promise<Ta
   return unwrap<TaxRate>(api.post('/app/tax-rates', input))
 }
 
+export function updateTaxRate(id: number, input: { name: string; rate: number }): Promise<TaxRate> {
+  return unwrap<TaxRate>(api.patch(`/app/tax-rates/${id}`, input))
+}
+
 export function deleteTaxRate(id: number): Promise<unknown> {
   return unwrap(api.delete(`/app/tax-rates/${id}`))
+}
+
+/** Recargo de equivalencia: the surcharge that some retailers pay on top of IVA. */
+export function listRecargoRates(): Promise<TaxRate[]> {
+  return unwrap<TaxRate[]>(api.get('/app/recargo-rates'))
+}
+
+export function createRecargoRate(input: { name: string; rate: number }): Promise<TaxRate> {
+  return unwrap<TaxRate>(api.post('/app/recargo-rates', input))
+}
+
+export function updateRecargoRate(id: number, input: { name: string; rate: number }): Promise<TaxRate> {
+  return unwrap<TaxRate>(api.patch(`/app/recargo-rates/${id}`, input))
+}
+
+export function deleteRecargoRate(id: number): Promise<unknown> {
+  return unwrap(api.delete(`/app/recargo-rates/${id}`))
 }
 
 export function listCategories(): Promise<Category[]> {

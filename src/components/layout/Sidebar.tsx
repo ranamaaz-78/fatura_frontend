@@ -28,7 +28,6 @@ export function Sidebar({ accent = 'blue', onNavigate }: SidebarProps) {
   const highlightIdle = isAdmin
     ? 'text-indigo-400 bg-indigo-600/10'
     : 'text-brand-500 bg-brand-600/10'
-  const versionColor = isAdmin ? 'text-indigo-400' : 'text-brand-500'
   const companyIcon = isAdmin
     ? 'bg-indigo-600/30 text-indigo-400'
     : 'bg-brand-600/30 text-brand-500'
@@ -42,11 +41,10 @@ export function Sidebar({ accent = 'blue', onNavigate }: SidebarProps) {
         <div className="min-w-0">
           <div className="flex items-center gap-1.5">
             <p className="font-bold text-white tracking-tight text-base truncate">
-              {t('app.name', 'Fatura')}
+              {t('app.name', 'YK Digital Solutions')}
             </p>
             {isAdmin ? <ShieldCheck className="w-3.5 h-3.5 text-indigo-400" /> : null}
           </div>
-          <p className={cn('text-[10px] font-mono', versionColor)}>v0.0.0</p>
         </div>
       </div>
 
@@ -56,7 +54,7 @@ export function Sidebar({ accent = 'blue', onNavigate }: SidebarProps) {
         </div>
         <div className="min-w-0">
           <p className="text-xs font-semibold text-white truncate">
-            {isAdmin ? t('app.name', 'Fatura') : (company?.name ?? t('nav.companyName', 'Fatura Demo'))}
+            {isAdmin ? t('app.name', 'YK Digital Solutions') : (company?.name ?? t('nav.companyName', 'YK Digital Solutions'))}
           </p>
           <p className="truncate font-mono text-[10px] text-sidebar-muted">
             {isAdmin ? t('nav.roleAdmin', 'Platform admin') : (company?.email ?? t('nav.taxId', '-'))}

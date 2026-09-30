@@ -52,7 +52,7 @@ api.interceptors.response.use(
   },
 )
 
-/** Unwraps the `{ success, message, data }` envelope every Fatura endpoint returns. */
+/** Unwraps the `{ success, message, data }` envelope every YK Digital Solutions endpoint returns. */
 export async function unwrap<T>(promise: Promise<{ data: ApiSuccess<T> }>): Promise<T> {
   const response = await promise
   return response.data.data

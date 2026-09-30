@@ -534,7 +534,7 @@ function exportPayload(kind: ReportKind, data: ReportPayload, currency: string, 
   }
 
   const stamp = usesPeriod(kind) ? (period === 'custom' ? `${from}_${to}` : period) : 'snapshot'
-  downloadWorkbook(`fatura-${kind}-${stamp}.xlsx`, sheets)
+  downloadWorkbook(`ykdigitalsolutions-${kind}-${stamp}.xlsx`, sheets)
 }
 
 function Reports() {

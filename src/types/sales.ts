@@ -55,6 +55,8 @@ export type CustomerInput = {
   nie: string | null
 }
 
+export type DiscountType = 'percent' | 'amount'
+
 export type SaleLine = {
   id?: number
   position: number
@@ -69,6 +71,8 @@ export type SaleLine = {
   base_cents: number
   tax_cents: number
   total_cents: number
+  /** This line's share of the bill discount. base_cents and tax_cents are already net of it. */
+  bill_discount_cents?: number
   settled_quantity?: number
   remaining_quantity?: number
 }
@@ -123,6 +127,14 @@ export type SaleDocument = {
   notes: string | null
   base_cents: number
   tax_cents: number
+  /** A discount on the whole bill. base_cents is the taxable base after it. */
+  discount_type: DiscountType | null
+  /** The percent, or the amount in cents, depending on discount_type. */
+  discount_value: number | null
+  discount_cents: number
+  /** Recargo de equivalencia on an invoice: the rate it was issued with, and its amount. */
+  recargo_percent: number | null
+  recargo_cents: number
   total_cents: number
   settled_cents: number
   is_partial: boolean
@@ -146,6 +158,11 @@ export type SaleInput = {
   issued_at: string
   payment_status: PaymentStatus
   payment_method_id?: number | null
+  /** A discount on the whole bill: a percent, or an amount in cents. Not on proformas. */
+  discount_type?: DiscountType | null
+  discount_value?: number | null
+  /** A rate from Settings. The server works out the amount. Invoices only. */
+  recargo_rate_id?: number | null
   customer_id: number | null
   save_customer: boolean
   client_name: string
@@ -153,7 +170,6 @@ export type SaleInput = {
   client_phone: string | null
   client_nif: string | null
   client_nie: string | null
-  notes: string | null
   lines: SaleLineInput[]
 }
 

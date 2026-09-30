@@ -109,7 +109,7 @@ function UiGallery() {
     <div className="min-h-svh bg-slate-50 p-4 sm:p-6 space-y-6 max-w-[1280px] mx-auto">
       <PageHeader
         title={t('gallery.title', 'Component gallery')}
-        subtitle={t('gallery.subtitle', 'Visual check of the Fatura UI library. Not part of the product.')}
+        subtitle={t('gallery.subtitle', 'Visual check of the YK Digital Solutions UI library. Not part of the product.')}
         actions={
           <>
             <Button variant="ghost" icon={<LayoutDashboard className="w-4 h-4" />}>

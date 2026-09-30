@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Fatura</string>
-    <string name="title_activity_main">Fatura</string>
+    <string name="app_name">YK Digital Solutions</string>
+    <string name="title_activity_main">YK Digital Solutions</string>
     <string name="package_name">com.fatura.app</string>
     <string name="custom_url_scheme">com.fatura.app</string>
 </resources>

@@ -179,7 +179,7 @@ function Home() {
             <p className="mt-6 max-w-[540px] text-base leading-relaxed text-[#cbd5e1] sm:text-lg">
               {t(
                 'public.heroBody',
-                'Fatura brings products, barcode scanning, invoices, customers, suppliers and reports into one place. Use it at the counter on your computer, or in your pocket on Android and iPhone.',
+                'YK Digital Solutions brings products, barcode scanning, invoices, customers, suppliers and reports into one place. Use it at the counter on your computer, or in your pocket on Android and iPhone.',
               )}
             </p>
 
@@ -308,7 +308,7 @@ function Home() {
             <p className="mt-4.5 text-base leading-relaxed text-[#434655] sm:text-lg">
               {t(
                 'public.mobileBody',
-                'Install Fatura on Android or iPhone and run your shop from the floor, the warehouse or the road.',
+                'Install YK Digital Solutions on Android or iPhone and run your shop from the floor, the warehouse or the road.',
               )}
             </p>
 

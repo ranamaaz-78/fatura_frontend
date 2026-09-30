@@ -37,7 +37,7 @@ export function Footer() {
               <span className="inline-flex h-[34px] w-[34px] items-center justify-center rounded-[10px] bg-[#004ac6] text-white">
                 <ScanLine className="h-[17px] w-[17px]" />
               </span>
-              <span className="text-[19px] font-bold text-white">{t('app.name', 'Fatura')}</span>
+              <span className="text-[19px] font-bold text-white">{t('app.name', 'YK Digital Solutions')}</span>
             </span>
             <p className="mt-4 text-sm leading-relaxed text-[#94a3b8]">
               {t(
@@ -65,7 +65,7 @@ export function Footer() {
 
         <div className="mt-12 flex flex-col gap-3 border-t border-white/8 pt-6 text-[13px] text-[#94a3b8] sm:flex-row sm:justify-between">
           <span>
-            {t('footer.rights', '© 2026 Fatura. All rights reserved.')}
+            {t('footer.rights', '© 2026 YK Digital Solutions. All rights reserved.')}
           </span>
           <Link to="/login" className="text-[#cbd5e1] transition-colors hover:text-white">
             {t('footer.login', 'Log in to your account')}

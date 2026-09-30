@@ -40,7 +40,7 @@ export function SendWhatsAppModal({ open, onClose, document, company, currency }
     const tmpl = statusQuery.data?.message_template
     const docType = document.type.charAt(0).toUpperCase() + document.type.slice(1)
     const totalStr = formatCents(document.total_cents, currency)
-    const compName = company?.name || 'Fatura'
+    const compName = company?.name || 'YK Digital Solutions'
     const custName = document.client_name || 'Customer'
 
     if (tmpl) {

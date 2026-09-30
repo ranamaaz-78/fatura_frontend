@@ -10,6 +10,8 @@ export type PrintTemplate = {
   primary_color: string
   font_key: PrintFontKey
   footer_notes: string
+  /** Printed on every new document of this type. Changed only in Printables. */
+  notes: string
   show_logo: boolean
   show_signature: boolean
 }

@@ -26,6 +26,8 @@ export type Product = {
   barcode: string
   barcode_generated: boolean
   buying_price: number
+  /** The buying price before its latest change. Null until it has changed once. */
+  last_buying_price: number | null
   selling_price: number
   margin_percent: number
   iva_percent: number

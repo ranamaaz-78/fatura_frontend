@@ -8,6 +8,7 @@ export const FALLBACK_PRINT_THEME: Omit<PrintTemplate, 'type'> = {
   primary_color: '#004ac6',
   font_key: 'geist',
   footer_notes: '',
+  notes: '',
   show_logo: true,
   show_signature: false,
 }
