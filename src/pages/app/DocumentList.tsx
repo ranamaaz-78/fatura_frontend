@@ -64,9 +64,9 @@ const THEMES: Record<IssuableType, Theme> = {
   },
   proforma: {
     icon: FileCheck2,
-    tile: 'bg-sidebar text-sidebar-text',
-    badge: 'bg-sidebar text-sidebar-text',
-    rowMark: 'bg-sidebar',
+    tile: 'bg-brand-50 text-brand-600 ring-2 ring-brand-600 ring-inset',
+    badge: 'bg-brand-50 text-brand-600 ring-1 ring-brand-600 ring-inset',
+    rowMark: 'bg-brand-600',
   },
 }
 

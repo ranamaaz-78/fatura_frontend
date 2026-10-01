@@ -418,7 +418,7 @@ const en: Record<string, string> = {
 
   'printables.subtitle': 'Logo, colour, font and terms for invoices, delivery notes, quotes and proformas.',
   'printables.logo': 'Company logo',
-  'printables.logoHint': 'Used on invoices, quotes and proformas when “Show logo” is on. Delivery notes never show a logo.',
+  'printables.logoHint': 'Shown on invoices, quotes and proformas when “Show logo” is on; without a logo, your initials are shown instead. Delivery notes carry no company details at all.',
   'printables.dropLogo': 'Drop a logo or click to upload',
   'printables.logoTypes': 'JPEG, PNG or WebP · 5 MB max',
   'printables.removeLogo': 'Remove',

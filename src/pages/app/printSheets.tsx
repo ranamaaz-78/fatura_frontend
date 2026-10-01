@@ -1,14 +1,12 @@
-import { CircleAlert } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
-import { useEffect, type ReactNode } from 'react'
+import { Fragment, useEffect, type ReactNode } from 'react'
 import { t } from '../../i18n'
 import { cn } from '../../lib/cn'
 import { formatDate } from '../../lib/format'
 import { formatCents } from '../../lib/money'
 import { pickPrintTemplate, printSheetStyle } from '../../lib/printTheme'
 import { ensurePrintFonts } from '../../lib/printFonts'
-import { getPrintTemplates } from '../../services/printables'
-import { loadImageBlob } from '../../services/productImages'
+import { getPrintTemplates, loadLogoBlob } from '../../services/printables'
 import type { Company } from '../../types/module01'
 import type { PrintTemplate } from '../../types/printables'
 import { saleDisplayStatus, type SaleDisplayStatus, type SaleDocument, type SaleLine } from '../../types/sales'
@@ -28,11 +26,24 @@ type SheetProps = PrintSheetProps & {
   logoSrc: string | null
 }
 
+/*
+ * Four documents, four looks:
+ *   Invoice    classic letterhead, hairline rules, IVA summary.
+ *   Quotation  a full-width colour band, tinted cards, total in a colour block.
+ *   Proforma   a centred letterhead, a dark table head, a boxed total.
+ *   Albarán    a plain delivery slip: no company details at all, dashed rules, a signature.
+ * Figures are set in tabular numerals so the columns line up.
+ */
+
+/** Past this many lines a sheet tightens up, so the totals still fit on the one A4 page. */
+const DENSE_AFTER = 8
+const D = 'group-data-[dense=true]:'
+
 function Label({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <span className={cn('block text-[8px] font-bold tracking-[0.14em] text-[#64748b] uppercase', className)}>
+    <p className={cn('m-0 text-[9.5px] font-semibold tracking-[0.08em] text-[#64748b] uppercase', className)}>
       {children}
-    </span>
+    </p>
   )
 }
 
@@ -42,21 +53,20 @@ function paymentText(status: SaleDisplayStatus): string {
   return status === 'paid' ? t('sales.paid', 'Paid') : t('sales.pending', 'Pending')
 }
 
-function PaymentPill({ status, compact = false }: { status: SaleDisplayStatus; compact?: boolean }) {
+function StatusBadge({ status, onAccent = false }: { status: SaleDisplayStatus; onAccent?: boolean }) {
   return (
     <span
       className={cn(
-        'inline-flex items-center rounded-full border font-bold uppercase',
-        compact
-          ? 'mt-2 gap-[5px] px-[11px] py-[3px] text-[10px] tracking-[0.08em]'
-          : 'gap-1.5 px-3 py-1 text-[11px] tracking-[0.06em]',
-        status === 'voided'
-          ? 'border-[#fecdd3] bg-[#fff1f2] text-[#be123c]'
-          : status === 'partial'
-            ? 'border-[#bae6fd] bg-[#f0f9ff] text-[#0369a1]'
-            : status === 'paid'
-              ? 'border-[#a7f3d0] bg-[#ecfdf5] text-[#047857]'
-              : 'border-[#fde68a] bg-[#fffbeb] text-[#b45309]',
+        'inline-block rounded px-2 py-[3px] text-[9.5px] font-semibold tracking-[0.06em] uppercase',
+        onAccent
+          ? 'bg-white/20 text-white'
+          : status === 'voided'
+            ? 'bg-[#fff1f2] text-[#be123c]'
+            : status === 'partial'
+              ? 'bg-[#f0f9ff] text-[#0369a1]'
+              : status === 'paid'
+                ? 'bg-[#ecfdf5] text-[#047857]'
+                : 'bg-[#fffbeb] text-[#b45309]',
       )}
     >
       {paymentText(status)}
@@ -77,10 +87,12 @@ function clientAttn(document: SaleDocument): string | null {
 }
 
 function companyInitials(company: Company | null): string {
-  const name = company?.name?.trim() || 'FA'
-  const parts = name.split(/\s+/).filter(Boolean)
+  const parts = (company?.name ?? '').trim().split(/\s+/).filter(Boolean)
+  // A name that starts with its own acronym ("YK Digital Solutions") keeps it.
+  const first = parts[0] ?? ''
+  if (first.length <= 3 && /[A-Z]/.test(first) && first === first.toUpperCase()) return first
   if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase()
-  return name.slice(0, 2).toUpperCase()
+  return (parts[0] ?? '·').slice(0, 2).toUpperCase()
 }
 
 function companyPlace(company: Company | null): string[] {
@@ -92,45 +104,18 @@ function companyPlace(company: Company | null): string[] {
   return lines
 }
 
-function companyContactLine(company: Company | null, includeEmail: boolean): string {
-  if (!company) return ''
-  const parts = [
-    company.address,
-    [company.city, company.country].filter(Boolean).join(', ') || null,
-    includeEmail ? company.email : null,
-  ].filter(Boolean)
-  return parts.join(' · ')
+function companyContact(company: Company | null): string {
+  return [company?.email, company?.phone].filter(Boolean).join(' · ')
 }
 
 function qtyText(value: number): string {
-  return Number.isInteger(value) ? String(value) : String(value)
+  return String(value)
 }
 
 /** A line as the customer reads it: quantity x price less the line discount, before the bill discount. */
 function grossOf(line: SaleLine): { base: number; total: number } {
   const base = line.base_cents + (line.bill_discount_cents ?? 0)
   return { base, total: base + Math.round(base * (line.iva_percent / 100)) }
-}
-
-/** Subtotal and discount rows for a bill that has a discount on the whole bill. */
-function DiscountRows({ document, currency }: { document: SaleDocument; currency: string }) {
-  if (!document.discount_cents) return null
-
-  return (
-    <>
-      <span className="flex justify-between">
-        <span>{t('sales.subtotal', 'Subtotal')}</span>
-        <span className="font-mono">{formatCents(document.base_cents + document.discount_cents, currency)}</span>
-      </span>
-      <span className="flex justify-between">
-        <span>
-          {t('sales.discount', 'Discount')}
-          {document.discount_type === 'percent' ? ` ${document.discount_value}%` : ''}
-        </span>
-        <span className="font-mono">-{formatCents(document.discount_cents, currency)}</span>
-      </span>
-    </>
-  )
 }
 
 function taxGroups(lines: SaleLine[]): { rate: number; base: number; tax: number }[] {
@@ -142,742 +127,924 @@ function taxGroups(lines: SaleLine[]): { rate: number; base: number; tax: number
     groups.set(line.iva_percent, group)
   }
   return [...groups.entries()]
-    .sort((a, b) => a[0] - b[0])
+    .sort((a, b) => b[0] - a[0])
     .map(([rate, group]) => ({ rate, ...group }))
 }
 
+type TotalRow = { label: ReactNode; value: string }
+
+/** Subtotal and discount, for a bill with a discount on the whole of it. */
+function discountRows(document: SaleDocument, currency: string): TotalRow[] {
+  if (!document.discount_cents) return []
+  return [
+    {
+      label: t('sales.subtotal', 'Subtotal'),
+      value: formatCents(document.base_cents + document.discount_cents, currency),
+    },
+    {
+      label: `${t('sales.discount', 'Discount')}${document.discount_type === 'percent' ? ` (${document.discount_value}%)` : ''}`,
+      value: `−${formatCents(document.discount_cents, currency)}`,
+    },
+  ]
+}
+
+function recargoRows(document: SaleDocument, currency: string): TotalRow[] {
+  if (!document.recargo_cents) return []
+  return [
+    {
+      label: `${t('sales.recargo', 'Recargo de equivalencia')} (${document.recargo_percent}%)`,
+      value: formatCents(document.recargo_cents, currency),
+    },
+  ]
+}
+
+function discountColumn(lines: SaleLine[], width: number): Column[] {
+  if (!lines.some((line) => line.discount_percent > 0)) return []
+  return [
+    {
+      key: 'dto',
+      label: t('sales.dto', 'Disc.'),
+      width,
+      render: (line) => (line.discount_percent ? `${line.discount_percent}%` : '—'),
+    },
+  ]
+}
+
+/* ------------------------------------------------------------------ shared pieces */
+
 function SheetFrame({
   children,
-  className,
   theme,
+  voided,
+  lineCount,
+  denseAfter = DENSE_AFTER,
+  row = false,
+  className,
 }: {
   children: ReactNode
-  className?: string
   theme: PrintTemplate
+  voided: boolean
+  lineCount: number
+  /** Lines past which this sheet tightens up; the roomier layouts go dense sooner. */
+  denseAfter?: number
+  /** Lay the sheet out side by side (a side panel) instead of top to bottom. */
+  row?: boolean
+  className?: string
 }) {
   return (
     <article
       id="printable-invoice"
+      data-dense={lineCount > denseAfter}
       style={printSheetStyle(theme.primary_color, theme.font_key)}
-      className={cn(
-        'relative mx-auto box-border h-[1123px] w-[794px] overflow-hidden bg-white text-[#0f172a] shadow-[0_1px_4px_rgba(15,23,42,0.08)] ring-1 ring-slate-200/80 print:fixed print:inset-0 print:mx-0 print:h-full print:w-full print:shadow-none print:ring-0',
-        className,
-      )}
+      className="group relative mx-auto box-border h-[1123px] w-[794px] overflow-hidden bg-white text-[#0f172a] shadow-[0_1px_4px_rgba(15,23,42,0.08)] ring-1 ring-slate-200/80 print:fixed print:inset-0 print:mx-0 print:h-full print:w-full print:shadow-none print:ring-0"
     >
-      {children}
+      {voided ? (
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute top-[46%] left-1/2 z-10 -translate-x-1/2 -translate-y-1/2 -rotate-[24deg] rounded-xl border-[6px] border-[#be123c]/20 px-10 py-1 text-[104px] font-bold tracking-[0.12em] text-[#be123c]/15 uppercase"
+        >
+          {t('sales.voidStamp', 'Void')}
+        </span>
+      ) : null}
+      <div className={cn('relative box-border flex h-full min-h-0', row ? 'flex-row' : 'flex-col', className)}>{children}</div>
     </article>
   )
 }
 
-function SheetBody({ children, className }: { children: ReactNode; className?: string }) {
+/**
+ * Looks at the loaded logo once. A logo on a transparent or white ground sits straight on the
+ * page; one with its own coloured ground (a photo, a badge) gets rounded corners and a hairline
+ * frame, so it reads as a deliberate tile rather than a pasted rectangle.
+ */
+function frameIfOpaque(event: { currentTarget: HTMLImageElement }) {
+  const img = event.currentTarget
+  try {
+    const width = Math.max(1, Math.min(img.naturalWidth, 64))
+    const height = Math.max(1, Math.min(img.naturalHeight, 64))
+    const canvas = window.document.createElement('canvas')
+    canvas.width = width
+    canvas.height = height
+    const context = canvas.getContext('2d')
+    if (!context) return
+    context.drawImage(img, 0, 0, width, height)
+    const { data } = context.getImageData(0, 0, width, height)
+    const points = [
+      [0, 0],
+      [width - 1, 0],
+      [0, height - 1],
+      [width - 1, height - 1],
+      [Math.floor(width / 2), 0],
+      [0, Math.floor(height / 2)],
+    ]
+    const framed = points.every(([x, y]) => {
+      const at = (y * width + x) * 4
+      const [r, g, b, a] = [data[at], data[at + 1], data[at + 2], data[at + 3]]
+      const blendsIn = a < 200 || (r > 246 && g > 246 && b > 246)
+      return !blendsIn
+    })
+    img.dataset.framed = framed ? 'true' : 'false'
+  } catch {
+    // An image the canvas cannot read simply keeps the plain look.
+  }
+}
+
+/** The uploaded logo at its own proportions, fitted inside a box and never stretched or enlarged. */
+function LogoImage({
+  src,
+  alt,
+  maxHeight,
+  maxWidth,
+}: {
+  src: string
+  alt: string
+  maxHeight: number
+  maxWidth: number
+}) {
   return (
-    <div className={cn('box-border flex h-full min-h-0 flex-col', className)}>
-      {children}
-    </div>
+    <img
+      src={src}
+      alt={alt}
+      onLoad={frameIfOpaque}
+      style={{ maxHeight, maxWidth }}
+      className="block h-auto w-auto shrink-0 object-contain data-[framed=true]:rounded-[10px] data-[framed=true]:ring-1 data-[framed=true]:ring-[#e2e8f0]"
+    />
   )
 }
 
+/**
+ * The company's mark: the uploaded logo, or its initials when there is none.
+ * Hidden entirely when "Show logo" is off in Printables.
+ */
 function LogoMark({
   company,
-  outline = false,
-  showLogo,
   logoSrc,
+  show,
+  tone = 'solid',
+  size = 48,
+  imageSize,
+  maxWidth = 230,
 }: {
   company: Company | null
-  outline?: boolean
-  showLogo: boolean
   logoSrc: string | null
+  show: boolean
+  tone?: 'solid' | 'outline'
+  size?: number
+  /** Height allowed for an uploaded logo; it is roomier than the initials tile. */
+  imageSize?: number
+  maxWidth?: number
 }) {
-  const box = outline
-    ? 'h-[52px] w-[52px] rounded-[10px] border-2 border-[var(--print-accent)] text-lg text-[var(--print-accent)]'
-    : 'h-14 w-14 rounded-xl bg-[var(--print-accent)] text-[19px] tracking-[-0.02em] text-white'
+  if (!show) return null
 
-  if (showLogo && logoSrc) {
-    return (
-      <span className={cn('flex shrink-0 items-center justify-center overflow-hidden bg-white', box)}>
-        <img src={logoSrc} alt={company?.name ?? ''} className="h-full w-full object-contain p-0.5" />
-      </span>
-    )
+  if (logoSrc) {
+    return <LogoImage src={logoSrc} alt={company?.name ?? ''} maxHeight={imageSize ?? Math.round(size * 1.35)} maxWidth={maxWidth} />
   }
 
   return (
-    <span className={cn('flex shrink-0 items-center justify-center font-mono font-bold', box)}>
+    <span
+      aria-hidden="true"
+      style={{ width: size, height: size, fontSize: Math.round(size * 0.36) }}
+      className={cn(
+        'inline-flex shrink-0 items-center justify-center rounded-xl font-semibold tracking-[-0.02em]',
+        tone === 'solid' && 'bg-[var(--print-accent)] text-white',
+        tone === 'outline' && 'border-2 border-[var(--print-accent)] text-[var(--print-accent)]',
+      )}
+    >
       {companyInitials(company)}
     </span>
   )
 }
 
-function SignatureRow() {
-  return (
-    <div className="mt-8 flex gap-10">
-      <div className="min-w-0 flex-1">
-        <span className="block h-px bg-[#cbd5e1]" />
-        <span className="mt-1.5 block text-[9px] font-bold tracking-[0.12em] text-[#64748b] uppercase">
-          {t('printables.receivedBy', 'Received by')}
-        </span>
-      </div>
-      <div className="w-[160px] shrink-0">
-        <span className="block h-px bg-[#cbd5e1]" />
-        <span className="mt-1.5 block text-[9px] font-bold tracking-[0.12em] text-[#64748b] uppercase">
-          {t('printables.signDate', 'Date')}
-        </span>
-      </div>
-    </div>
-  )
-}
-
-function TermsBlock({
-  notes,
-  footer,
-  signature,
-  notesLabel,
-}: {
-  notes: string | null
-  footer: string
-  signature: boolean
-  notesLabel?: string
-}) {
-  const sale = notes?.trim() ?? ''
-  const terms = footer.trim()
-
+function ClientBlock({ document, size = 'md' }: { document: SaleDocument; size?: 'md' | 'lg' }) {
+  const attn = clientAttn(document)
+  const id = taxId(document)
   return (
     <>
-      {sale || terms ? (
-        <div className="mt-5 space-y-3">
-          {sale ? (
-            <div>
-              <Label>{notesLabel ?? t('sales.notes', 'Notes')}</Label>
-              <p className="mt-1.5 mb-0 text-[11.5px] leading-[1.65] whitespace-pre-wrap text-[#475569]">{sale}</p>
-            </div>
-          ) : null}
-          {terms ? (
-            <div>
-              <Label>{t('printables.terms', 'Terms')}</Label>
-              <p className="mt-1.5 mb-0 text-[11.5px] leading-[1.65] whitespace-pre-wrap text-[#475569]">{terms}</p>
-            </div>
-          ) : null}
-        </div>
-      ) : null}
-      {signature ? <SignatureRow /> : null}
+      <p className={cn('mt-2.5 mb-0 font-semibold text-[#0f172a]', size === 'lg' ? 'text-[16px]' : 'text-[14px]')}>
+        {clientTitle(document)}
+      </p>
+      <p className="mt-1 mb-0 text-[11px] leading-[1.65] text-[#475569]">
+        {attn ? (
+          <span className="block">
+            {t('sales.attn', 'Attn.')} {attn}
+          </span>
+        ) : null}
+        {id ? <span className="block">N.I.F / N.I.E {id}</span> : null}
+        {document.client_phone ? <span className="block">{document.client_phone}</span> : null}
+        {document.client_address ? <span className="block">{document.client_address}</span> : null}
+      </p>
     </>
   )
 }
 
-function ClientLines({ document, inline = false }: { document: SaleDocument; inline?: boolean }) {
-  const attn = clientAttn(document)
-  const id = taxId(document)
-  if (inline) {
-    return (
-      <span className="mt-[3px] block text-[11.5px] leading-[1.7] text-[#475569]">
-        {[attn ? `${t('sales.attn', 'Attn.')} ${attn}` : null, id ? `N.I.F/N.I.E ${id}` : null, document.client_phone]
-          .filter(Boolean)
-          .join(' · ')}
-      </span>
-    )
-  }
+type MetaRow = { label: string; value: ReactNode; strong?: boolean }
+
+function MetaList({ rows, className }: { rows: MetaRow[]; className?: string }) {
   return (
-    <span className="mt-[3px] block text-[11.5px] leading-[1.7] text-[#475569]">
-      {attn ? <span className="block">{t('sales.attn', 'Attn.')} {attn}</span> : null}
-      {id ? <span className="block font-mono">N.I.F/N.I.E {id}</span> : null}
-      {document.client_phone ? <span className="block font-mono">{document.client_phone}</span> : null}
+    <dl className={cn('m-0 grid grid-cols-[auto_auto] gap-x-10 gap-y-2 text-[11px]', className)}>
+      {rows.map((row) => (
+        <Fragment key={row.label}>
+          <dt className="text-[#64748b]">{row.label}</dt>
+          <dd className={cn('m-0 text-right text-[#0f172a] tabular-nums', row.strong ? 'font-semibold' : 'font-medium')}>
+            {row.value}
+          </dd>
+        </Fragment>
+      ))}
+    </dl>
+  )
+}
+
+type Column = {
+  key: string
+  label: string
+  width: number
+  className?: string
+  render: (line: SaleLine) => ReactNode
+}
+
+type TableStyle = 'rule' | 'soft' | 'light' | 'slip'
+
+type TableLook = {
+  wrap: string
+  head: string
+  th: string
+  /** Extra classes for every body cell. */
+  td: string
+  row: (index: number) => string
+  pad: boolean
+}
+
+const TABLE: Record<TableStyle, TableLook> = {
+  rule: {
+    wrap: '',
+    head: 'border-b border-[#0f172a]',
+    th: 'pb-2.5 text-[#64748b]',
+    td: '',
+    row: () => 'border-b border-[#e2e8f0]',
+    pad: false,
+  },
+  // Quotation: an accent underline on the head, softly striped rows, no outer box.
+  soft: {
+    wrap: '',
+    head: 'border-b-2 border-[var(--print-accent)]',
+    th: 'pb-2.5 text-[var(--print-accent)]',
+    td: '',
+    row: (index) => (index % 2 === 1 ? 'bg-[var(--print-stripe)]' : ''),
+    pad: true,
+  },
+  // Proforma: nothing but faint row lines, so the page stays light next to its side panel.
+  // Proforma: a soft rounded head bar and plain rows. Each head cell casts a 1px shadow of its own
+  // colour to the right, which covers the sub-pixel gap a browser leaves between cells.
+  light: {
+    wrap: 'overflow-hidden rounded-t-lg',
+    head: '',
+    th: 'bg-[var(--print-soft)] py-3 text-[var(--print-accent)] shadow-[1px_0_0_var(--print-soft)]',
+    td: '',
+    row: () => 'border-b border-[#eef2f6]',
+    pad: true,
+  },
+  slip: {
+    wrap: '',
+    head: 'border-y-2 border-[#0f172a]',
+    th: 'py-2 text-[#0f172a]',
+    td: '',
+    row: () => 'border-b border-dashed border-[#94a3b8]',
+    pad: false,
+  },
+}
+
+function ItemsTable({
+  lines,
+  columns,
+  variant,
+  className,
+}: {
+  lines: SaleLine[]
+  columns: Column[]
+  variant: TableStyle
+  className?: string
+}) {
+  const style = TABLE[variant]
+  const edge = style.pad ? 'first:pl-3.5 last:pr-3.5' : ''
+
+  return (
+    <div className={cn(style.wrap, className)}>
+      <table className={cn('w-full table-fixed border-collapse text-[11.5px]', `${D}text-[11px]`)}>
+        <colgroup>
+          <col style={{ width: style.pad ? 40 : 28 }} />
+          <col />
+          {columns.map((column) => (
+            <col key={column.key} style={{ width: column.width }} />
+          ))}
+        </colgroup>
+        <thead>
+          <tr className={style.head}>
+            {['#', t('sales.description', 'Description')].map((label) => (
+              <th key={label} className={cn('text-left text-[9.5px] font-semibold tracking-[0.08em] uppercase', style.th, edge)}>
+                {label}
+              </th>
+            ))}
+            {columns.map((column) => (
+              <th
+                key={column.key}
+                className={cn('text-right text-[9.5px] font-semibold tracking-[0.08em] uppercase', style.th, edge)}
+              >
+                {column.label}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {lines.map((line, index) => {
+            const detail = [line.sr_number, line.description].filter(Boolean).join(' · ')
+            const cell = cn('py-2.5 align-top', `${D}py-[5px]`, edge, style.td)
+            return (
+              <tr key={line.position} className={style.row(index)}>
+                <td className={cn(cell, 'text-[#94a3b8] tabular-nums')}>{line.position}</td>
+                <td className={cn(cell, 'pr-5')}>
+                  <span className={cn('block font-medium text-[#0f172a]', `${D}inline`)}>{line.article}</span>
+                  {detail ? (
+                    <span className={cn('mt-0.5 block text-[10px] whitespace-nowrap text-[#94a3b8]', `${D}mt-0 ${D}ml-2 ${D}inline`)}>
+                      {detail}
+                    </span>
+                  ) : null}
+                </td>
+                {columns.map((column) => (
+                  <td key={column.key} className={cn(cell, 'text-right text-[#334155] tabular-nums', column.className)}>
+                    {column.render(line)}
+                  </td>
+                ))}
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+function TotalRows({ rows }: { rows: TotalRow[] }) {
+  return (
+    <>
+      {rows.map((row, index) => (
+        <div key={index} className="flex items-baseline justify-between gap-4 py-[5px] group-data-[dense=true]:py-[3px]">
+          <span className="text-[#64748b]">{row.label}</span>
+          <span className="text-[#0f172a] tabular-nums">{row.value}</span>
+        </div>
+      ))}
+    </>
+  )
+}
+
+function TaxSummary({ lines, currency }: { lines: SaleLine[]; currency: string }) {
+  const groups = taxGroups(lines)
+  if (groups.length === 0) return <div />
+
+  return (
+    <div className="w-[280px]">
+      <Label>{t('sales.taxBreakdown', 'IVA summary')}</Label>
+      <table className="mt-2.5 w-full border-collapse text-[10.5px]">
+        <thead>
+          <tr className="border-b border-[#e2e8f0] text-[#64748b]">
+            <th className="pb-1.5 text-left font-medium">{t('sales.rate', 'Rate')}</th>
+            <th className="pb-1.5 text-right font-medium">{t('sales.base', 'Base')}</th>
+            <th className="pb-1.5 text-right font-medium">IVA</th>
+          </tr>
+        </thead>
+        <tbody>
+          {groups.map((group) => (
+            <tr key={group.rate} className="border-b border-[#f1f5f9] text-[#334155] tabular-nums">
+              <td className="py-1.5">{group.rate}%</td>
+              <td className="py-1.5 text-right">{formatCents(group.base, currency)}</td>
+              <td className="py-1.5 text-right">{formatCents(group.tax, currency)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+function NotesAndTerms({
+  notes,
+  terms,
+  termsLabel,
+  className,
+}: {
+  notes: string | null
+  terms: string
+  termsLabel?: string
+  className?: string
+}) {
+  const blocks = [
+    notes?.trim() ? { label: t('sales.notes', 'Notes'), text: notes.trim() } : null,
+    terms.trim() ? { label: termsLabel ?? t('printables.terms', 'Terms'), text: terms.trim() } : null,
+  ].filter((block): block is { label: string; text: string } => block !== null)
+
+  if (blocks.length === 0) return null
+
+  return (
+    <section className={cn('mt-11 grid gap-10', `${D}mt-7`, blocks.length === 2 ? 'grid-cols-2' : 'grid-cols-1', className)}>
+      {blocks.map((block) => (
+        <div key={block.label}>
+          <Label>{block.label}</Label>
+          <p className="mt-2 mb-0 text-[10.5px] leading-[1.7] whitespace-pre-wrap text-[#475569]">{block.text}</p>
+        </div>
+      ))}
+    </section>
+  )
+}
+
+function SignatureRow({ dashed = false, className }: { dashed?: boolean; className?: string }) {
+  const rule = dashed ? 'block border-t border-dashed border-[#475569]' : 'block h-px bg-[#94a3b8]'
+  return (
+    <section className={cn('mt-14 grid grid-cols-[1fr_180px] gap-14', `${D}mt-9`, className)}>
+      <div>
+        <span className={rule} />
+        <p className="mt-2 mb-0 text-[10px] text-[#64748b]">{t('printables.receivedBy', 'Received by (name and signature)')}</p>
+      </div>
+      <div>
+        <span className={rule} />
+        <p className="mt-2 mb-0 text-[10px] text-[#64748b]">{t('printables.signDate', 'Date')}</p>
+      </div>
+    </section>
+  )
+}
+
+function PageMark({ document }: { document: SaleDocument }) {
+  return (
+    <span className="shrink-0 tabular-nums">
+      {document.number} · {t('sales.pageOne', 'Page 1 of 1')}
     </span>
   )
 }
 
+/* ------------------------------------------------------------------ Invoice: classic letterhead */
+
 function InvoiceSheet({ document, company, currency, lines, issued, theme, logoSrc }: SheetProps) {
   const display = saleDisplayStatus(document)
-  const due = display === 'pending' ? document.total_cents : 0
-  const groups = taxGroups(lines)
   const place = companyPlace(company)
-  const meta = [
-    { label: t('sales.invoiceNumber', 'Invoice number'), text: document.number, accent: false },
-    { label: t('sales.issueDate', 'Issue date'), text: issued, accent: false },
+  const contact = companyContact(company)
+
+  const columns: Column[] = [
+    { key: 'qty', label: t('sales.qty', 'Qty'), width: 48, render: (line) => qtyText(line.quantity) },
+    { key: 'price', label: t('sales.unitPrice', 'Unit price'), width: 88, render: (line) => formatCents(line.unit_price, currency) },
+    ...discountColumn(lines, 52),
+    { key: 'iva', label: 'IVA', width: 46, render: (line) => `${line.iva_percent}%` },
     {
-      label: t('sales.payment', 'Payment'),
-      text: paymentText(display),
-      accent: false,
+      key: 'amount',
+      label: t('sales.amount', 'Amount'),
+      width: 96,
+      className: 'font-medium text-[#0f172a]',
+      render: (line) => formatCents(grossOf(line).base, currency),
     },
-    { label: t('sales.amountDue', 'Amount due'), text: formatCents(due, currency), accent: true },
   ]
 
   return (
-    <SheetFrame theme={theme}>
-      <span className="absolute inset-x-0 top-0 h-1.5 bg-[var(--print-accent)]" />
-      <SheetBody className="px-[52px] pt-12 pb-10">
-        <div className="flex items-start justify-between gap-8">
-          <div className="flex items-center gap-3.5">
-            <LogoMark company={company} showLogo={theme.show_logo} logoSrc={logoSrc} />
-            <span>
-              <span className="block text-[17px] font-bold tracking-[-0.01em]">{company?.name}</span>
-              <span className="mt-[3px] block text-[11px] leading-relaxed text-[#64748b]">
-                {companyContactLine(company, true)}
-              </span>
-            </span>
-          </div>
-          <div className="shrink-0 text-right">
-            <span className="block text-[19px] font-extrabold tracking-[0.24em] text-[var(--print-accent)]">INVOICE</span>
-            <span className="mt-[7px] ml-auto block h-0.5 w-[190px] bg-[var(--print-accent)]" />
-            <span className="mt-2.5 block font-mono text-[15px] font-bold">{document.number}</span>
-            <PaymentPill status={display} compact />
-          </div>
-        </div>
+    <SheetFrame theme={theme} voided={display === 'voided'} lineCount={lines.length} className={cn('px-14 pt-14 pb-10', `${D}pt-11 ${D}pb-8`)}>
+      <span aria-hidden="true" className="absolute inset-x-0 top-0 h-[5px] bg-[var(--print-accent)]" />
 
-        <div className="mt-[22px] flex overflow-hidden rounded-[10px] border border-[#e2e8f0]">
-          {meta.map((item, index) => (
-            <div
-              key={item.label}
-              className={cn(
-                'box-border flex-1 px-4 py-[11px]',
-                index < meta.length - 1 && 'border-r border-[#e2e8f0]',
-                item.accent && 'bg-[var(--print-soft)]',
-              )}
-            >
-              <Label>{item.label}</Label>
-              <span
-                className={cn(
-                  'mt-[3px] block font-mono text-[13px] font-bold',
-                  item.accent ? 'text-[var(--print-accent)]' : 'text-[#0f172a]',
-                )}
-              >
-                {item.text}
-              </span>
-            </div>
-          ))}
-        </div>
-
-        <div className="mt-5 flex items-stretch gap-[18px]">
-          <div className="flex-1 rounded-[10px] border border-[#e2e8f0] px-[18px] py-4">
-            <Label>{t('sales.issuedBy', 'Issued by')}</Label>
-            <span className="mt-[7px] block text-[13px] font-bold">{company?.name}</span>
-            <span className="mt-[3px] block text-[11.5px] leading-[1.7] text-[#475569]">
+      <header className="flex items-start justify-between gap-10">
+        <div className={cn('flex min-w-0 gap-4', theme.show_logo && logoSrc ? 'flex-col items-start gap-2.5' : 'items-start')}>
+          <LogoMark company={company} logoSrc={logoSrc} show={theme.show_logo} imageSize={lines.length > 8 ? 54 : 68} />
+          <div className="min-w-0">
+            <p className="m-0 text-[16px] font-semibold tracking-[-0.01em]">{company?.name}</p>
+            <p className={cn('mt-1.5 mb-0 text-[11px] leading-[1.65] text-[#64748b]', `${D}leading-[1.5]`)}>
               {place.map((line) => (
                 <span key={line} className="block">
                   {line}
                 </span>
               ))}
-              {company?.email ? <span className="block">{company.email}</span> : null}
-            </span>
-          </div>
-          <div className="flex-1 rounded-[10px] border border-[var(--print-border)] bg-[var(--print-soft)] px-[18px] py-4">
-            <Label className="text-[var(--print-accent)]">{t('sales.billTo', 'Bill to')}</Label>
-            <span className="mt-[7px] block text-[13px] font-bold">{clientTitle(document)}</span>
-            <ClientLines document={document} />
+              {contact ? <span className="block">{contact}</span> : null}
+            </p>
           </div>
         </div>
-
-        <div className="mt-[22px] overflow-hidden rounded-[10px] border border-[#e2e8f0]">
-          <div className="flex items-center bg-[var(--print-accent)] px-3.5 py-[9px] text-[8.5px] font-bold tracking-[0.12em] text-white uppercase">
-            <span className="w-6">#</span>
-            <span className="min-w-0 flex-1">{t('sales.article', 'Article')}</span>
-            <span className="w-[50px] text-right">{t('sales.qty', 'Qty')}</span>
-            <span className="w-[82px] text-right">{t('sales.price', 'Price')}</span>
-            <span className="w-[54px] text-right">{t('sales.dto', 'Dto %')}</span>
-            <span className="w-[54px] text-right">IVA %</span>
-            <span className="w-24 text-right">{t('sales.total', 'Total')}</span>
-          </div>
-          {lines.map((line, index) => (
-            <div
-              key={line.position}
-              className={cn(
-                'flex items-center border-t border-[#f1f5f9] px-3.5 py-[9px]',
-                index % 2 === 1 && 'bg-[var(--print-stripe)]',
-              )}
-            >
-              <span className="w-6 font-mono text-[11px] text-[#94a3b8]">{line.position}</span>
-              <span className="min-w-0 flex-1">
-                <span className="block text-xs font-semibold">{line.article}</span>
-                {line.sr_number ? (
-                  <span className="block font-mono text-[9.5px] text-[#94a3b8]">{line.sr_number}</span>
-                ) : null}
-              </span>
-              <span className="w-[50px] text-right font-mono text-xs">{qtyText(line.quantity)}</span>
-              <span className="w-[82px] text-right font-mono text-xs">{formatCents(line.unit_price, currency)}</span>
-              <span className="w-[54px] text-right font-mono text-xs text-[#64748b]">{line.discount_percent}</span>
-              <span className="w-[54px] text-right font-mono text-xs text-[#64748b]">{line.iva_percent}</span>
-              <span className="w-24 text-right font-mono text-[12.5px] font-bold">
-                {formatCents(grossOf(line).total, currency)}
-              </span>
-            </div>
-          ))}
-        </div>
-
-        <div className="mt-[22px] flex items-start gap-[22px]">
-          <div className="min-w-0 flex-1">
-            <Label>{t('sales.taxBreakdown', 'Tax breakdown')}</Label>
-            <div className="mt-2 overflow-hidden rounded-[10px] border border-[#e2e8f0]">
-              <div className="flex bg-[#f8fafc] px-3 py-[7px] text-[8px] font-bold tracking-[0.12em] text-[#64748b] uppercase">
-                <span className="min-w-0 flex-1">{t('sales.rate', 'Rate')}</span>
-                <span className="w-[104px] text-right">{t('sales.base', 'Base')}</span>
-                <span className="w-[92px] text-right">{t('sales.taxTotal', 'Tax')}</span>
-              </div>
-              {groups.map((group) => (
-                <div key={group.rate} className="flex border-t border-[#f1f5f9] px-3 py-2 text-xs">
-                  <span className="min-w-0 flex-1 font-mono">{group.rate}%</span>
-                  <span className="w-[104px] text-right font-mono">{formatCents(group.base, currency)}</span>
-                  <span className="w-[92px] text-right font-mono">{formatCents(group.tax, currency)}</span>
-                </div>
-              ))}
-            </div>
-            <div className="mt-3.5 rounded-[10px] border border-[#e2e8f0] px-3.5 py-3">
-              <Label>{t('sales.payment', 'Payment')}</Label>
-              <span className="mt-1.5 block text-[11.5px] leading-[1.7] text-[#475569]">
-                {display === 'voided'
-                  ? t('sales.voided', 'Voided')
-                  : display === 'paid'
-                    ? t('sales.paidInFull', 'Paid')
-                    : t('sales.pendingPayment', 'Pending payment')}
-                <br />
-                {t('sales.reference', 'Reference')} <span className="font-mono text-[#0f172a]">{document.number}</span>
-              </span>
-            </div>
-          </div>
-
-          <div className="w-[286px] shrink-0">
-            <div className="overflow-hidden rounded-[10px] border border-[#e2e8f0]">
-              <div className="flex flex-col gap-2 px-4 py-3 text-xs text-[#475569]">
-                <DiscountRows document={document} currency={currency} />
-                <span className="flex justify-between">
-                  <span>{t('sales.taxableBase', 'Taxable base')}</span>
-                  <span className="font-mono">{formatCents(document.base_cents, currency)}</span>
-                </span>
-                <span className="flex justify-between">
-                  <span>{t('sales.taxTotal', 'Tax')}</span>
-                  <span className="font-mono">{formatCents(document.tax_cents, currency)}</span>
-                </span>
-                {document.recargo_cents > 0 ? (
-                  <span className="flex justify-between">
-                    <span>
-                      {t('sales.recargo', 'Recargo de equivalencia')} {document.recargo_percent}%
-                    </span>
-                    <span className="font-mono">{formatCents(document.recargo_cents, currency)}</span>
-                  </span>
-                ) : null}
-              </div>
-              <div className="flex items-baseline justify-between border-t-2 border-[var(--print-accent)] bg-[var(--print-soft)] px-4 py-3.5">
-                <span className="text-xs font-extrabold tracking-[0.06em] uppercase">{t('sales.total', 'Total')}</span>
-                <span className="font-mono text-[25px] font-extrabold tracking-[-0.02em] text-[var(--print-accent)]">
-                  {formatCents(document.total_cents, currency)}
-                </span>
-              </div>
-            </div>
-            {display === 'pending' ? (
-              <div className="mt-2.5 flex items-baseline justify-between rounded-[10px] border border-[#fde68a] bg-[#fffbeb] px-4 py-[11px]">
-                <span className="text-[11px] font-bold text-[#92400e]">{t('sales.amountDue', 'Amount due')}</span>
-                <span className="font-mono text-[15px] font-extrabold text-[#92400e]">{formatCents(due, currency)}</span>
-              </div>
-            ) : null}
+        <div className="shrink-0 text-right">
+          <h1 className="m-0 text-[32px] leading-none font-semibold tracking-[-0.025em] text-[var(--print-accent)]">
+            {t('sales.invoiceTitle', 'Invoice')}
+          </h1>
+          <div className="mt-3">
+            <StatusBadge status={display} />
           </div>
         </div>
+      </header>
 
-        <TermsBlock notes={document.notes} footer={theme.footer_notes} signature={theme.show_signature} />
-
-        <div className="mt-auto flex items-end justify-between gap-6 border-t border-[#e2e8f0] pt-3.5">
-          <span className="text-[9.5px] leading-[1.7] text-[#94a3b8]">
-            {[company?.name, company?.email].filter(Boolean).join(' · ')}
-          </span>
-          <span className="font-mono text-[9px] text-[#94a3b8]">
-            {document.number} · {t('sales.pageOne', 'page 1 of 1')}
-          </span>
+      <section className={cn('mt-12 flex items-start justify-between gap-10', `${D}mt-8`)}>
+        <div className="min-w-0 flex-1">
+          <Label>{t('sales.billTo', 'Bill to')}</Label>
+          <ClientBlock document={document} />
         </div>
-      </SheetBody>
-    </SheetFrame>
-  )
-}
+        <MetaList
+          className="shrink-0"
+          rows={[
+            { label: t('sales.invoiceNumber', 'Invoice no.'), value: document.number, strong: true },
+            { label: t('sales.issueDate', 'Issue date'), value: issued },
+            ...(display === 'pending'
+              ? [{ label: t('sales.amountDue', 'Amount due'), value: formatCents(document.total_cents, currency), strong: true }]
+              : []),
+          ]}
+        />
+      </section>
 
-function AlbaranSheet({ document, company, currency, lines, issued, theme }: SheetProps) {
-  const units = lines.reduce((sum, line) => sum + line.quantity, 0)
+      <ItemsTable lines={lines} columns={columns} variant="rule" className={cn('mt-10', `${D}mt-7`)} />
 
-  return (
-    <SheetFrame theme={theme}>
-      <SheetBody className="px-14 pt-[52px] pb-11">
-        <div className="flex items-center justify-between gap-6 rounded-md border-[3px] border-[var(--print-accent)] px-[22px] py-[18px]">
-          <div>
-            <h1 className="m-0 text-[54px] leading-[0.95] font-black tracking-[-0.04em] text-[var(--print-accent)]">
-              ALBARÁN
-            </h1>
-            <span className="mt-1 block text-[13px] font-bold tracking-[0.22em] text-[#475569] uppercase">
-              {t('sales.typeAlbaran', 'Delivery note')}
-            </span>
-          </div>
-          <div className="shrink-0 text-right">
-            <Label className="text-[9px]">{t('sales.number', 'Number')}</Label>
-            <span className="block font-mono text-xl font-extrabold">{document.number}</span>
-            <span className="mt-2.5 block">
-              <Label className="text-[9px]">{t('sales.date', 'Date')}</Label>
-            </span>
-            <span className="block font-mono text-base font-bold">{issued}</span>
-          </div>
-        </div>
-
-        <div className="mt-[26px] flex gap-5">
-          <div className="flex-[1.4] rounded-lg border border-[#cbd5e1] px-[18px] py-4">
-            <Label className="text-[9px]">{t('sales.deliverTo', 'Deliver to')}</Label>
-            <span className="mt-2 block text-base font-extrabold">{clientTitle(document)}</span>
-            <span className="mt-1 block text-xs leading-[1.7] text-[#334155]">
-              {clientAttn(document) ? (
-                <span className="block">
-                  {t('sales.attn', 'Attn.')} {clientAttn(document)}
-                </span>
-              ) : null}
-              <span className="font-mono">
-                {[taxId(document) ? `N.I.F/N.I.E ${taxId(document)}` : null, document.client_phone]
-                  .filter(Boolean)
-                  .join(' · ')}
-              </span>
-            </span>
-          </div>
-          <div className="flex flex-1 flex-col justify-between rounded-lg border border-[#cbd5e1] px-[18px] py-4">
-            <span>
-              <Label className="text-[9px]">{t('sales.itemsDelivered', 'Items delivered')}</Label>
-              <span className="mt-1.5 block font-mono text-[28px] font-extrabold">{qtyText(units)}</span>
-              <span className="block text-[11px] text-[#64748b]">
-                {`units across ${lines.length} ${lines.length === 1 ? 'line' : 'lines'}`}
-              </span>
-            </span>
-            <span className="mt-2.5 self-start">
-              <PaymentPill status={saleDisplayStatus(document)} />
-            </span>
-          </div>
-        </div>
-
-        <div className="mt-6 overflow-hidden rounded-lg border border-[#cbd5e1]">
-          <div className="flex items-center bg-[#f1f5f9] px-3 py-2.5 text-[9px] font-extrabold tracking-[0.1em] text-[#334155] uppercase">
-            <span className="w-7">#</span>
-            <span className="min-w-0 flex-1">{t('sales.article', 'Article')}</span>
-            <span className="w-[70px] text-right">{t('sales.qty', 'Qty')}</span>
-            <span className="w-24 text-right">{t('sales.price', 'Price')}</span>
-            <span className="w-[70px] text-right">{t('sales.dto', 'Dto %')}</span>
-            <span className="w-[110px] text-right">{t('sales.total', 'Total')}</span>
-          </div>
-          {lines.map((line) => (
-            <div
-              key={line.position}
-              className="flex items-center border-t border-[#e2e8f0] px-3 py-[13px] text-[13px]"
-            >
-              <span className="w-7 font-mono text-[#94a3b8]">{line.position}</span>
-              <span className="min-w-0 flex-1">
-                <span className="block font-semibold">{line.article}</span>
-                {line.sr_number ? (
-                  <span className="block font-mono text-[10px] text-[#94a3b8]">{line.sr_number}</span>
-                ) : null}
-              </span>
-              <span className="w-[70px] text-right font-mono text-[15px] font-bold">{qtyText(line.quantity)}</span>
-              <span className="w-24 text-right font-mono">{formatCents(line.unit_price, currency)}</span>
-              <span className="w-[70px] text-right font-mono text-[#64748b]">{line.discount_percent}</span>
-              <span className="w-[110px] text-right font-mono font-bold">{formatCents(grossOf(line).total, currency)}</span>
-            </div>
-          ))}
-          {document.discount_cents ? (
-            <div className="flex flex-col gap-1.5 border-t border-[#e2e8f0] px-3 py-2.5 text-xs text-[#475569]">
-              <DiscountRows document={document} currency={currency} />
-            </div>
-          ) : null}
-          <div className="flex items-center border-t-2 border-[var(--print-accent)] bg-[#f8fafc] px-3 py-3">
-            <span className="min-w-0 flex-1 text-xs font-extrabold tracking-[0.06em] uppercase">
-              {t('sales.totalDelivered', 'Total delivered (net)')}
-            </span>
-            <span className="w-[110px] text-right font-mono text-lg font-extrabold">
+      <section className={cn('mt-8 flex items-start justify-between gap-10', `${D}mt-5`)}>
+        <TaxSummary lines={lines} currency={currency} />
+        <div className="w-[280px] shrink-0 text-[11.5px]">
+          <TotalRows
+            rows={[
+              ...discountRows(document, currency),
+              { label: t('sales.taxableBase', 'Taxable base'), value: formatCents(document.base_cents, currency) },
+              { label: 'IVA', value: formatCents(document.tax_cents, currency) },
+              ...recargoRows(document, currency),
+            ]}
+          />
+          <div className="mt-2 flex items-baseline justify-between gap-4 border-t border-[#0f172a] pt-3">
+            <span className="text-[12px] font-semibold">{t('sales.total', 'Total')}</span>
+            <span className="text-[24px] font-semibold tracking-[-0.02em] text-[var(--print-accent)] tabular-nums">
               {formatCents(document.total_cents, currency)}
             </span>
           </div>
         </div>
+      </section>
 
-        <TermsBlock notes={document.notes} footer={theme.footer_notes} signature={theme.show_signature} />
+      <NotesAndTerms notes={document.notes} terms={theme.footer_notes} />
+      {theme.show_signature ? <SignatureRow /> : null}
 
-        <div className="mt-auto" />
-        <div className="mt-4 flex justify-between border-t border-[#e2e8f0] pt-3 text-[10px] text-[#94a3b8]">
-          <span>{company?.name}</span>
-          <span className="font-mono">
-            {document.number} · {t('sales.pageOne', 'page 1 of 1')}
-          </span>
-        </div>
-      </SheetBody>
+      <footer className="mt-auto flex items-end justify-between gap-8 border-t border-[#e2e8f0] pt-4 text-[9.5px] leading-[1.6] text-[#94a3b8]">
+        <span className="min-w-0">{[company?.name, contact].filter(Boolean).join(' · ')}</span>
+        <PageMark document={document} />
+      </footer>
     </SheetFrame>
   )
 }
 
+/* ------------------------------------------------------------------ Quotation: open and airy */
+
 function QuotationSheet({ document, company, currency, lines, issued, theme, logoSrc }: SheetProps) {
-  const terms = [
-    { label: t('sales.issued', 'Issued'), text: issued, accent: true },
+  const place = companyPlace(company)
+  const contact = companyContact(company)
+
+  const columns: Column[] = [
+    { key: 'qty', label: t('sales.qty', 'Qty'), width: 44, render: (line) => qtyText(line.quantity) },
+    { key: 'price', label: t('sales.unitPrice', 'Unit price'), width: 80, render: (line) => formatCents(line.unit_price, currency) },
+    ...discountColumn(lines, 48),
+    { key: 'iva', label: 'IVA', width: 44, render: (line) => `${line.iva_percent}%` },
+    { key: 'net', label: t('sales.priceNet', 'Net'), width: 84, render: (line) => formatCents(grossOf(line).base, currency) },
     {
-      label: t('sales.lines', 'Lines'),
-      text: String(lines.length),
-      accent: false,
-    },
-    {
-      label: t('sales.document', 'Document'),
-      text: t('sales.quotationTagShort', 'Not a tax invoice'),
-      accent: false,
+      key: 'gross',
+      label: t('sales.priceGross', 'With IVA'),
+      width: 92,
+      className: 'font-semibold text-[#0f172a]',
+      render: (line) => formatCents(grossOf(line).total, currency),
     },
   ]
 
-  return (
-    <SheetFrame theme={theme}>
-      <span className="absolute inset-y-0 left-0 w-2.5 bg-[var(--print-accent)]" />
-      <SheetBody className="px-[52px] pt-12 pb-10">
-        <div className="flex items-start justify-between gap-7">
-          <div className="flex items-center gap-3.5">
-            <LogoMark company={company} showLogo={theme.show_logo} logoSrc={logoSrc} />
-            <span>
-              <span className="block text-[17px] font-bold tracking-[-0.01em]">{company?.name}</span>
-              <span className="mt-[3px] block text-[11px] leading-relaxed text-[#64748b]">
-                {companyContactLine(company, false)}
-                {company?.email ? (
-                  <>
-                    <br />
-                    {company.email}
-                  </>
-                ) : null}
-              </span>
-            </span>
-          </div>
-          <div className="shrink-0 text-right">
-            <span className="inline-block rounded-[10px] border-2 border-[var(--print-accent)] px-5 py-[9px] text-[22px] font-black tracking-[0.18em] text-[var(--print-accent)]">
-              QUOTATION
-            </span>
-            <span className="mt-2.5 block font-mono text-[15px] font-bold">{document.number}</span>
-            <span className="mt-0.5 block text-[11px] text-[#64748b]">
-              {t('sales.issued', 'Issued')} <span className="font-mono">{issued}</span>
-            </span>
-          </div>
-        </div>
+  const stats: { label: string; value: string; accent?: boolean }[] = [
+    { label: t('sales.date', 'Date'), value: issued },
+    { label: t('sales.items', 'Items'), value: String(lines.length) },
+    { label: t('sales.totalWithTax', 'Total with tax'), value: formatCents(document.total_cents, currency), accent: true },
+  ]
 
-        <div className="mt-[22px] flex gap-3">
-          {terms.map((item) => (
-            <div
-              key={item.label}
-              className={cn(
-                'box-border flex-1 rounded-[10px] px-4 py-3',
-                item.accent ? 'border border-[var(--print-border)] bg-[var(--print-soft)]' : 'border border-[#e2e8f0]',
-              )}
-            >
-              <Label>{item.label}</Label>
-              <span
+  return (
+    <SheetFrame theme={theme} voided={false} lineCount={lines.length} denseAfter={5} className={cn('px-14 pt-12 pb-10', `${D}pt-9 ${D}pb-8`)}>
+      <header className="flex items-center justify-between gap-10">
+        {theme.show_logo ? (
+          <LogoMark company={company} logoSrc={logoSrc} show size={lines.length > 5 ? 46 : 60} imageSize={lines.length > 5 ? 58 : 76} />
+        ) : (
+          <p className="m-0 text-[18px] font-semibold tracking-[-0.01em]">{company?.name}</p>
+        )}
+        <div className="min-w-0 text-right text-[10.5px] leading-[1.65] text-[#64748b]">
+          {theme.show_logo ? <p className="m-0 text-[12.5px] font-semibold text-[#0f172a]">{company?.name}</p> : null}
+          {[...place, contact].filter(Boolean).map((line) => (
+            <p key={line} className="m-0">
+              {line}
+            </p>
+          ))}
+        </div>
+      </header>
+
+      <section className={cn('mt-9 flex items-end justify-between gap-8 border-b border-[#e2e8f0] pb-6', `${D}mt-5 ${D}pb-4`)}>
+        <div>
+          <span aria-hidden="true" className="mb-4 block h-1 w-10 group-data-[dense=true]:hidden rounded-full bg-[var(--print-accent)]" />
+          <h1 className="m-0 text-[44px] leading-none font-light group-data-[dense=true]:text-[34px] tracking-[-0.035em] text-[#0f172a]">
+            {t('sales.quotationTitle', 'Quotation')}
+          </h1>
+          <p className="mt-2.5 mb-0 text-[12px] font-medium text-[#64748b] tabular-nums">{document.number}</p>
+        </div>
+        <div className="flex shrink-0 divide-x divide-[#e2e8f0]">
+          {stats.map((stat) => (
+            <div key={stat.label} className="px-5 text-right last:pr-0">
+              <Label>{stat.label}</Label>
+              <p
                 className={cn(
-                  'mt-1 block text-[13px] font-bold',
-                  item.accent ? 'font-mono text-[var(--print-accent)]' : 'text-[#0f172a]',
+                  'mt-1.5 mb-0 tabular-nums',
+                  stat.accent ? 'text-[17px] font-semibold text-[var(--print-accent)]' : 'text-[13px] font-medium',
                 )}
               >
-                {item.text}
-              </span>
+                {stat.value}
+              </p>
             </div>
           ))}
         </div>
+      </section>
 
-        <div className="mt-5 flex items-stretch gap-[18px]">
-          <div className="min-w-0 flex-[1.3] rounded-[10px] border border-[var(--print-border)] bg-[var(--print-soft)] px-[18px] py-4">
-            <Label className="text-[var(--print-accent)]">{t('sales.quotationFor', 'Quotation for')}</Label>
-            <span className="mt-[7px] block text-sm font-bold">{clientTitle(document)}</span>
-            <ClientLines document={document} inline />
-          </div>
+      <section className={cn('mt-7 grid grid-cols-2 gap-10', `${D}mt-4`)}>
+        <div className="border-l-[3px] border-[var(--print-accent)] pl-4">
+          <Label>{t('sales.quotationFor', 'Prepared for')}</Label>
+          <ClientBlock document={document} />
         </div>
-
-        <div className="mt-5 overflow-hidden rounded-[10px] border border-[var(--print-border)]">
-          <div className="flex items-center border-b border-[var(--print-border)] bg-[var(--print-tint)] px-3.5 py-[9px] text-[8.5px] font-extrabold tracking-[0.1em] text-[#1e293b] uppercase">
-            <span className="w-[22px]">#</span>
-            <span className="min-w-0 flex-1">{t('sales.article', 'Article')}</span>
-            <span className="w-11 text-right">{t('sales.qty', 'Qty')}</span>
-            <span className="w-[74px] text-right">{t('sales.price', 'Price')}</span>
-            <span className="w-12 text-right">{t('sales.dto', 'Dto %')}</span>
-            <span className="w-12 text-right">IVA %</span>
-            <span className="w-[90px] text-right">{t('sales.priceNet', 'Without tax')}</span>
-            <span className="w-[92px] text-right">{t('sales.priceGross', 'With tax')}</span>
-          </div>
-          {lines.map((line, index) => (
-            <div
-              key={line.position}
-              className={cn(
-                'flex items-center border-t border-[#f1f5f9] px-3.5 py-[9px]',
-                index % 2 === 1 && 'bg-[var(--print-stripe)]',
-              )}
-            >
-              <span className="w-[22px] font-mono text-[11px] text-[#94a3b8]">{line.position}</span>
-              <span className="min-w-0 flex-1">
-                <span className="block text-xs font-semibold">{line.article}</span>
-                {line.sr_number ? (
-                  <span className="block font-mono text-[9.5px] text-[#94a3b8]">{line.sr_number}</span>
-                ) : null}
-              </span>
-              <span className="w-11 text-right font-mono text-xs">{qtyText(line.quantity)}</span>
-              <span className="w-[74px] text-right font-mono text-xs">{formatCents(line.unit_price, currency)}</span>
-              <span className="w-12 text-right font-mono text-xs text-[#64748b]">{line.discount_percent}</span>
-              <span className="w-12 text-right font-mono text-xs text-[#64748b]">{line.iva_percent}</span>
-              <span className="w-[90px] text-right font-mono text-xs text-[#475569]">
-                {formatCents(grossOf(line).base, currency)}
-              </span>
-              <span className="w-[92px] text-right font-mono text-[12.5px] font-bold">
-                {formatCents(grossOf(line).total, currency)}
-              </span>
-            </div>
-          ))}
+        <div className="border-l-[3px] border-[#e2e8f0] pl-4">
+          <Label>{t('sales.preparedBy', 'Prepared by')}</Label>
+          <p className="mt-2.5 mb-0 text-[14px] font-semibold">{company?.name}</p>
+          <p className="mt-1 mb-0 text-[11px] leading-[1.65] text-[#475569]">
+            {company?.email ? <span className="block">{company.email}</span> : null}
+            {company?.phone ? <span className="block">{company.phone}</span> : null}
+          </p>
         </div>
+      </section>
 
-        <div className="mt-5 flex items-start gap-[22px]">
-          <div className="min-w-0 flex-1 rounded-[10px] border border-[#e2e8f0] px-4 py-3.5">
-            {document.notes?.trim() ? (
-              <>
-                <Label>{t('sales.notes', 'Notes')}</Label>
-                <span className="mt-[7px] mb-3.5 block text-[11.5px] leading-[1.75] whitespace-pre-wrap text-[#475569]">
-                  {document.notes.trim()}
-                </span>
-              </>
-            ) : null}
-            <Label>{t('sales.scope', 'Scope and conditions')}</Label>
-            <span className="mt-[7px] block text-[11.5px] leading-[1.75] whitespace-pre-wrap text-[#475569]">
-              {theme.footer_notes.trim() ||
-                t('sales.scopeNetGross', 'Prices shown both without and with tax, at the rates in force today.')}
-            </span>
-          </div>
-          <div className="w-[286px] shrink-0 overflow-hidden rounded-[10px] border border-[var(--print-border)]">
-            <div className="flex flex-col gap-2 px-4 py-3 text-xs text-[#475569]">
-              <DiscountRows document={document} currency={currency} />
-              <span className="flex justify-between">
-                <span>{t('sales.totalWithoutTax', 'Total without tax')}</span>
-                <span className="font-mono">{formatCents(document.base_cents, currency)}</span>
-              </span>
-              <span className="flex justify-between">
-                <span>{t('sales.taxTotal', 'Tax')}</span>
-                <span className="font-mono">{formatCents(document.tax_cents, currency)}</span>
-              </span>
-              {document.recargo_cents > 0 ? (
-                <span className="flex justify-between">
-                  <span>
-                    {t('sales.recargo', 'Recargo de equivalencia')} {document.recargo_percent}%
-                  </span>
-                  <span className="font-mono">{formatCents(document.recargo_cents, currency)}</span>
-                </span>
-              ) : null}
-            </div>
-            <div className="flex items-baseline justify-between bg-[var(--print-accent)] px-4 py-3.5 text-white">
-              <span className="text-[11px] font-extrabold tracking-[0.08em] uppercase">
-                {t('sales.totalWithTax', 'Total with tax')}
-              </span>
-              <span className="font-mono text-[23px] font-extrabold tracking-[-0.02em]">
-                {formatCents(document.total_cents, currency)}
-              </span>
-            </div>
-          </div>
-        </div>
+      <ItemsTable lines={lines} columns={columns} variant="soft" className={cn('mt-7', `${D}mt-5`)} />
 
-        {theme.show_signature ? <SignatureRow /> : null}
-
-        <div className="mt-auto flex items-center justify-between gap-5 border-t border-[#e2e8f0] pt-3.5">
-          <span className="inline-flex items-center gap-[7px] text-[11px] font-bold text-[var(--print-accent)]">
-            <CircleAlert className="h-[15px] w-[15px]" strokeWidth={2} />
-            {t('sales.quotationFooter', 'This is a quotation, not a tax invoice.')}
-          </span>
-          <span className="font-mono text-[9px] text-[#94a3b8]">
-            {document.number} · {t('sales.pageOne', 'page 1 of 1')}
-          </span>
-        </div>
-      </SheetBody>
-    </SheetFrame>
-  )
-}
-
-function ProformaSheet({ document, company, currency, lines, issued, theme, logoSrc }: SheetProps) {
-  const units = lines.reduce((sum, line) => sum + line.quantity, 0)
-
-  return (
-    <SheetFrame theme={theme}>
-      <SheetBody className="px-[52px] pt-12 pb-10">
-        <div className="flex items-start justify-between gap-7">
-          <div className="flex items-center gap-[13px]">
-            <LogoMark company={company} outline showLogo={theme.show_logo} logoSrc={logoSrc} />
-            <span>
-              <span className="block text-base font-bold tracking-[-0.01em]">{company?.name}</span>
-              <span className="mt-0.5 block text-[11px] text-[#64748b]">{companyContactLine(company, false)}</span>
-            </span>
-          </div>
-          <div className="text-right">
-            <span className="inline-block rounded-md bg-[var(--print-accent)] px-4 py-[7px] text-lg font-black tracking-[0.2em] text-white">
-              PROFORMA
-            </span>
-            <span className="mt-2.5 block font-mono text-[15px] font-bold">{document.number}</span>
-            <span className="mt-0.5 block text-[11px] text-[#64748b]">
-              {t('sales.prepared', 'Prepared')} <span className="font-mono">{issued}</span>
-            </span>
-          </div>
-        </div>
-
-        <div className="mt-5 h-0.5 bg-[var(--print-accent)]" />
-
-        <div className="mt-5 flex items-stretch gap-[18px]">
-          <div className="flex-[1.5] rounded-lg border border-[#cbd5e1] px-[18px] py-[15px]">
-            <Label>{t('sales.preparedFor', 'Prepared for')}</Label>
-            <span className="mt-[7px] block text-[15px] font-bold">{clientTitle(document)}</span>
-            <ClientLines document={document} inline />
-          </div>
-          <div className="flex flex-1 gap-3">
-            <div className="flex flex-1 flex-col justify-center rounded-lg border border-[#cbd5e1] px-4 py-[15px]">
-              <Label>{t('sales.lines', 'Lines')}</Label>
-              <span className="mt-1 font-mono text-2xl font-extrabold">{lines.length}</span>
-            </div>
-            <div className="flex flex-1 flex-col justify-center rounded-lg border border-[#cbd5e1] px-4 py-[15px]">
-              <Label>{t('sales.units', 'Units')}</Label>
-              <span className="mt-1 font-mono text-2xl font-extrabold">{qtyText(units)}</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-[22px] overflow-hidden rounded-lg border-2 border-[var(--print-accent)]">
-          <div className="flex items-center bg-[var(--print-accent)] px-4 py-2.5 text-[8.5px] font-extrabold tracking-[0.14em] text-white uppercase">
-            <span className="w-[30px]">#</span>
-            <span className="min-w-0 flex-1">{t('sales.article', 'Article')}</span>
-            <span className="w-[92px] text-right">{t('sales.qty', 'Qty')}</span>
-            <span className="w-[126px] text-right">{t('sales.price', 'Price')}</span>
-            <span className="w-[140px] text-right">{t('sales.total', 'Total')}</span>
-          </div>
-          {lines.map((line, index) => (
-            <div
-              key={line.position}
-              className={cn(
-                'flex items-center border-t border-[#e2e8f0] px-4 py-[13px]',
-                index % 2 === 1 && 'bg-[#f8fafc]',
-              )}
-            >
-              <span className="w-[30px] font-mono text-xs text-[#94a3b8]">{line.position}</span>
-              <span className="min-w-0 flex-1">
-                <span className="block text-[13px] font-semibold">{line.article}</span>
-                {line.sr_number ? (
-                  <span className="block font-mono text-[10px] text-[#94a3b8]">{line.sr_number}</span>
-                ) : null}
-              </span>
-              <span className="w-[92px] text-right font-mono text-base font-bold">{qtyText(line.quantity)}</span>
-              <span className="w-[126px] text-right font-mono text-[13px] text-[#475569]">
-                {formatCents(line.unit_price, currency)}
-              </span>
-              <span className="w-[140px] text-right font-mono text-[13.5px] font-bold">
-                {formatCents(line.total_cents, currency)}
-              </span>
-            </div>
-          ))}
-          <div className="flex items-center border-t-2 border-[var(--print-accent)] bg-[#f8fafc] px-4 py-4">
-            <span className="min-w-0 flex-1 text-xs font-extrabold tracking-[0.1em] uppercase">
-              {t('sales.total', 'Total')}
-            </span>
-            <span className="w-[140px] text-right font-mono text-2xl font-black">
+      <section className={cn('mt-5 flex justify-end', `${D}mt-3`)}>
+        <div className="w-[290px] text-[11.5px]">
+          <TotalRows
+            rows={[
+              ...discountRows(document, currency),
+              { label: t('sales.totalWithoutTax', 'Total without tax'), value: formatCents(document.base_cents, currency) },
+              { label: 'IVA', value: formatCents(document.tax_cents, currency) },
+              ...recargoRows(document, currency),
+            ]}
+          />
+          <div className="mt-2 flex items-baseline justify-between gap-4 border-t-2 border-[var(--print-accent)] pt-3">
+            <span className="text-[12px] font-semibold">{t('sales.totalWithTax', 'Total with tax')}</span>
+            <span className="text-[24px] font-semibold tracking-[-0.02em] text-[var(--print-accent)] tabular-nums">
               {formatCents(document.total_cents, currency)}
             </span>
           </div>
         </div>
+      </section>
 
-        <span className="mt-2 block text-[10.5px] text-[#64748b]">
+      <NotesAndTerms
+        notes={document.notes}
+        terms={theme.footer_notes.trim() || t('sales.scopeNetGross', 'Prices shown both without and with tax, at the rates in force today.')}
+        termsLabel={t('sales.scope', 'Scope and conditions')}
+        className={cn('mt-8', `${D}mt-5`)}
+      />
+      {theme.show_signature ? <SignatureRow /> : null}
+
+      <footer className="mt-auto flex items-end justify-between gap-8 border-t border-[#e2e8f0] pt-4 text-[9.5px] text-[#94a3b8]">
+        <span className="font-medium text-[#64748b]">
+          {t('sales.quotationFooter', 'This is a quotation, not a tax invoice.')}
+        </span>
+        <PageMark document={document} />
+      </footer>
+    </SheetFrame>
+  )
+}
+
+/* ------------------------------------------------------------------ Proforma: the quotation's sibling */
+
+function ProformaSheet({ document, company, currency, lines, issued, theme, logoSrc }: SheetProps) {
+  const display = saleDisplayStatus(document)
+  const units = lines.reduce((sum, line) => sum + line.quantity, 0)
+  const settled = Math.min(document.settled_cents ?? 0, document.total_cents)
+  const balance = Math.max(0, document.total_cents - settled)
+  const paidShare = document.total_cents > 0 ? Math.round((settled / document.total_cents) * 100) : 0
+  const place = companyPlace(company)
+  const contact = companyContact(company)
+  const attn = clientAttn(document)
+  const id = taxId(document)
+
+  const columns: Column[] = [
+    { key: 'qty', label: t('sales.qty', 'Qty'), width: 60, render: (line) => qtyText(line.quantity) },
+    { key: 'price', label: t('sales.unitPrice', 'Unit price'), width: 104, render: (line) => formatCents(line.unit_price, currency) },
+    {
+      key: 'amount',
+      label: t('sales.amount', 'Amount'),
+      width: 116,
+      className: 'font-semibold text-[#0f172a]',
+      render: (line) => formatCents(line.total_cents, currency),
+    },
+  ]
+
+  const stats: { label: string; value: ReactNode; accent?: boolean }[] = [
+    { label: t('sales.date', 'Date'), value: issued },
+    { label: t('sales.units', 'Units'), value: `${qtyText(units)} · ${lines.length} ${lines.length === 1 ? t('sales.lineOne', 'line') : t('sales.lineMany', 'lines')}` },
+    { label: t('sales.status', 'Status'), value: <StatusBadge status={display} /> },
+    { label: t('sales.total', 'Total'), value: formatCents(document.total_cents, currency), accent: true },
+  ]
+
+  const clientFacts = [
+    { label: 'N.I.F / N.I.E', value: id },
+    { label: t('sales.phone', 'Phone'), value: document.client_phone },
+    { label: t('sales.attn', 'Attn.'), value: attn },
+  ].filter((fact) => fact.value)
+
+  return (
+    <SheetFrame theme={theme} voided={display === 'voided'} lineCount={lines.length} denseAfter={6} className={cn('px-14 pt-12 pb-10', `${D}pt-9 ${D}pb-8`)}>
+      <header className="flex items-start justify-between gap-10">
+        <div className="min-w-0">
+          {theme.show_logo ? (
+            <div className="mb-2.5">
+              <LogoMark company={company} logoSrc={logoSrc} show size={lines.length > 6 ? 44 : 54} imageSize={lines.length > 6 ? 56 : 72} />
+            </div>
+          ) : null}
+          <p className="m-0 text-[15px] font-semibold tracking-[-0.01em]">{company?.name}</p>
+          <p className="mt-1 mb-0 text-[10.5px] leading-[1.65] text-[#64748b]">
+            {[...place, contact].filter(Boolean).map((line) => (
+              <span key={line} className="block">
+                {line}
+              </span>
+            ))}
+          </p>
+        </div>
+        <div className="shrink-0 text-right">
+          <h1 className="m-0 text-[44px] leading-none font-light tracking-[-0.035em] text-[#0f172a] group-data-[dense=true]:text-[34px]">
+            {t('sales.proformaTitle', 'Proforma')}
+          </h1>
+          <p className="mt-2.5 mb-0 text-[12px] font-medium text-[#64748b] tabular-nums">{document.number}</p>
+          <span aria-hidden="true" className="mt-3.5 ml-auto block h-1 w-10 rounded-full bg-[var(--print-accent)]" />
+        </div>
+      </header>
+
+      <section className={cn('mt-9 grid grid-cols-4 rounded-xl bg-[var(--print-soft)] px-2 py-4', `${D}mt-6 ${D}py-3`)}>
+        {stats.map((stat, index) => (
+          <div key={stat.label} className={cn('px-4', index > 0 && 'border-l border-[var(--print-border)]')}>
+            <Label>{stat.label}</Label>
+            <div
+              className={cn(
+                'mt-1.5 tabular-nums',
+                stat.accent ? 'text-[17px] font-semibold text-[var(--print-accent)]' : 'text-[12.5px] font-medium',
+              )}
+            >
+              {stat.value}
+            </div>
+          </div>
+        ))}
+      </section>
+
+      <section className={cn('mt-8 flex items-start justify-between gap-8 border-l-[3px] border-[var(--print-accent)] pl-4', `${D}mt-5`)}>
+        <div className="min-w-0">
+          <Label>{t('sales.preparedFor', 'Prepared for')}</Label>
+          <p className="mt-2 mb-0 text-[15px] font-semibold text-[#0f172a]">{clientTitle(document)}</p>
+          {document.client_address ? (
+            <p className="mt-1 mb-0 text-[11px] leading-[1.6] text-[#475569]">{document.client_address}</p>
+          ) : null}
+        </div>
+        {clientFacts.length > 0 ? (
+          <dl className="m-0 flex shrink-0 gap-8 text-[11px]">
+            {clientFacts.map((fact) => (
+              <div key={fact.label}>
+                <dt className="text-[9.5px] text-[#64748b]">{fact.label}</dt>
+                <dd className="m-0 mt-1 font-medium text-[#0f172a] tabular-nums">{fact.value}</dd>
+              </div>
+            ))}
+          </dl>
+        ) : null}
+      </section>
+
+      <ItemsTable lines={lines} columns={columns} variant="light" className={cn('mt-8', `${D}mt-5`)} />
+
+      <section className={cn('mt-6 flex items-start justify-between gap-10', `${D}mt-4`)}>
+        <p className="m-0 max-w-[300px] text-[10px] leading-[1.7] text-[#94a3b8]">
           {t(
             'sales.proformaCaption',
             'Prices are the amounts agreed with the customer for this shipment. Taxes are not calculated on this document.',
           )}
-        </span>
-
-        <TermsBlock notes={document.notes} footer={theme.footer_notes} signature={theme.show_signature} />
-
-        <div className="mt-auto flex items-center justify-between gap-5 border-t border-[#e2e8f0] pt-3.5">
-          <span className="text-[10.5px] text-[#64748b]">{company?.name}</span>
-          <span className="font-mono text-[9px] text-[#94a3b8]">
-            {document.number} · {t('sales.pageOne', 'page 1 of 1')}
-          </span>
+        </p>
+        <div className="w-[280px] shrink-0 text-[11.5px]">
+          <div className="flex items-baseline justify-between gap-4 border-t-2 border-[var(--print-accent)] pt-3">
+            <span className="text-[12px] font-semibold">{t('sales.total', 'Total')}</span>
+            <span className="text-[24px] font-semibold tracking-[-0.02em] text-[var(--print-accent)] tabular-nums">
+              {formatCents(document.total_cents, currency)}
+            </span>
+          </div>
+          {settled > 0 ? (
+            <div className="mt-3.5">
+              <div className="h-1.5 overflow-hidden rounded-full bg-[var(--print-tint)]">
+                <span className="block h-full rounded-full bg-[var(--print-accent)]" style={{ width: `${paidShare}%` }} />
+              </div>
+              <div className="mt-2.5 flex items-baseline justify-between gap-4">
+                <span className="text-[#64748b]">
+                  {t('sales.paidToDate', 'Paid to date')} · {paidShare}%
+                </span>
+                <span className="tabular-nums">{formatCents(settled, currency)}</span>
+              </div>
+              <div className="mt-1.5 flex items-baseline justify-between gap-4">
+                <span className="font-semibold">{t('sales.balanceDue', 'Balance due')}</span>
+                <span className="font-semibold tabular-nums">{formatCents(balance, currency)}</span>
+              </div>
+            </div>
+          ) : null}
         </div>
-      </SheetBody>
+      </section>
+
+      <NotesAndTerms notes={document.notes} terms={theme.footer_notes} className={cn('mt-9', `${D}mt-5`)} />
+      {theme.show_signature ? <SignatureRow /> : null}
+
+      <footer className="mt-auto flex items-end justify-between gap-8 border-t border-[#e2e8f0] pt-4 text-[9.5px] text-[#94a3b8]">
+        <span className="font-medium text-[#64748b]">{t('sales.proformaTag', 'Not a tax invoice')}</span>
+        <PageMark document={document} />
+      </footer>
+    </SheetFrame>
+  )
+}
+
+/* ------------------------------------------------------------------ Albarán: a plain delivery slip */
+
+/** Deliberately carries nothing of the issuing company: no name, address, email or logo. */
+function AlbaranSheet({ document, currency, lines, issued, theme }: SheetProps) {
+  const display = saleDisplayStatus(document)
+  const units = lines.reduce((sum, line) => sum + line.quantity, 0)
+  const attn = clientAttn(document)
+  const id = taxId(document)
+
+  const columns: Column[] = [
+    {
+      key: 'qty',
+      label: t('sales.qty', 'Qty'),
+      width: 60,
+      className: 'font-bold text-[#0f172a]',
+      render: (line) => qtyText(line.quantity),
+    },
+    { key: 'price', label: t('sales.unitPrice', 'Unit price'), width: 92, render: (line) => formatCents(line.unit_price, currency) },
+    ...discountColumn(lines, 56),
+    {
+      key: 'amount',
+      label: t('sales.amount', 'Amount'),
+      width: 100,
+      className: 'font-medium text-[#0f172a]',
+      render: (line) => formatCents(grossOf(line).total, currency),
+    },
+  ]
+
+  const field = (label: string, value: ReactNode) => (
+    <div className="flex items-baseline gap-3 border-b border-dashed border-[#94a3b8] py-2">
+      <span className="w-[92px] shrink-0 text-[10px] font-semibold tracking-[0.06em] text-[#64748b] uppercase">{label}</span>
+      <span className="min-w-0 flex-1 text-[12px] font-medium text-[#0f172a]">{value || ' '}</span>
+    </div>
+  )
+
+  return (
+    <SheetFrame theme={theme} voided={display === 'voided'} lineCount={lines.length} className={cn('px-14 pt-14 pb-10', `${D}pt-11 ${D}pb-8`)}>
+      <header className="flex items-start justify-between gap-8">
+        <div>
+          <h1 className="m-0 text-[46px] leading-[0.9] font-black tracking-[-0.04em] text-[var(--print-accent)] uppercase">
+            Albarán
+          </h1>
+          <p className="mt-2.5 mb-0 text-[11px] font-semibold tracking-[0.24em] text-[#475569] uppercase">
+            {t('sales.typeAlbaran', 'Delivery note')}
+          </p>
+        </div>
+        <div className="grid shrink-0 grid-cols-2 overflow-hidden rounded-md border-2 border-[#0f172a] text-center">
+          <div className="border-r-2 border-[#0f172a] px-5 py-2.5">
+            <p className="m-0 text-[9px] font-semibold tracking-[0.1em] text-[#64748b] uppercase">{t('sales.number', 'No.')}</p>
+            <p className="mt-1 mb-0 text-[15px] font-bold tabular-nums">{document.number}</p>
+          </div>
+          <div className="px-5 py-2.5">
+            <p className="m-0 text-[9px] font-semibold tracking-[0.1em] text-[#64748b] uppercase">{t('sales.date', 'Date')}</p>
+            <p className="mt-1 mb-0 text-[15px] font-bold tabular-nums">{issued}</p>
+          </div>
+        </div>
+      </header>
+
+      <section className={cn('mt-10', `${D}mt-6`)}>
+        <Label className="text-[#0f172a]">{t('sales.deliverTo', 'Deliver to')}</Label>
+        <div className="mt-1.5">
+          {field(t('sales.clientName', 'Name'), clientTitle(document))}
+          {attn ? field(t('sales.attn', 'Attn.'), attn) : null}
+          <div className="grid grid-cols-2 gap-8">
+            {field('N.I.F / N.I.E', id)}
+            {field(t('sales.phone', 'Phone'), document.client_phone)}
+          </div>
+          {document.client_address ? field(t('sales.clientAddress', 'Address'), document.client_address) : null}
+        </div>
+      </section>
+
+      <ItemsTable lines={lines} columns={columns} variant="slip" className={cn('mt-9', `${D}mt-6`)} />
+
+      <section className={cn('mt-6 flex items-start justify-between gap-10', `${D}mt-4`)}>
+        <p className="m-0 text-[11px] text-[#475569]">
+          <span className="font-bold text-[#0f172a] tabular-nums">{qtyText(units)}</span>{' '}
+          {t('sales.unitsIn', 'units in')} <span className="font-bold text-[#0f172a] tabular-nums">{lines.length}</span>{' '}
+          {lines.length === 1 ? t('sales.lineOne', 'line') : t('sales.lineMany', 'lines')}
+        </p>
+        <div className="w-[260px] shrink-0 text-[11.5px]">
+          <TotalRows rows={discountRows(document, currency)} />
+          <div className="mt-1.5 flex items-baseline justify-between gap-4 border-t-2 border-[#0f172a] pt-2.5">
+            <span className="text-[12px] font-bold uppercase tracking-[0.06em]">{t('sales.totalNet', 'Total (net)')}</span>
+            <span className="text-[20px] font-bold tabular-nums">{formatCents(document.total_cents, currency)}</span>
+          </div>
+        </div>
+      </section>
+
+      <NotesAndTerms notes={document.notes} terms={theme.footer_notes} className={cn('mt-9', `${D}mt-6`)} />
+      {theme.show_signature ? <SignatureRow dashed /> : null}
+
+      <footer className="mt-auto flex items-center justify-between gap-6 border-t-2 border-dashed border-[#94a3b8] pt-3 text-[9.5px] text-[#94a3b8]">
+        <span>{t('sales.albaranFooter', 'Keep this slip with the goods.')}</span>
+        <PageMark document={document} />
+      </footer>
     </SheetFrame>
   )
 }
@@ -921,8 +1088,8 @@ export function PrintSheet({ document, company, currency, theme, logoSrc }: Prin
   const waiting = theme === undefined && query.isPending
   const logoUrl = company?.logo_url ?? query.data?.logo_url ?? null
   const blobQuery = useQuery({
-    queryKey: ['app', 'image-blob', logoUrl],
-    queryFn: () => loadImageBlob(logoUrl as string),
+    queryKey: ['app', 'print-logo', logoUrl],
+    queryFn: () => loadLogoBlob(logoUrl),
     enabled:
       !waiting && logoSrc === undefined && document.type !== 'albaran' && Boolean(logoUrl) && applied.show_logo,
   })

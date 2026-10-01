@@ -43,6 +43,7 @@ export type Customer = {
   phone: string | null
   nif: string | null
   nie: string | null
+  address: string | null
   is_active: boolean
   documents_count?: number
 }
@@ -53,6 +54,7 @@ export type CustomerInput = {
   phone: string | null
   nif: string | null
   nie: string | null
+  address?: string | null
 }
 
 export type DiscountType = 'percent' | 'amount'
@@ -124,6 +126,7 @@ export type SaleDocument = {
   client_phone: string | null
   client_nif: string | null
   client_nie: string | null
+  client_address: string | null
   notes: string | null
   base_cents: number
   tax_cents: number
@@ -170,6 +173,7 @@ export type SaleInput = {
   client_phone: string | null
   client_nif: string | null
   client_nie: string | null
+  client_address: string | null
   lines: SaleLineInput[]
 }
 

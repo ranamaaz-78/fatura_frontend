@@ -106,6 +106,7 @@ function sampleDocument(type: PrintableType): SaleDocument {
     client_phone: '+34 600 123 456',
     client_nif: 'B12345678',
     client_nie: null,
+    client_address: 'Calle Mayor 12, 28013 Madrid',
     notes: t('printables.sampleNote', 'Sample note printed on this document.'),
     base_cents: base,
     tax_cents: tax,
@@ -192,7 +193,7 @@ function Printables() {
   const query = useQuery({ queryKey: ['app', 'print-templates'], queryFn: getPrintTemplates })
   const logoUrl = query.data?.logo_url ?? company?.logo_url ?? null
   const logoBlob = useQuery({
-    queryKey: ['app', 'image-blob', logoUrl],
+    queryKey: ['app', 'print-logo', logoUrl],
     queryFn: () => loadLogoBlob(logoUrl),
     enabled: Boolean(logoUrl),
   })
@@ -209,7 +210,10 @@ function Printables() {
     const next = {} as Record<PrintableType, PrintTemplateInput>
     for (const row of payload.templates) next[row.type] = toInput(row)
     setDrafts(next)
-    await queryClient.invalidateQueries({ queryKey: ['app', 'image-blob'] })
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['app', 'image-blob'] }),
+      queryClient.invalidateQueries({ queryKey: ['app', 'print-logo'] }),
+    ])
   }
 
   const save = useMutation({
@@ -258,7 +262,10 @@ function Printables() {
     mutationFn: deleteCompanyLogo,
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['app', 'print-templates'] })
-      await queryClient.invalidateQueries({ queryKey: ['app', 'image-blob'] })
+      await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['app', 'image-blob'] }),
+      queryClient.invalidateQueries({ queryKey: ['app', 'print-logo'] }),
+    ])
       await refresh()
       push({ tone: 'success', title: t('printables.logoRemoved', 'Logo removed.') })
     },
@@ -315,7 +322,7 @@ function Printables() {
           {t('printables.logo', 'Company logo')}
         </p>
         <p className="mt-0.5 text-xs text-slate-400">
-          {t('printables.logoHint', 'Used on invoices, quotes and proformas when “Show logo” is on. Delivery notes never show a logo.')}
+          {t('printables.logoHint', 'Shown on invoices, quotes and proformas when “Show logo” is on; without a logo, your initials are shown instead. Delivery notes carry no company details at all.')}
         </p>
         <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center">
           <span className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-xl border border-line bg-page">

@@ -14,7 +14,7 @@ import { generateSaleDocumentPdfBase64 } from '../../lib/exportSaleSheet'
 import { getErrorMessage } from '../../services/api'
 import { listAllProducts, listRecargoRates, listTaxRates } from '../../services/catalog'
 import { createSale, getSale, listActiveCustomers, previewSale, updateSale } from '../../services/sales'
-import { getPrintTemplates } from '../../services/printables'
+import { getPrintTemplates, loadLogoBlob } from '../../services/printables'
 import { getWhatsAppStatus, sendWhatsAppDocument } from '../../services/whatsapp'
 import type { Product } from '../../types/catalog'
 import type { Customer, DiscountType, IssuableType, PaymentStatus, SaleDocument, SaleInput } from '../../types/sales'
@@ -137,6 +137,7 @@ function InvoiceNew() {
   const [clientCompany, setClientCompany] = useState('')
   const [clientPhone, setClientPhone] = useState('')
   const [clientNif, setClientNif] = useState('')
+  const [clientAddress, setClientAddress] = useState('')
 
   const [productQuery, setProductQuery] = useState('')
   const [dropdown, setDropdown] = useState(false)
@@ -147,6 +148,14 @@ function InvoiceNew() {
   // The note on a document comes from Printables. A new document is stamped with the one for its
   // type when it is issued; a saved quotation shows the note it was issued with.
   const printTemplates = useQuery({ queryKey: ['app', 'print-templates'], queryFn: getPrintTemplates })
+
+  // The uploaded company logo (trimmed, same cache as the printables) stands in for the initials.
+  const logoUrl = company?.logo_url ?? printTemplates.data?.logo_url ?? null
+  const companyLogo = useQuery({
+    queryKey: ['app', 'print-logo', logoUrl],
+    queryFn: () => loadLogoBlob(logoUrl),
+    enabled: Boolean(logoUrl),
+  })
 
   const whatsAppStatus = useQuery({
     queryKey: ['whatsapp-status'],
@@ -201,7 +210,7 @@ function InvoiceNew() {
   const selectedCustomer = customerId === null ? null : ((customers.data ?? []).find((customer) => customer.id === customerId) ?? null)
   const hasClientData =
     customerId !== null ||
-    [clientPhone, clientName, clientCompany, clientNif].some((value) => value.trim() !== '')
+    [clientPhone, clientName, clientCompany, clientNif, clientAddress].some((value) => value.trim() !== '')
 
   const phoneNeedle = digits(clientPhone)
   const phoneMatches = useMemo(() => {
@@ -321,6 +330,7 @@ function InvoiceNew() {
     setClientCompany(document.client_company ?? '')
     setClientPhone(document.client_phone ?? '')
     setClientNif(document.client_nif ?? '')
+    setClientAddress(document.client_address ?? '')
     setLines(linesFromDocument(document, catalog.data ?? []))
     setHydrated(true)
   }, [catalog.data, existing.data, hydrated, navigate])
@@ -412,6 +422,7 @@ function InvoiceNew() {
     setClientCompany(customer.company_name ?? '')
     setClientPhone(customer.phone ?? '')
     setClientNif(customer.nif || customer.nie || '')
+    setClientAddress(customer.address ?? '')
   }
 
   function onPhoneChange(value: string) {
@@ -437,6 +448,7 @@ function InvoiceNew() {
     setClientCompany('')
     setClientPhone('')
     setClientNif('')
+    setClientAddress('')
   }
 
   function piecesLeft(productId: number, stock: number): number {
@@ -549,6 +561,7 @@ function InvoiceNew() {
       client_phone: clientPhone.trim() || null,
       client_nif: clientNif.trim() || null,
       client_nie: null,
+      client_address: clientAddress.trim() || null,
       discount_type: discountCents > 0 ? discountKind : null,
       discount_value:
         discountCents > 0 ? (discountKind === 'amount' ? Math.round(typedDiscount * 100) : typedDiscount) : null,
@@ -641,19 +654,27 @@ function InvoiceNew() {
       <div className="flex flex-col gap-8 rounded-3xl border border-line bg-card p-4 shadow-md sm:p-8 lg:p-10">
         <div className="grid gap-6 border-b border-slate-100 pb-6 lg:grid-cols-2">
           {rules.showsCompanyContact ? (
-            <div>
-              <div className="flex items-center gap-2.5">
-                <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-600 font-mono text-sm font-bold text-brand-on">
+            <div className="flex items-center gap-4">
+              {companyLogo.data ? (
+                <img
+                  src={companyLogo.data}
+                  alt={company?.name ?? ''}
+                  className="block h-auto max-h-14 w-auto max-w-[120px] shrink-0 object-contain"
+                />
+              ) : (
+                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-brand-600 text-base font-bold text-brand-on">
                   {initials(company?.name ?? 'YK Digital Solutions')}
                 </span>
-                <div>
-                  <h2 className="text-lg font-bold text-slate-900">{company?.name ?? '—'}</h2>
-                  <p className="font-mono text-xs text-slate-500">{company?.email}</p>
-                </div>
+              )}
+              <span aria-hidden="true" className="h-12 w-px shrink-0 bg-slate-200" />
+              <div className="min-w-0">
+                <h2 className="truncate text-lg leading-tight font-bold text-slate-900">{company?.name ?? '—'}</h2>
+                {company?.email ? <p className="mt-0.5 truncate text-xs text-slate-500">{company.email}</p> : null}
+                <p className="mt-0.5 truncate text-xs text-slate-400">
+                  {[company?.address, company?.city].filter(Boolean).join(' · ') ||
+                    t('sales.noAddress', 'No address on the company yet')}
+                </p>
               </div>
-              <p className="mt-1.5 text-xs text-slate-500">
-                {[company?.address, company?.city].filter(Boolean).join(' · ') || t('sales.noAddress', 'No address on the company yet')}
-              </p>
             </div>
           ) : (
             <div>
@@ -842,6 +863,18 @@ function InvoiceNew() {
                 onChange={(event) => setClientNif(event.target.value.toUpperCase())}
                 autoComplete="off"
                 className={cn(clientField, 'font-mono uppercase')}
+              />
+            </div>
+
+            <div className="sm:col-span-2">
+              <span className={clientLabel}>{t('sales.clientAddress', 'Address')}</span>
+              <input
+                value={clientAddress}
+                onChange={(event) => setClientAddress(event.target.value)}
+                maxLength={255}
+                autoComplete="off"
+                placeholder={t('sales.clientAddressPlaceholder', 'Street, number, city')}
+                className={clientField}
               />
             </div>
           </div>
