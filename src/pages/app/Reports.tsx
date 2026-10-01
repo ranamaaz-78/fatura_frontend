@@ -721,13 +721,13 @@ function Reports() {
               </div>
               {rows.map((row, index) => (
                 <div key={index} className="flex items-center border-t border-slate-100 px-4 py-3 text-[13px]">
-                  <span className="w-8 shrink-0 font-mono text-[11px] text-slate-400">{index + 1}</span>
+                  <span className="w-8 shrink-0 text-[11px] text-slate-400">{index + 1}</span>
                   {cols.map((col) => (
                     <span
                       key={col.key}
                       className={cn(
                         'min-w-0 flex-1',
-                        col.align === 'right' ? 'text-right font-mono' : 'text-slate-800',
+                        col.align === 'right' ? 'text-right' : 'text-slate-800',
                       )}
                     >
                       {col.node ? col.node(row) : col.text(row)}
@@ -744,13 +744,13 @@ function Reports() {
                     <p className="truncate text-[13px] font-semibold text-slate-900">
                       {cols[0]?.node ? cols[0].node(row) : cols[0] ? cols[0].text(row) : ''}
                     </p>
-                    <span className="font-mono text-[11px] text-slate-400">{index + 1}</span>
+                    <span className="text-[11px] text-slate-400">{index + 1}</span>
                   </div>
                   {cols.slice(1).map((col) =>
                     col.hideOnPhone ? null : (
                       <p key={col.key} className="flex items-center justify-between gap-3 text-[12px] text-slate-500">
                         <span>{col.header}</span>
-                        <span className={cn(col.align === 'right' ? 'font-mono text-slate-800' : 'text-slate-800')}>
+                        <span className={cn(col.align === 'right' ? 'text-slate-800' : 'text-slate-800')}>
                           {col.node ? col.node(row) : col.text(row)}
                         </span>
                       </p>
@@ -1068,7 +1068,7 @@ function Donut({ data, currency, center }: { data: Slice[]; currency: string; ce
           </PieChart>
         </ResponsiveContainer>
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-          <p className="font-mono text-[13px] font-bold text-slate-900">{center}</p>
+          <p className="text-[13px] font-bold text-slate-900">{center}</p>
         </div>
       </div>
       <ul className="mt-1 flex flex-wrap justify-center gap-x-3 gap-y-1">
@@ -1090,7 +1090,7 @@ function ShareBar({ value, total }: { value: number; total: number }) {
       <span className="h-1.5 w-16 overflow-hidden rounded-full bg-slate-100">
         <span className="block h-full rounded-full bg-brand-600" style={{ width: `${Math.min(pct, 100)}%` }} />
       </span>
-      <span className="w-10 text-right font-mono text-[11px] text-slate-500">{pct.toFixed(0)}%</span>
+      <span className="w-10 text-right text-[11px] text-slate-500">{pct.toFixed(0)}%</span>
     </span>
   )
 }
@@ -1121,7 +1121,7 @@ function StockChip({ band }: { band: string }) {
 
 function DaysChip({ days }: { days: number }) {
   return (
-    <span className={cn('inline-flex h-6 items-center rounded-full px-2.5 font-mono text-[11px] font-semibold', days >= 30 ? 'bg-amber-50 text-amber-800 ring-1 ring-amber-200' : 'bg-slate-100 text-slate-600')}>
+    <span className={cn('inline-flex h-6 items-center rounded-full px-2.5 text-[11px] font-semibold', days >= 30 ? 'bg-amber-50 text-amber-800 ring-1 ring-amber-200' : 'bg-slate-100 text-slate-600')}>
       {days}
     </span>
   )
@@ -1133,7 +1133,7 @@ function Stat({ label, value, hint, tile, icon }: Tile) {
       <span className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-xl', tile)}>{icon}</span>
       <div className="min-w-0">
         <p className="text-[11px] font-semibold tracking-[0.06em] text-slate-500 uppercase">{label}</p>
-        <p className="font-mono text-[15px] font-bold leading-tight text-slate-900 sm:truncate sm:text-lg">{value}</p>
+        <p className="text-[15px] font-bold leading-tight text-slate-900 sm:truncate sm:text-lg">{value}</p>
         <p className="truncate text-[11px] leading-snug text-slate-400">{hint}</p>
       </div>
     </div>

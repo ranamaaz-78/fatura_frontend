@@ -1,10 +1,11 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { ArrowRight, Check, ChevronLeft, MailCheck, MessageCircle, ScanLine, ShieldCheck } from 'lucide-react'
+import { ArrowRight, Check, ChevronLeft, MailCheck, MessageCircle, ShieldCheck } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Controller, useForm, useWatch, type UseFormRegisterReturn } from 'react-hook-form'
 import { Link, useSearchParams } from 'react-router-dom'
 import { z } from 'zod'
+import { Logo } from '../../components/brand/Logo'
 import { Modal } from '../../components/ui/Modal'
 import { OtpInput } from '../../components/ui/OtpInput'
 import { PublicFieldShell, PublicInput, PublicSelect, PublicTextarea, publicControlClass } from '../../components/ui/PublicField'
@@ -92,7 +93,7 @@ function Stepper() {
           <span className="flex flex-col items-center">
             <span
               className={cn(
-                'flex h-9 w-9 shrink-0 items-center justify-center rounded-full font-mono text-sm font-bold',
+                'flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold',
                 index === 0
                   ? 'bg-[#004ac6] text-white shadow-[0_0_0_6px_rgba(37,99,235,0.25)]'
                   : 'border-2 border-white/24 text-[#cbd5e1]',
@@ -184,7 +185,7 @@ function PhoneField({ id, label, required, error, dial, onDialChange, number }: 
           autoComplete="tel-national"
           aria-invalid={Boolean(error)}
           aria-describedby={error ? `${id}-error` : undefined}
-          className={cn(publicControlClass, 'h-12 min-w-0 flex-1 px-3.5 font-mono tracking-wide')}
+          className={cn(publicControlClass, 'h-12 min-w-0 flex-1 px-3.5 tracking-wide')}
           {...number}
         />
       </span>
@@ -376,11 +377,8 @@ function Apply() {
         className="flex flex-col px-6 py-10 text-white sm:px-14 lg:w-[460px] lg:shrink-0 xl:w-[500px]"
         style={ASIDE_BACKGROUND}
       >
-        <Link to="/" className="flex items-center gap-2.5">
-          <span className="inline-flex h-9 w-9 items-center justify-center rounded-[10px] bg-[#004ac6] text-white">
-            <ScanLine className="h-[18px] w-[18px]" />
-          </span>
-          <span className="text-xl font-bold tracking-[-0.02em] text-white">{t('app.name', 'YK Digital Solutions')}</span>
+        <Link to="/" className="inline-flex" aria-label={t('app.name', 'YK Digital Solutions')}>
+          <Logo on="dark" className="h-14" />
         </Link>
 
         <h1 className="mt-12 text-[32px] leading-[1.12] font-extrabold tracking-[-0.03em] sm:text-[40px] lg:mt-16">
@@ -605,9 +603,9 @@ function Apply() {
                     'apply.consent',
                     'I agree that YK Digital Solutions may contact me by phone, email or WhatsApp about this application, and I accept the',
                   )}{' '}
-                  <Link to="/privacy" className="font-semibold text-[#004ac6]">
+                  <a href="/#privacy" target="_blank" rel="noreferrer" className="font-semibold text-[#004ac6]">
                     {t('apply.privacyPolicy', 'privacy policy')}
-                  </Link>
+                  </a>
                   .
                 </span>
               </label>

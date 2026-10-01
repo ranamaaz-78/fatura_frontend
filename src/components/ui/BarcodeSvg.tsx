@@ -36,7 +36,7 @@ export function BarcodeSvg({ code, className, digits = true }: BarcodeSvgProps) 
               x={digit.x}
               y={digit.y}
               textAnchor={digit.anchor}
-              fontFamily="'JetBrains Mono', monospace"
+              fontFamily="'Geist', -apple-system, 'Segoe UI', sans-serif"
               fontSize={geometry.fontSize}
               fill="#0f172a"
             >

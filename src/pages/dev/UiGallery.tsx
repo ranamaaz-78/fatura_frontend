@@ -396,7 +396,7 @@ function UiGallery() {
               accept=".csv,.xlsx"
               onFile={(file) => setFileName(file.name)}
             />
-            {fileName ? <p className="text-xs text-slate-500 font-mono">{fileName}</p> : null}
+            {fileName ? <p className="text-xs text-slate-500">{fileName}</p> : null}
             <SectionDivider label={t('gallery.meta', 'Meta')} />
             <Pagination page={page} pageCount={5} onPageChange={setPage} summary={t('gallery.pageSummary', 'Page of results')} />
           </div>

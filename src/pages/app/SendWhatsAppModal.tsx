@@ -1,8 +1,10 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { Loader2, MessageCircle, Send, X } from 'lucide-react'
+import { FileText, Send, Smartphone } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
+import { Modal } from '../../components/ui/Modal'
 import { Textarea } from '../../components/ui/Textarea'
 import { useToast } from '../../components/ui/Toast'
 import { t } from '../../i18n'
@@ -12,6 +14,7 @@ import { getErrorMessage } from '../../services/api'
 import { getWhatsAppStatus, sendWhatsAppDocument } from '../../services/whatsapp'
 import type { Company } from '../../types/module01'
 import type { SaleDocument } from '../../types/sales'
+import { DEFAULT_WHATSAPP_TEMPLATE } from './WhatsAppTab'
 
 export type SendWhatsAppModalProps = {
   open: boolean
@@ -19,6 +22,18 @@ export type SendWhatsAppModalProps = {
   document: SaleDocument
   company: Company | null
   currency: string
+}
+
+/** The message as the customer will read it: the saved wording with this document's details filled in. */
+function fillTemplate(template: string, document: SaleDocument, company: Company | null, currency: string): string {
+  const type = document.type.charAt(0).toUpperCase() + document.type.slice(1)
+
+  return template
+    .replace(/\{customer_name\}/g, document.client_name || 'Customer')
+    .replace(/\{document_type\}/g, type)
+    .replace(/\{document_number\}/g, document.number)
+    .replace(/\{total_amount\}/g, formatCents(document.total_cents, currency))
+    .replace(/\{company_name\}/g, company?.name || 'YK Digital Solutions')
 }
 
 export function SendWhatsAppModal({ open, onClose, document, company, currency }: SendWhatsAppModalProps) {
@@ -36,29 +51,10 @@ export function SendWhatsAppModal({ open, onClose, document, company, currency }
   useEffect(() => {
     if (!open) return
     setPhone(document.client_phone ?? '')
+    setCaption(fillTemplate(statusQuery.data?.message_template || DEFAULT_WHATSAPP_TEMPLATE, document, company, currency))
+  }, [open, document, company, currency, statusQuery.data?.message_template])
 
-    const tmpl = statusQuery.data?.message_template
-    const docType = document.type.charAt(0).toUpperCase() + document.type.slice(1)
-    const totalStr = formatCents(document.total_cents, currency)
-    const compName = company?.name || 'YK Digital Solutions'
-    const custName = document.client_name || 'Customer'
-
-    if (tmpl) {
-      const msg = tmpl
-        .replace(/\{customer_name\}/g, custName)
-        .replace(/\{document_type\}/g, docType)
-        .replace(/\{document_number\}/g, document.number)
-        .replace(/\{total_amount\}/g, totalStr)
-        .replace(/\{company_name\}/g, compName)
-      setCaption(msg)
-    } else {
-      setCaption(
-        `Dear ${custName},\n\nPlease find attached your ${docType} *#${document.number}* from *${compName}* for *${totalStr}*.\n\nThank you for choosing us!`,
-      )
-    }
-  }, [open, document, company, currency, statusQuery.data])
-
-  const sendMutation = useMutation({
+  const send = useMutation({
     mutationFn: async () => {
       setGenerating(true)
       try {
@@ -77,131 +73,82 @@ export function SendWhatsAppModal({ open, onClose, document, company, currency }
     onSuccess: (data) => {
       push({
         tone: 'success',
-        title: t('whatsapp.sentSuccess', `Document #${document.number} sent to ${data.recipient} via WhatsApp!`),
+        title: `${t('whatsapp.sentTo', 'Sent to')} +${data.recipient} ${t('whatsapp.onWhatsapp', 'on WhatsApp')}`,
       })
       onClose()
     },
-    onError: (err) => {
-      push({
-        tone: 'danger',
-        title: getErrorMessage(err),
-      })
-    },
+    onError: (error) => push({ tone: 'danger', title: getErrorMessage(error) }),
   })
 
-  if (!open) return null
-
-  const isConnected = statusQuery.data?.status === 'connected'
+  const connected = statusQuery.data?.status === 'connected'
+  const busy = send.isPending || generating
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-xs">
-      <div className="relative w-full max-w-lg rounded-2xl border border-line bg-card p-6 shadow-xl animate-in fade-in zoom-in-95 duration-150">
-        <div className="flex items-center justify-between pb-3 border-b border-line">
-          <div className="flex items-center gap-2.5">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
-              <MessageCircle className="h-5 w-5" />
-            </span>
-            <div>
-              <h3 className="text-sm font-bold text-ink">
-                {t('whatsapp.sendDocTitle', 'Send Document via WhatsApp')}
-              </h3>
-              <p className="text-[11px] text-ink-muted">
-                {document.number} • {document.client_name}
-              </p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg p-1 text-ink-muted hover:bg-page hover:text-ink"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-
-        {!isConnected && (
-          <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
-            <span className="font-semibold block">{t('whatsapp.notConnectedWarn', 'WhatsApp not linked')}</span>
-            <span>
-              {t(
-                'whatsapp.connectInSettingsHelp',
-                'Please link your WhatsApp account in Settings > WhatsApp to send documents directly.',
-              )}
-            </span>
-          </div>
-        )}
-
-        <div className="mt-4 flex flex-col gap-4">
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="wa-recipient-phone" className="text-xs font-semibold text-ink">
-              {t('whatsapp.recipientPhone', 'Recipient WhatsApp Number')}
-            </label>
-            <Input
-              id="wa-recipient-phone"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="e.g. +34612345678 or +923001234567"
-              className="text-xs"
-              disabled={sendMutation.isPending || generating}
-            />
-            <span className="text-[10px] text-ink-muted">
-              {t('whatsapp.phoneHint', 'Include country code (e.g. +34 or +92).')}
-            </span>
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="wa-caption-msg" className="text-xs font-semibold text-ink">
-              {t('whatsapp.captionLabel', 'Message Caption')}
-            </label>
-            <Textarea
-              id="wa-caption-msg"
-              rows={4}
-              value={caption}
-              onChange={(e) => setCaption(e.target.value)}
-              className="text-xs leading-relaxed"
-              disabled={sendMutation.isPending || generating}
-            />
-          </div>
-
-          <div className="rounded-xl border border-line bg-page/70 p-3 text-[11px] text-ink-muted flex items-center justify-between">
-            <span>{t('whatsapp.attachment', 'Attachment:')}</span>
-            <span className="font-mono font-medium text-ink">{document.number}.pdf</span>
-          </div>
-        </div>
-
-        <div className="mt-5 flex justify-end gap-2">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={onClose}
-            disabled={sendMutation.isPending || generating}
-          >
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={t('whatsapp.sendDocTitle', 'Send on WhatsApp')}
+      subtitle={`${document.number} · ${document.client_name}`}
+      maxWidth="lg"
+      footer={
+        <>
+          <Button variant="secondary" onClick={onClose} disabled={busy}>
             {t('common.cancel', 'Cancel')}
           </Button>
           <Button
-            type="button"
-            tone="brand"
-            size="sm"
-            onClick={() => sendMutation.mutate()}
-            disabled={sendMutation.isPending || generating || !phone.trim() || !isConnected}
-            className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
+            variant="success"
+            icon={<Send className="h-4 w-4" />}
+            loading={busy}
+            disabled={!phone.trim() || !connected}
+            onClick={() => send.mutate()}
           >
-            {sendMutation.isPending || generating ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Send className="h-4 w-4" />
-            )}
-            {generating
-              ? t('whatsapp.renderingPdf', 'Generating PDF...')
-              : sendMutation.isPending
-                ? t('whatsapp.sending', 'Sending...')
-                : t('whatsapp.sendNow', 'Send PDF via WhatsApp')}
+            {generating ? t('whatsapp.renderingPdf', 'Preparing the PDF…') : t('whatsapp.sendNow', 'Send')}
           </Button>
+        </>
+      }
+    >
+      {statusQuery.data && !connected ? (
+        <div className="mb-4 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-3.5 text-sm text-amber-900 app-dark:border-amber-500/30 app-dark:bg-amber-500/10 app-dark:text-amber-200">
+          <Smartphone className="mt-0.5 h-4 w-4 shrink-0" />
+          <div>
+            <p className="font-semibold">{t('whatsapp.notLinkedTitle', 'Your WhatsApp is not linked yet')}</p>
+            <p className="mt-0.5 text-xs">
+              {t('whatsapp.notLinkedBody', 'Link it once and you can send documents from here.')}{' '}
+              <Link to="/app/settings?tab=whatsapp" className="font-semibold underline" onClick={onClose}>
+                {t('whatsapp.linkNow', 'Link WhatsApp')}
+              </Link>
+            </p>
+          </div>
+        </div>
+      ) : null}
+
+      <div className="flex flex-col gap-4">
+        <Input
+          label={t('whatsapp.recipientPhone', 'Customer WhatsApp number')}
+          hint={t('whatsapp.phoneHint', 'With the country code, for example +34 612 345 678.')}
+          value={phone}
+          onChange={(event) => setPhone(event.target.value)}
+          disabled={busy}
+        />
+        <Textarea
+          label={t('whatsapp.captionLabel', 'Message')}
+          rows={6}
+          value={caption}
+          onChange={(event) => setCaption(event.target.value)}
+          disabled={busy}
+        />
+        <div className="flex items-center gap-2.5 rounded-xl border border-line bg-page/70 px-3.5 py-2.5 text-sm">
+          <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-rose-50 text-rose-600">
+            <FileText className="h-4 w-4" />
+          </span>
+          <span className="min-w-0">
+            <span className="block truncate font-medium text-ink">{document.number}.pdf</span>
+            <span className="block text-[11px] text-ink-muted">{t('whatsapp.attachment', 'Attached as a PDF')}</span>
+          </span>
         </div>
       </div>
-    </div>
+    </Modal>
   )
 }
-export default SendWhatsAppModal
 
+export default SendWhatsAppModal

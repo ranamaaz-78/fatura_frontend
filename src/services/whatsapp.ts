@@ -5,12 +5,13 @@ export function getWhatsAppStatus(): Promise<WhatsAppState> {
   return unwrap<WhatsAppState>(api.get('/app/whatsapp/status'))
 }
 
-export function initWhatsAppInstance(): Promise<WhatsAppState> {
-  return unwrap<WhatsAppState>(api.post('/app/whatsapp/init'))
+/** Start linking. `fresh` throws the old session away so a new QR code is made. */
+export function initWhatsAppInstance(fresh = false): Promise<WhatsAppState> {
+  return unwrap<WhatsAppState>(api.post('/app/whatsapp/init', fresh ? { fresh: true } : {}))
 }
 
-export function logoutWhatsAppInstance(): Promise<void> {
-  return unwrap<void>(api.post('/app/whatsapp/logout'))
+export function logoutWhatsAppInstance(): Promise<WhatsAppState> {
+  return unwrap<WhatsAppState>(api.post('/app/whatsapp/logout'))
 }
 
 export function updateWhatsAppSettings(input: {
@@ -24,7 +25,8 @@ export function sendWhatsAppDocument(payload: SendWhatsAppDocumentPayload): Prom
   return unwrap<SendWhatsAppResponse>(api.post('/app/whatsapp/send-document', payload))
 }
 
-export function sendWhatsAppTest(phone: string, message?: string): Promise<{ success: boolean }> {
-  return unwrap<{ success: boolean }>(api.post('/app/whatsapp/test', { phone, message }))
+/** With no number the test goes to the linked WhatsApp itself. */
+export function sendWhatsAppTest(phone?: string, message?: string): Promise<{ recipient: string }> {
+  return unwrap<{ recipient: string }>(api.post('/app/whatsapp/test', { phone, message }))
 }
 

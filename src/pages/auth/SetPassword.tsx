@@ -148,7 +148,7 @@ function SetPassword() {
       <p className="mt-1.5 text-[15px] text-[#434655]">
         {t('auth.setPasswordSubtitle', 'Pick a password to finish setting up your account.')}
       </p>
-      <p className="mt-2 font-mono text-[13px] text-[#64748b]">{email}</p>
+      <p className="mt-2 text-[13px] text-[#64748b]">{email}</p>
 
       {formError ? (
         <p className="mt-5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">

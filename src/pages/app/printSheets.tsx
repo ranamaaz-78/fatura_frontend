@@ -99,8 +99,9 @@ function companyPlace(company: Company | null): string[] {
   if (!company) return []
   const lines: string[] = []
   if (company.address) lines.push(company.address)
-  const cityCountry = [company.city, company.country].filter(Boolean).join(', ')
+  const cityCountry = [[company.postal_code, company.city].filter(Boolean).join(' '), company.country].filter(Boolean).join(', ')
   if (cityCountry) lines.push(cityCountry)
+  if (company.tax_id) lines.push(`${t('sales.taxIdLabel', 'NIF/CIF')}: ${company.tax_id}`)
   return lines
 }
 
@@ -176,6 +177,7 @@ function SheetFrame({
   children,
   theme,
   voided,
+  expired = false,
   lineCount,
   denseAfter = DENSE_AFTER,
   row = false,
@@ -184,6 +186,8 @@ function SheetFrame({
   children: ReactNode
   theme: PrintTemplate
   voided: boolean
+  /** An open quotation past its week: stamped so nobody mistakes it for a live offer. */
+  expired?: boolean
   lineCount: number
   /** Lines past which this sheet tightens up; the roomier layouts go dense sooner. */
   denseAfter?: number
@@ -204,6 +208,14 @@ function SheetFrame({
           className="pointer-events-none absolute top-[46%] left-1/2 z-10 -translate-x-1/2 -translate-y-1/2 -rotate-[24deg] rounded-xl border-[6px] border-[#be123c]/20 px-10 py-1 text-[104px] font-bold tracking-[0.12em] text-[#be123c]/15 uppercase"
         >
           {t('sales.voidStamp', 'Void')}
+        </span>
+      ) : null}
+      {expired && !voided ? (
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute top-[46%] left-1/2 z-10 -translate-x-1/2 -translate-y-1/2 -rotate-[24deg] rounded-xl border-[6px] border-[#b45309]/20 px-10 py-1 text-[96px] font-bold tracking-[0.12em] text-[#b45309]/15 uppercase"
+        >
+          {t('sales.expiredStamp', 'Expired')}
         </span>
       ) : null}
       <div className={cn('relative box-border flex h-full min-h-0', row ? 'flex-row' : 'flex-col', className)}>{children}</div>
@@ -701,12 +713,14 @@ function QuotationSheet({ document, company, currency, lines, issued, theme, log
 
   const stats: { label: string; value: string; accent?: boolean }[] = [
     { label: t('sales.date', 'Date'), value: issued },
-    { label: t('sales.items', 'Items'), value: String(lines.length) },
+    document.expires_at
+      ? { label: t('sales.validUntil', 'Valid until'), value: new Date(document.expires_at).toLocaleDateString() }
+      : { label: t('sales.items', 'Items'), value: String(lines.length) },
     { label: t('sales.totalWithTax', 'Total with tax'), value: formatCents(document.total_cents, currency), accent: true },
   ]
 
   return (
-    <SheetFrame theme={theme} voided={false} lineCount={lines.length} denseAfter={5} className={cn('px-14 pt-12 pb-10', `${D}pt-9 ${D}pb-8`)}>
+    <SheetFrame theme={theme} voided={false} expired={Boolean(document.is_expired)} lineCount={lines.length} denseAfter={5} className={cn('px-14 pt-12 pb-10', `${D}pt-9 ${D}pb-8`)}>
       <header className="flex items-center justify-between gap-10">
         {theme.show_logo ? (
           <LogoMark company={company} logoSrc={logoSrc} show size={lines.length > 5 ? 46 : 60} imageSize={lines.length > 5 ? 58 : 76} />
@@ -992,9 +1006,6 @@ function AlbaranSheet({ document, currency, lines, issued, theme }: SheetProps) 
           <h1 className="m-0 text-[46px] leading-[0.9] font-black tracking-[-0.04em] text-[var(--print-accent)] uppercase">
             Albarán
           </h1>
-          <p className="mt-2.5 mb-0 text-[11px] font-semibold tracking-[0.24em] text-[#475569] uppercase">
-            {t('sales.typeAlbaran', 'Delivery note')}
-          </p>
         </div>
         <div className="grid shrink-0 grid-cols-2 overflow-hidden rounded-md border-2 border-[#0f172a] text-center">
           <div className="border-r-2 border-[#0f172a] px-5 py-2.5">

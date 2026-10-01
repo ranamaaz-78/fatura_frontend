@@ -53,7 +53,7 @@ export function Input({
             'focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500',
             'disabled:bg-page disabled:text-ink-muted transition',
             suffix && 'pr-12',
-            props.inputMode === 'decimal' && 'text-right font-mono',
+            props.inputMode === 'decimal' && 'text-right',
             error && 'border-rose-300 focus:ring-rose-500/30 focus:border-rose-500',
             className,
           )}

@@ -36,6 +36,17 @@ export function forgotPassword(email: string): Promise<unknown> {
   return unwrap(api.post('/auth/forgot-password', { email }))
 }
 
+export type ResetPasswordInput = {
+  token: string
+  email: string
+  password: string
+  password_confirmation: string
+}
+
+export function resetPassword(input: ResetPasswordInput): Promise<unknown> {
+  return unwrap(api.post('/auth/reset-password', input))
+}
+
 export type ChangePasswordInput = {
   current_password: string
   password: string

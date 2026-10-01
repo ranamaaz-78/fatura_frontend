@@ -104,7 +104,7 @@ function KpiCard({
         <span className={cn('flex rounded-lg p-2.5', tile)}>{icon}</span>
       </div>
       <div className="mt-3 flex items-baseline justify-between">
-        <span className="font-mono text-2xl font-bold tracking-[-0.02em] text-slate-900">{value}</span>
+        <span className="text-2xl font-bold tracking-[-0.02em] text-slate-900">{value}</span>
         {pill ? (
           <span className={cn('rounded-full px-2 py-0.5 text-xs font-semibold', pill.className)}>{pill.text}</span>
         ) : null}
@@ -415,7 +415,7 @@ function Products() {
                   )}
                 >
                   {chip.label}
-                  <span className={cn('font-mono text-[11px]', on ? 'text-brand-500' : 'text-slate-400')}>
+                  <span className={cn('text-[11px]', on ? 'text-brand-500' : 'text-slate-400')}>
                     {chip.count}
                   </span>
                 </button>
@@ -487,7 +487,7 @@ function Products() {
                         >
                           {product.article}
                         </button>
-                        <span className="block font-mono text-[11px] text-slate-500">
+                        <span className="block text-[11px] text-slate-500">
                           {product.sr_number ?? '—'}
                           {product.brand ? ` · ${product.brand}` : ''}
                         </span>
@@ -495,7 +495,7 @@ function Products() {
                     </span>
                     <span className="w-[130px] pr-2">
                       {product.image_code ? (
-                        <span title={product.image_code} className="block truncate font-mono text-[11px] text-slate-700">
+                        <span title={product.image_code} className="block truncate text-[11px] text-slate-700">
                           {product.image_code}
                         </span>
                       ) : (
@@ -512,22 +512,22 @@ function Products() {
                       )}
                     </span>
                     <span className="w-[120px] text-center">
-                      <span className={cn('inline-block rounded-full px-2.5 py-0.5 font-mono text-xs font-semibold', TONE_PRIMARY)}>
+                      <span className={cn('inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold', TONE_PRIMARY)}>
                         {formatCents(product.buying_price, currency)}
                       </span>
                     </span>
-                    <span className="w-[140px] text-center font-mono text-xs text-slate-500">
+                    <span className="w-[140px] text-center text-xs text-slate-500">
                       {product.last_buying_price === null ? '—' : formatCents(product.last_buying_price, currency)}
                     </span>
                     <span className="w-[100px] text-right">
-                      <span className={cn('inline-block rounded-full px-2.5 py-0.5 font-mono text-xs font-semibold', TONE_AMBER)}>
+                      <span className={cn('inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold', TONE_AMBER)}>
                         {formatCents(product.selling_price, currency)}
                       </span>
                     </span>
                     <span className="w-[90px] text-right">
                       <span
                         className={cn(
-                          'inline-block rounded-full px-2.5 py-0.5 font-mono text-xs font-semibold',
+                          'inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold',
                           stockTone(product),
                         )}
                       >
@@ -553,7 +553,7 @@ function Products() {
                   />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-[13px] font-semibold text-slate-900">{product.article}</p>
-                    <p className="truncate font-mono text-[11px] text-slate-500">{product.barcode}</p>
+                    <p className="truncate text-[11px] text-slate-500">{product.barcode}</p>
                     <div className="mt-2 flex flex-wrap items-center gap-2">
                       {product.category ? (
                         <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-medium text-slate-700">
@@ -562,13 +562,13 @@ function Products() {
                       ) : null}
                       <span
                         className={cn(
-                          'rounded-full px-2.5 py-0.5 font-mono text-xs font-semibold',
+                          'rounded-full px-2.5 py-0.5 text-xs font-semibold',
                           stockTone(product),
                         )}
                       >
                         {product.quantity}
                       </span>
-                      <span className="font-mono text-[13px] font-semibold text-slate-900">
+                      <span className="text-[13px] font-semibold text-slate-900">
                         {formatCents(product.selling_price, currency)}
                       </span>
                     </div>
@@ -582,10 +582,10 @@ function Products() {
               <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 text-xs text-slate-500">
                 <span>
                   {t('common.showing', 'Showing')}{' '}
-                  <span className="font-mono text-slate-900">
+                  <span className="text-slate-900">
                     {firstOnPage}-{lastOnPage}
                   </span>{' '}
-                  {t('common.of', 'of')} <span className="font-mono text-slate-900">{meta.total}</span>{' '}
+                  {t('common.of', 'of')} <span className="text-slate-900">{meta.total}</span>{' '}
                   {t('products.countLabel', 'products')}
                 </span>
                 <span className="flex items-center gap-1.5">

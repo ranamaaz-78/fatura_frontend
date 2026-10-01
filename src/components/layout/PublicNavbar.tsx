@@ -1,87 +1,77 @@
-import { Menu, ScanLine, X } from 'lucide-react'
+import { Menu, X } from 'lucide-react'
 import { useState } from 'react'
-import { Link, NavLink, useLocation } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { t } from '../../i18n'
 import { cn } from '../../lib/cn'
+import { useActiveSection, useScrolled } from '../../pages/public/landing/hooks'
+import { LANDING_SECTIONS } from '../../pages/public/landing/sections'
+import { Logo } from '../brand/Logo'
 import { Tooltip } from '../ui/Tooltip'
 
-/** The landing page scrolls between its own sections; every other page routes. */
-const LANDING_LINKS = [
-  { href: '#features', key: 'nav.features', fallback: 'Features' },
-  { href: '#how', key: 'nav.howItWorks', fallback: 'How it works' },
-  { href: '#mobile', key: 'nav.mobileApp', fallback: 'Mobile app' },
-  { href: '#pricing', key: 'nav.pricing', fallback: 'Pricing' },
-  { href: '#faq', key: 'nav.faq', fallback: 'FAQ' },
-]
-
-const PAGE_LINKS = [
-  { to: '/features', key: 'nav.features', fallback: 'Features' },
-  { to: '/pricing', key: 'nav.pricing', fallback: 'Pricing' },
-  { to: '/about', key: 'nav.about', fallback: 'About' },
-  { to: '/contact', key: 'nav.contact', fallback: 'Contact' },
+/** The site is one page, so every link scrolls to a section of it. */
+const LINKS = [
+  { id: 'features', key: 'nav.features', fallback: 'Features' },
+  { id: 'documents', key: 'nav.documents', fallback: 'Documents' },
+  { id: 'how', key: 'nav.howItWorks', fallback: 'How it works' },
+  { id: 'pricing', key: 'nav.pricing', fallback: 'Pricing' },
+  { id: 'about', key: 'nav.about', fallback: 'About' },
+  { id: 'faq', key: 'nav.faq', fallback: 'FAQ' },
+  { id: 'contact', key: 'nav.contact', fallback: 'Contact' },
 ]
 
 export function PublicNavbar() {
   const [open, setOpen] = useState(false)
-  const { pathname } = useLocation()
+  const scrolled = useScrolled()
+  const active = useActiveSection(LANDING_SECTIONS)
 
-  // On the landing page the bar sits inside the dark hero instead of above it.
-  const onHero = pathname === '/'
+  // Clear over the dark hero, solid white once the page has moved (or the menu is open).
+  const solid = scrolled || open
 
   return (
     <header
       className={cn(
-        'z-40',
-        onHero
-          ? 'absolute inset-x-0 top-0'
-          : 'fixed inset-x-0 top-0 border-b border-[#e5eeff] bg-white/90 backdrop-blur-xl',
+        'fixed inset-x-0 top-0 z-40 transition-all duration-300',
+        solid
+          ? 'border-b border-[#e5eeff] bg-white/95 shadow-[0_8px_30px_rgba(2,6,23,0.08)] backdrop-blur-xl'
+          : 'border-b border-transparent',
       )}
     >
-      <div
-        className={cn(
-          'mx-auto flex h-20 max-w-[1200px] items-center justify-between gap-6 px-5',
-          onHero && 'border-b border-white/8',
-        )}
-      >
-        <Link to="/" className="flex shrink-0 items-center gap-2.5">
-          <span className="inline-flex h-9 w-9 items-center justify-center rounded-[10px] bg-[#004ac6] text-white">
-            <ScanLine className="h-[18px] w-[18px]" />
-          </span>
-          <span
-            className={cn(
-              'text-xl font-bold tracking-[-0.02em]',
-              onHero ? 'text-white' : 'text-[#0b1c30]',
-            )}
-          >
-            {t('app.name', 'YK Digital Solutions')}
-          </span>
-        </Link>
+      <div className="mx-auto flex h-20 max-w-[1200px] items-center justify-between gap-6 px-5">
+        <a href="#top" onClick={() => setOpen(false)} className="flex shrink-0 items-center" aria-label={t('app.name', 'YK Digital Solutions')}>
+          <Logo on={solid ? 'light' : 'dark'} className="h-12 sm:h-14" />
+        </a>
 
-        <nav className="hidden items-center gap-9 lg:flex">
-          {onHero
-            ? LANDING_LINKS.map((link) => (
-                <a
-                  key={link.href}
-                  href={link.href}
-                  className="text-[15px] font-medium text-[#cbd5e1] transition-colors hover:text-white"
-                >
-                  {t(link.key, link.fallback)}
-                </a>
-              ))
-            : PAGE_LINKS.map((link) => (
-                <NavLink
-                  key={link.to}
-                  to={link.to}
-                  className={({ isActive }) =>
-                    cn(
-                      'text-[15px] font-medium text-[#434655] transition-colors hover:text-[#004ac6]',
-                      isActive && 'font-semibold text-[#004ac6]',
-                    )
-                  }
-                >
-                  {t(link.key, link.fallback)}
-                </NavLink>
-              ))}
+        <nav aria-label={t('nav.main', 'Main')} className="hidden items-center gap-1 xl:flex">
+          {LINKS.map((link) => {
+            const on = active === link.id
+            return (
+              <a
+                key={link.id}
+                href={`#${link.id}`}
+                aria-current={on ? 'true' : undefined}
+                className={cn(
+                  'relative rounded-lg px-3.5 py-2 text-[15px] font-medium transition-colors',
+                  solid
+                    ? on
+                      ? 'text-[#004ac6]'
+                      : 'text-[#434655] hover:text-[#004ac6]'
+                    : on
+                      ? 'text-white'
+                      : 'text-[#cbd5e1] hover:text-white',
+                )}
+              >
+                {t(link.key, link.fallback)}
+                <span
+                  aria-hidden="true"
+                  className={cn(
+                    'absolute right-3.5 -bottom-0.5 left-3.5 h-0.5 origin-left rounded-full transition-transform duration-300',
+                    solid ? 'bg-[#004ac6]' : 'bg-[#4edea3]',
+                    on ? 'scale-x-100' : 'scale-x-0',
+                  )}
+                />
+              </a>
+            )
+          })}
         </nav>
 
         <div className="hidden items-center gap-3 md:flex">
@@ -89,14 +79,14 @@ export function PublicNavbar() {
             to="/login"
             className={cn(
               'px-4 py-2.5 text-[15px] font-semibold transition-colors',
-              onHero ? 'text-white hover:text-[#cbd5e1]' : 'text-[#434655] hover:text-[#004ac6]',
+              solid ? 'text-[#434655] hover:text-[#004ac6]' : 'text-white hover:text-[#cbd5e1]',
             )}
           >
             {t('auth.login', 'Log in')}
           </Link>
           <Link
             to="/apply"
-            className="inline-flex h-11 items-center rounded-[10px] bg-[#004ac6] px-5 text-[15px] font-semibold text-white transition-colors hover:bg-[#2563eb]"
+            className="inline-flex h-11 items-center rounded-[10px] bg-[#004ac6] px-5 text-[15px] font-semibold text-white shadow-[0_8px_20px_rgba(0,74,198,0.3)] transition-all hover:-translate-y-px hover:bg-[#2563eb]"
           >
             {t('public.applyNow', 'Apply now')}
           </Link>
@@ -105,52 +95,49 @@ export function PublicNavbar() {
         <Tooltip content={open ? t('common.close', 'Close') : t('nav.menu', 'Menu')} align="end">
           <button
             type="button"
-            className={cn('rounded-lg p-2 md:hidden', onHero ? 'text-white' : 'text-[#434655]')}
+            className={cn('rounded-lg p-2 xl:hidden', solid ? 'text-[#434655]' : 'text-white')}
             aria-label={open ? t('common.close', 'Close') : t('nav.menu', 'Menu')}
+            aria-expanded={open}
             onClick={() => setOpen((current) => !current)}
           >
-          {open ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+            {open ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
           </button>
         </Tooltip>
       </div>
 
       {open ? (
-        <div className="border-t border-[#e5eeff] bg-white shadow-lg md:hidden">
-          <div className="flex flex-col gap-3 px-5 py-4">
-            {onHero
-              ? LANDING_LINKS.map((link) => (
-                  <a
-                    key={link.href}
-                    href={link.href}
-                    onClick={() => setOpen(false)}
-                    className="text-[15px] font-medium text-[#434655]"
-                  >
-                    {t(link.key, link.fallback)}
-                  </a>
-                ))
-              : PAGE_LINKS.map((link) => (
-                  <NavLink
-                    key={link.to}
-                    to={link.to}
-                    onClick={() => setOpen(false)}
-                    className={({ isActive }) =>
-                      cn('text-[15px] font-medium text-[#434655]', isActive && 'font-semibold text-[#004ac6]')
-                    }
-                  >
-                    {t(link.key, link.fallback)}
-                  </NavLink>
-                ))}
-            <Link to="/login" onClick={() => setOpen(false)} className="text-[15px] font-medium text-[#434655]">
-              {t('auth.login', 'Log in')}
-            </Link>
-            <Link
-              to="/apply"
-              onClick={() => setOpen(false)}
-              className="inline-flex h-11 items-center justify-center rounded-[10px] bg-[#004ac6] px-5 text-[15px] font-semibold text-white"
-            >
-              {t('public.applyNow', 'Apply now')}
-            </Link>
-          </div>
+        <div className="landing-rise border-t border-[#e5eeff] bg-white shadow-lg xl:hidden">
+          <nav aria-label={t('nav.main', 'Main')} className="mx-auto flex max-w-[1200px] flex-col gap-1 px-5 py-4">
+            {LINKS.map((link) => (
+              <a
+                key={link.id}
+                href={`#${link.id}`}
+                onClick={() => setOpen(false)}
+                className={cn(
+                  'rounded-lg px-3 py-3 text-[16px] font-medium',
+                  active === link.id ? 'bg-[#eff4ff] text-[#004ac6]' : 'text-[#434655]',
+                )}
+              >
+                {t(link.key, link.fallback)}
+              </a>
+            ))}
+            <div className="mt-2 flex flex-col gap-2.5 border-t border-[#e5eeff] pt-4">
+              <Link
+                to="/login"
+                onClick={() => setOpen(false)}
+                className="inline-flex h-11 items-center justify-center rounded-[10px] border border-[#dbe1ff] text-[15px] font-semibold text-[#0b1c30]"
+              >
+                {t('auth.login', 'Log in')}
+              </Link>
+              <Link
+                to="/apply"
+                onClick={() => setOpen(false)}
+                className="inline-flex h-11 items-center justify-center rounded-[10px] bg-[#004ac6] px-5 text-[15px] font-semibold text-white"
+              >
+                {t('public.applyNow', 'Apply now')}
+              </Link>
+            </div>
+          </nav>
         </div>
       ) : null}
     </header>

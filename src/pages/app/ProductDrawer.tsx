@@ -31,7 +31,7 @@ function Line({ label, value, strong }: { label: string; value: string; strong?:
       </span>
       <span
         className={cn(
-          'font-mono tabular-nums',
+          'tabular-nums',
           strong ? 'text-base font-bold text-brand-600' : 'text-[13px] text-slate-800',
         )}
       >
@@ -108,7 +108,7 @@ export function ProductDrawer({ product, currency, onClose, onEdit, onPrint, onD
                 {current.supplier}
               </span>
             ) : null}
-            <span className={cn('rounded-full px-2.5 py-0.5 font-mono text-xs font-semibold', stockTone)}>
+            <span className={cn('rounded-full px-2.5 py-0.5 text-xs font-semibold', stockTone)}>
               {current.quantity} {t('products.inStock', 'in stock')}
             </span>
             {current.barcode_generated ? (
@@ -198,7 +198,7 @@ export function ProductDrawer({ product, currency, onClose, onEdit, onPrint, onD
             <Field label={t('products.imageCode', 'Image code')} value={current.image_code ?? '—'} />
             <Field
               label={t('products.barcode', 'Bar code')}
-              value={<span className="font-mono text-[13px]">{current.barcode}</span>}
+              value={<span className="text-[13px]">{current.barcode}</span>}
             />
           </dl>
 

@@ -308,7 +308,7 @@ export function ProductModal({ open, product, onClose }: ProductModalProps) {
                 label={t('products.barcode', 'Bar code')}
                 value={draft.barcode}
                 error={errors.barcode}
-                className="font-mono"
+                className=""
                 onChange={(event) => set('barcode', event.target.value)}
               />
               <button

@@ -176,7 +176,7 @@ function AdminPlans() {
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="text-sm font-bold text-slate-900">{plan.name}</p>
-                  <p className="font-mono text-xs text-slate-500">
+                  <p className="text-xs text-slate-500">
                     {formatCurrency(plan.price, plan.currency, 'en-US')} / {plan.interval}
                   </p>
                 </div>
@@ -306,6 +306,11 @@ function AdminPlans() {
                   checked={draft.is_featured}
                   onChange={(value) => set('is_featured', value)}
                 />
+                {draft.is_featured ? (
+                  <p className="-mt-1.5 text-[11px] text-ink-muted">
+                    {t('admin.featuredOne', 'Only one plan can be featured. Saving moves the badge here from the other plan.')}
+                  </p>
+                ) : null}
                 <Toggle
                   label={t('admin.activeLabel', 'Visible on the public site')}
                   checked={draft.is_active}

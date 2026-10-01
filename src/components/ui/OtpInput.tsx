@@ -111,7 +111,7 @@ export function OtpInput({
           onKeyDown={(event) => onKeyDown(index, event)}
           onPaste={(event) => onPaste(index, event)}
           className={cn(
-            'h-14 w-full min-w-0 max-w-14 rounded-xl border bg-white text-center font-mono text-2xl font-bold text-[#0b1c30] outline-none transition',
+            'h-14 w-full min-w-0 max-w-14 rounded-xl border bg-white text-center text-2xl font-bold text-[#0b1c30] outline-none transition',
             'focus:border-[#004ac6] focus:ring-4 focus:ring-[#004ac6]/12 sm:h-16 sm:text-[28px]',
             digit !== '' && !error && 'border-[#004ac6]/40 bg-[#f5f8ff]',
             error ? 'border-rose-300 focus:border-rose-500 focus:ring-rose-500/15' : 'border-[#dbe1ff]',

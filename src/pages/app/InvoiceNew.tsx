@@ -18,7 +18,7 @@ import { getPrintTemplates, loadLogoBlob } from '../../services/printables'
 import { getWhatsAppStatus, sendWhatsAppDocument } from '../../services/whatsapp'
 import type { Product } from '../../types/catalog'
 import type { Customer, DiscountType, IssuableType, PaymentStatus, SaleDocument, SaleInput } from '../../types/sales'
-import { isSaleConverted } from '../../types/sales'
+import { isSaleConverted, isSaleExpired } from '../../types/sales'
 import { ISSUABLE_TYPES, celebratesPayment, isIssuable, rulesFor, typeLabel } from './documentTypes'
 import { DiscountEditor } from './DiscountEditor'
 import { RecargoPicker } from './RecargoPicker'
@@ -42,6 +42,8 @@ function ivaOptions(rates: { rate: number }[], current: string): string[] {
   if (current !== '' && !values.includes(current)) values.unshift(current)
   return values
 }
+
+const QUOTE_VALID_DAYS = 7
 
 function nowLocal(): string {
   const date = new Date()
@@ -125,6 +127,15 @@ function InvoiceNew() {
   const [recargoRestored, setRecargoRestored] = useState(false)
   const rules = rulesFor(type)
   const [issuedAt, setIssuedAt] = useState(nowLocal)
+  // A quotation stays open for a week from the date written on it; the server applies the same rule.
+  const quoteEnd = (() => {
+    const start = new Date(issuedAt)
+    if (Number.isNaN(start.getTime())) return null
+    const end = new Date(start)
+    end.setDate(end.getDate() + QUOTE_VALID_DAYS)
+    end.setHours(23, 59, 59, 999)
+    return end
+  })()
   const [payment, setPayment] = useState<PaymentStatus>('pending')
   const [methodOpen, setMethodOpen] = useState(false)
   const [recargoId, setRecargoId] = useState<number | null>(null)
@@ -314,6 +325,11 @@ function InvoiceNew() {
     if (!document || hydrated) return
     if (isSaleConverted(document) && document.converted_to) {
       navigate(`${rulesFor(document.converted_to.type).listPath}/${document.converted_to.id}`, { replace: true })
+      return
+    }
+    if (isSaleExpired(document)) {
+      push({ tone: 'danger', title: t('sales.quoteExpiredEdit', 'This quotation has expired and can no longer be edited.') })
+      navigate(`${rulesFor('quotation').listPath}/${document.id}`, { replace: true })
       return
     }
     setType('quotation')
@@ -712,7 +728,7 @@ function InvoiceNew() {
             </div>
             <div>
               <span className={label}>{t('sales.number', 'Number')}</span>
-              <span className="block rounded-lg border border-line bg-card px-2.5 py-1.5 font-mono text-xs font-bold text-ink">
+              <span className="block rounded-lg border border-line bg-card px-2.5 py-1.5 text-xs font-bold text-ink">
                 {editing ? (existing.data?.number ?? '—') : (preview.data?.number ?? '—')}
               </span>
             </div>
@@ -722,8 +738,20 @@ function InvoiceNew() {
                 type="datetime-local"
                 value={issuedAt}
                 onChange={(event) => setIssuedAt(event.target.value)}
-                className="w-full rounded-lg border border-line bg-card px-2.5 py-1.5 font-mono text-xs text-ink outline-none"
+                className="w-full rounded-lg border border-line bg-card px-2.5 py-1.5 text-xs text-ink outline-none"
               />
+              {type === 'quotation' && quoteEnd ? (
+                <span
+                  className={cn(
+                    'mt-1 block text-[10.5px] leading-snug',
+                    quoteEnd.getTime() < Date.now() ? 'font-semibold text-rose-600' : 'text-ink-muted',
+                  )}
+                >
+                  {quoteEnd.getTime() < Date.now()
+                    ? t('sales.quoteWouldExpire', 'This date is more than a week ago, so the quotation would be expired straight away.')
+                    : `${t('sales.validUntil', 'Valid until')} ${quoteEnd.toLocaleDateString()} (${QUOTE_VALID_DAYS} ${t('sales.daysFromDate', 'days from this date')})`}
+                </span>
+              ) : null}
             </div>
             {!editing && rules.settlesPayment ? (
               <div>
@@ -770,7 +798,7 @@ function InvoiceNew() {
                 >
                   <Check className="h-3 w-3" strokeWidth={3} />
                   {t('sales.savedClient', 'Saved client')}
-                  {selectedCustomer ? <span className="font-mono">· {selectedCustomer.code}</span> : null}
+                  {selectedCustomer ? <span className="">· {selectedCustomer.code}</span> : null}
                 </span>
               ) : hasClientData ? (
                 <span className="rounded-full bg-brand-100 px-2.5 py-0.5 font-semibold text-brand-600">
@@ -802,7 +830,7 @@ function InvoiceNew() {
                   inputMode="tel"
                   autoComplete="off"
                   placeholder={t('sales.phoneSearch', 'Search by phone number')}
-                  className={cn(clientField, 'pl-9 font-mono')}
+                  className={cn(clientField, 'pl-9')}
                 />
               </span>
               {customerId === null && phoneMatches.length > 0 ? (
@@ -826,7 +854,7 @@ function InvoiceNew() {
                           {[customer.company_name, customer.phone, customer.nif || customer.nie].filter(Boolean).join(' · ')}
                         </span>
                       </span>
-                      <span className="shrink-0 font-mono text-[10px] font-semibold text-slate-400">{customer.code}</span>
+                      <span className="shrink-0 text-[10px] font-semibold text-slate-400">{customer.code}</span>
                     </button>
                   ))}
                 </div>
@@ -862,7 +890,7 @@ function InvoiceNew() {
                 value={clientNif}
                 onChange={(event) => setClientNif(event.target.value.toUpperCase())}
                 autoComplete="off"
-                className={cn(clientField, 'font-mono uppercase')}
+                className={cn(clientField, 'uppercase')}
               />
             </div>
 
@@ -959,12 +987,12 @@ function InvoiceNew() {
                   >
                     <span className="min-w-0">
                       <span className="block truncate text-sm font-bold text-slate-900">{product.article}</span>
-                      <span className="font-mono text-[11px] text-slate-500">
+                      <span className="text-[11px] text-slate-500">
                         {product.sr_number ?? '—'} · {product.barcode} · IVA {product.iva_percent}%
                       </span>
                     </span>
                     <span className="shrink-0 text-right">
-                      <span className="block font-mono text-sm font-bold">{formatCents(product.selling_price, currency)}</span>
+                      <span className="block text-sm font-bold">{formatCents(product.selling_price, currency)}</span>
                       <span className="text-[11px] text-slate-500">
                         {piecesLeft(product.id, product.quantity)} {t('sales.left', 'left')}
                       </span>
@@ -1030,8 +1058,8 @@ function InvoiceNew() {
                           : TONE_GREEN
                   return (
                     <div key={line.key} className="flex items-center border-t border-slate-100 px-3 py-2.5">
-                      <span className="w-10 text-center font-mono text-xs text-slate-400">{index + 1}</span>
-                      <span className="w-28 px-2 font-mono text-[11px] text-slate-500">{line.sr_number || '—'}</span>
+                      <span className="w-10 text-center text-xs text-slate-400">{index + 1}</span>
+                      <span className="w-28 px-2 text-[11px] text-slate-500">{line.sr_number || '—'}</span>
                       <span className="min-w-0 flex-1 truncate px-2 text-xs font-bold text-slate-900">{line.article}</span>
                       {rules.showsAvailable ? (
                         <span className="flex w-40 flex-col items-start px-2">
@@ -1039,7 +1067,7 @@ function InvoiceNew() {
                             <span className="text-xs text-slate-400">—</span>
                           ) : (
                             <>
-                              <span className={cn('rounded-full px-2 py-0.5 font-mono text-[11px] font-semibold', stockTone)}>
+                              <span className={cn('rounded-full px-2 py-0.5 text-[11px] font-semibold', stockTone)}>
                                 {remaining} {t('sales.left', 'left')}
                               </span>
                               <span className="mt-1 text-[10px] leading-tight text-slate-500">
@@ -1056,7 +1084,7 @@ function InvoiceNew() {
                           <button type="button" onClick={() => changeQuantity(line, line.quantity - 1)} className="cursor-pointer p-1.5 text-slate-600">
                             <Minus className="h-3.5 w-3.5" />
                           </button>
-                          <span className="w-8 text-center font-mono text-xs font-bold">{line.quantity}</span>
+                          <span className="w-8 text-center text-xs font-bold">{line.quantity}</span>
                           <button
                             type="button"
                             disabled={atStock}
@@ -1073,7 +1101,7 @@ function InvoiceNew() {
                         onChange={(event) => changeLine(line.key, { unitPrice: event.target.value })}
                         placeholder={rules.manualPrice ? t('sales.typePrice', 'Price') : undefined}
                         className={cn(
-                          'w-24 rounded-lg border px-2 py-1 text-right font-mono text-xs font-bold outline-none',
+                          'w-24 rounded-lg border px-2 py-1 text-right text-xs font-bold outline-none',
                           rules.manualPrice && line.unitPrice.trim() === ''
                             ? 'border-amber-400 bg-amber-50'
                             : 'border-slate-300',
@@ -1084,7 +1112,7 @@ function InvoiceNew() {
                           aria-label={`${t('sales.dto', 'Dto %')} ${line.article}`}
                           value={line.discount}
                           onChange={(event) => changeLine(line.key, { discount: event.target.value })}
-                          className="ml-2 w-14 rounded-lg border border-line bg-card px-2 py-1 text-right font-mono text-xs text-ink outline-none"
+                          className="ml-2 w-14 rounded-lg border border-line bg-card px-2 py-1 text-right text-xs text-ink outline-none"
                         />
                       ) : null}
                       {rules.carriesTax ? (
@@ -1105,15 +1133,15 @@ function InvoiceNew() {
                       ) : null}
                       {rules.showsPriceWithTax ? (
                         <>
-                          <span className="w-28 text-right font-mono text-sm font-bold text-slate-900">
+                          <span className="w-28 text-right text-sm font-bold text-slate-900">
                             {formatCents(math.base, currency)}
                           </span>
-                          <span className="w-28 text-right font-mono text-sm font-bold text-brand-600">
+                          <span className="w-28 text-right text-sm font-bold text-brand-600">
                             {formatCents(math.total, currency)}
                           </span>
                         </>
                       ) : (
-                        <span className="w-24 text-right font-mono text-sm font-bold text-slate-900">
+                        <span className="w-24 text-right text-sm font-bold text-slate-900">
                           {formatCents(math.total, currency)}
                         </span>
                       )}
@@ -1166,7 +1194,7 @@ function InvoiceNew() {
                 <span>
                   {rules.carriesTax && !discountOpen ? t('sales.base', 'Taxable base') : t('sales.subtotal', 'Subtotal')}
                 </span>
-                <span className="font-mono font-bold text-slate-800">
+                <span className="font-bold text-slate-800">
                   {formatCents(discountOpen ? totals.gross : totals.base, currency)}
                 </span>
               </span>
@@ -1190,7 +1218,7 @@ function InvoiceNew() {
               {discountOpen && rules.carriesTax ? (
                 <span className="flex justify-between text-slate-600">
                   <span>{t('sales.base', 'Taxable base')}</span>
-                  <span className="font-mono font-bold text-slate-800">{formatCents(totals.base, currency)}</span>
+                  <span className="font-bold text-slate-800">{formatCents(totals.base, currency)}</span>
                 </span>
               ) : null}
               {rules.carriesTax ? (
@@ -1198,17 +1226,17 @@ function InvoiceNew() {
                   {totals.groups.map(([rate, group]) => (
                     <span key={rate} className="flex justify-between border-l-2 border-brand-500 pl-2 text-[11px] text-ink-muted">
                       <span>IVA {rate}% ({formatCents(group.base, currency)})</span>
-                      <span className="font-mono text-slate-700">{formatCents(group.tax, currency)}</span>
+                      <span className="text-slate-700">{formatCents(group.tax, currency)}</span>
                     </span>
                   ))}
                   <span className="flex justify-between text-slate-600">
                     <span>{t('sales.taxTotal', 'Tax')}</span>
-                    <span className="font-mono font-bold text-slate-800">{formatCents(totals.tax, currency)}</span>
+                    <span className="font-bold text-slate-800">{formatCents(totals.tax, currency)}</span>
                   </span>
                   {rules.showsPriceWithTax ? (
                     <span className="flex justify-between text-slate-600">
                       <span>{t('sales.priceNet', 'Without tax')}</span>
-                      <span className="font-mono font-bold text-slate-800">{formatCents(totals.base, currency)}</span>
+                      <span className="font-bold text-slate-800">{formatCents(totals.base, currency)}</span>
                     </span>
                   ) : null}
                 </>
@@ -1225,7 +1253,7 @@ function InvoiceNew() {
               ) : null}
               <span className="mt-1 flex items-baseline justify-between border-t-2 border-slate-200 pt-3">
                 <span className="text-sm font-black text-slate-900">{t('sales.grandTotal', 'Total')}</span>
-                <span className="font-mono text-2xl font-black text-brand-500">{formatCents(grandTotal, currency)}</span>
+                <span className="text-2xl font-black text-brand-500">{formatCents(grandTotal, currency)}</span>
               </span>
             </div>
             <button
@@ -1272,7 +1300,7 @@ function InvoiceNew() {
                   setDropdown(true)
                 }}
                 placeholder={t('sales.barcodePlaceholder', 'Type or scan the barcode')}
-                className={cn(field, 'font-mono')}
+                className={cn(field, '')}
               />
               <button type="submit" className="cursor-pointer rounded-lg bg-brand-500 px-4 text-xs font-semibold text-brand-on">
                 {t('sales.add', 'Add')}

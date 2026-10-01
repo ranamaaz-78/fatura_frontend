@@ -18,6 +18,23 @@ export function isSaleConverted(document: {
   return Boolean(document.is_converted || document.converted_at)
 }
 
+/** An open quotation that has run past its week. The server decides; this only reads it. */
+export function isSaleExpired(document: { is_expired?: boolean; type?: string; expires_at?: string | null; converted_at?: string | null }): boolean {
+  if (document.is_expired !== undefined) return document.is_expired
+  return Boolean(
+    document.type === 'quotation' && !document.converted_at && document.expires_at && new Date(document.expires_at).getTime() < Date.now(),
+  )
+}
+
+/** Whole days until a quotation expires; 0 on its last day, negative once it is over. */
+export function quoteDaysLeft(expiresAt: string): number {
+  const end = new Date(expiresAt)
+  const today = new Date()
+  const endDay = Date.UTC(end.getFullYear(), end.getMonth(), end.getDate())
+  const nowDay = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate())
+  return Math.round((endDay - nowDay) / 86_400_000)
+}
+
 export function saleDisplayStatus(document: {
   payment_status: PaymentStatus
   voided_at?: string | null
@@ -109,6 +126,9 @@ export type SaleDocument = {
   type: SaleType
   number: string
   issued_at: string
+  /** Quotations only: the last moment they can still be edited or converted. */
+  expires_at?: string | null
+  is_expired?: boolean
   payment_status: PaymentStatus
   payment_method_id: number | null
   payment_method: { id: number; name: string } | null

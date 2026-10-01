@@ -193,7 +193,7 @@ function Dashboard() {
           <p className="text-[11px] font-semibold tracking-[0.12em] text-brand-on/80 uppercase">
             {t('dashboard.revenue', 'Revenue')}
           </p>
-          <p className="mt-3 font-mono text-[28px] font-bold tracking-tight sm:text-[34px]">
+          <p className="mt-3 text-[28px] font-bold tracking-tight sm:text-[34px]">
             {formatCents(kpis.total_cents ?? 0, currency)}
           </p>
           <p className="mt-2 text-[13px] text-brand-on/80">{t('dashboard.salesThisMonth', 'Sales this month')}</p>
@@ -210,7 +210,7 @@ function Dashboard() {
                     <Icon className="h-4 w-4" />
                   </span>
                 </div>
-                <p className="mt-5 font-mono text-[22px] font-bold tracking-tight text-slate-900 sm:text-[24px]">
+                <p className="mt-5 text-[22px] font-bold tracking-tight text-slate-900 sm:text-[24px]">
                   {tile.value}
                 </p>
                 <p className="mt-1.5 text-[12px] leading-snug text-slate-400">{tile.hint}</p>
@@ -271,7 +271,7 @@ function Dashboard() {
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                  <p className="font-mono text-[13px] font-bold text-slate-900">{kpis.document_count ?? 0}</p>
+                  <p className="text-[13px] font-bold text-slate-900">{kpis.document_count ?? 0}</p>
                 </div>
               </div>
               <ul className="mt-1 flex flex-wrap justify-center gap-x-3 gap-y-1">
@@ -328,7 +328,7 @@ function Dashboard() {
                   </span>
                 </span>
                 <span className="shrink-0 text-right">
-                  <span className="block font-mono text-[13px] font-semibold text-slate-900">
+                  <span className="block text-[13px] font-semibold text-slate-900">
                     {formatCents(row.outstanding_cents, currency)}
                   </span>
                   <StatusChip status={row.payment_status} />
@@ -394,7 +394,7 @@ function DocumentRow({ row, currency }: { row: DashboardDocument; currency: stri
           </span>
         </span>
         <StatusChip status={row.payment_status} />
-        <span className="w-[5.5rem] shrink-0 text-right font-mono text-[13px] font-semibold text-slate-900">
+        <span className="w-[5.5rem] shrink-0 text-right text-[13px] font-semibold text-slate-900">
           {formatCents(row.total_cents, currency)}
         </span>
       </Link>

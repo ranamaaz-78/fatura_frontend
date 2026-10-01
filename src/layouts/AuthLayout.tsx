@@ -1,7 +1,8 @@
-import { Check, ChevronLeft, MessageCircle, ScanLine } from 'lucide-react'
+import { Check, ChevronLeft, MessageCircle } from 'lucide-react'
 import { Link, Outlet } from 'react-router-dom'
 import { t } from '../i18n'
 import { supportEmail, supportWhatsappUrl } from '../lib/support'
+import { Logo } from '../components/brand/Logo'
 
 const ASIDE_BACKGROUND = {
   backgroundImage:
@@ -13,7 +14,7 @@ const ASIDE_BACKGROUND = {
 const PROMISES = [
   'Invoices and quotes in seconds',
   'Stock that updates itself as you sell',
-  'The same account on web, Android and iPhone',
+  'One account for your computer and your phone',
 ]
 
 export function AuthLayout() {
@@ -25,11 +26,8 @@ export function AuthLayout() {
         className="flex flex-col px-6 py-10 text-white sm:px-14 lg:w-[460px] lg:shrink-0 xl:w-[500px]"
         style={ASIDE_BACKGROUND}
       >
-        <Link to="/" className="flex items-center gap-2.5">
-          <span className="inline-flex h-9 w-9 items-center justify-center rounded-[10px] bg-[#004ac6] text-white">
-            <ScanLine className="h-[18px] w-[18px]" />
-          </span>
-          <span className="text-xl font-bold tracking-[-0.02em] text-white">{t('app.name', 'YK Digital Solutions')}</span>
+        <Link to="/" className="inline-flex" aria-label={t('app.name', 'YK Digital Solutions')}>
+          <Logo on="dark" className="h-14" />
         </Link>
 
         <h2 className="mt-12 text-[32px] leading-[1.12] font-extrabold tracking-[-0.03em] sm:text-[40px] lg:mt-16">

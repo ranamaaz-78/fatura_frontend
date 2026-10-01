@@ -21,7 +21,8 @@
   --color-overlay:   var(--app-overlay, rgb(15 23 42 / 0.6));
 
   --font-sans: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-mono: 'JetBrains Mono', monospace;
+  /* One typeface everywhere: code-like text uses the same font as the rest. */
+  --font-mono: var(--font-sans);
 }
 
 html, body, #root {
@@ -92,8 +93,8 @@ html[data-app-mode='dark'] .app-sidebar {
     min-height: 100vh;
   }
 
-  code, kbd, samp, pre, .font-mono {
-    font-family: var(--font-mono);
+  code, kbd, samp, pre {
+    font-family: var(--font-sans);
   }
 }
 
@@ -217,4 +218,64 @@ html[data-app-mode='dark'] *::-webkit-scrollbar-thumb:hover,
 
   .print-break-inside-avoid { break-inside: avoid !important; page-break-inside: avoid !important; }
   .print-break-after { break-after: page !important; page-break-after: always !important; }
+}
+
+/* ------------------------------------------------------------------ Landing page motion */
+/* Every animation here switches off for people who prefer reduced motion. */
+
+@keyframes landing-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+@keyframes landing-marquee {
+  to { transform: translateX(-50%); }
+}
+@keyframes landing-scan {
+  0%, 100% { top: 14%; }
+  50% { top: 82%; }
+}
+@keyframes landing-glow {
+  0%, 100% { opacity: 0.55; transform: scale(1); }
+  50% { opacity: 0.95; transform: scale(1.08); }
+}
+@keyframes landing-rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes landing-ping {
+  0% { transform: scale(1); opacity: 0.55; }
+  80%, 100% { transform: scale(2.4); opacity: 0; }
+}
+
+.landing-float { animation: landing-float 7s ease-in-out infinite; }
+.landing-float-slow { animation: landing-float 9s ease-in-out infinite reverse; }
+.landing-marquee { animation: landing-marquee 42s linear infinite; }
+.landing-marquee:hover { animation-play-state: paused; }
+.landing-scan { animation: landing-scan 2.8s ease-in-out infinite; }
+.landing-glow { animation: landing-glow 9s ease-in-out infinite; }
+.landing-rise { animation: landing-rise 0.55s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+.landing-ping { animation: landing-ping 2.2s ease-out infinite; }
+
+.landing-reveal {
+  opacity: 0;
+  transform: translateY(26px);
+  transition:
+    opacity 0.7s cubic-bezier(0.2, 0.7, 0.2, 1),
+    transform 0.7s cubic-bezier(0.2, 0.7, 0.2, 1);
+  transition-delay: var(--reveal-delay, 0ms);
+}
+.landing-reveal[data-in='true'] { opacity: 1; transform: none; }
+
+html.landing-smooth { scroll-behavior: smooth; }
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-float,
+  .landing-float-slow,
+  .landing-marquee,
+  .landing-scan,
+  .landing-glow,
+  .landing-rise,
+  .landing-ping { animation: none; }
+  .landing-reveal { opacity: 1; transform: none; transition: none; }
+  html.landing-smooth { scroll-behavior: auto; }
 }

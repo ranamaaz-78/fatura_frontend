@@ -1,6 +1,6 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AuthProvider } from './auth/AuthProvider'
-import { RequireGuest, RequireRole } from './auth/guards'
+import { RequireGuest, RequireRole, RequireSetupDone } from './auth/guards'
 import { AdminLayout } from './layouts/AdminLayout'
 import { AppLayout } from './layouts/AppLayout'
 import { AuthLayout } from './layouts/AuthLayout'
@@ -19,6 +19,7 @@ import LoginPage from './pages/auth/Login'
 import ResetPasswordPage from './pages/auth/ResetPassword'
 import SetPasswordPage from './pages/auth/SetPassword'
 import UiGallery from './pages/dev/UiGallery'
+import CompanySetupPage from './pages/app/CompanySetup'
 import CustomersPage from './pages/app/Customers'
 import DashboardPage from './pages/app/Dashboard'
 import ImportPage from './pages/app/Import'
@@ -38,14 +39,8 @@ import SettingsPage from './pages/app/Settings'
 import StockPage from './pages/app/Stock'
 import StockMovementsPage from './pages/app/StockMovements'
 import SuppliersPage from './pages/app/Suppliers'
-import AboutPage from './pages/public/About'
 import ApplyPage from './pages/public/Apply'
-import ContactPage from './pages/public/Contact'
-import FeaturesPage from './pages/public/Features'
 import HomePage from './pages/public/Home'
-import PricingPage from './pages/public/Pricing'
-import PrivacyPage from './pages/public/Privacy'
-import TermsPage from './pages/public/Terms'
 
 function App() {
   return (
@@ -57,12 +52,13 @@ function App() {
 
           <Route element={<PublicLayout />}>
             <Route path="/" element={<HomePage />} />
-            <Route path="/features" element={<FeaturesPage />} />
-            <Route path="/pricing" element={<PricingPage />} />
-            <Route path="/about" element={<AboutPage />} />
-            <Route path="/contact" element={<ContactPage />} />
-            <Route path="/terms" element={<TermsPage />} />
-            <Route path="/privacy" element={<PrivacyPage />} />
+            {/* The site is one landing page now. Old links land on the matching section. */}
+            <Route path="/features" element={<Navigate to="/#features" replace />} />
+            <Route path="/pricing" element={<Navigate to="/#pricing" replace />} />
+            <Route path="/about" element={<Navigate to="/#about" replace />} />
+            <Route path="/contact" element={<Navigate to="/#contact" replace />} />
+            <Route path="/terms" element={<Navigate to="/#terms" replace />} />
+            <Route path="/privacy" element={<Navigate to="/#privacy" replace />} />
           </Route>
 
           <Route element={<RequireGuest />}>
@@ -75,6 +71,9 @@ function App() {
           </Route>
 
           <Route element={<RequireRole roles={['business_admin', 'staff']} />}>
+            {/* The company setup steps sit outside the workspace shell: the workspace is closed until they are done. */}
+            <Route path="/app/setup" element={<CompanySetupPage />} />
+            <Route element={<RequireSetupDone />}>
             <Route path="/app" element={<AppLayout />}>
               <Route index element={<Navigate to="dashboard" replace />} />
               <Route path="dashboard" element={<DashboardPage />} />
@@ -101,6 +100,7 @@ function App() {
               <Route path="reports" element={<ReportsPage />} />
               <Route path="printables" element={<PrintablesPage />} />
               <Route path="settings" element={<SettingsPage />} />
+            </Route>
             </Route>
           </Route>
 

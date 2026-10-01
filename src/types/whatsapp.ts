@@ -1,4 +1,4 @@
-export type WhatsAppStatus = 'disconnected' | 'connecting' | 'qrcode' | 'connected' | 'service_offline'
+export type WhatsAppStatus = 'disconnected' | 'connecting' | 'qrcode' | 'connected' | 'service_offline' | 'service_misconfigured'
 
 export type WhatsAppState = {
   instance_name: string | null

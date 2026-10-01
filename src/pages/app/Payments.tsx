@@ -344,7 +344,7 @@ function Payments() {
                 >
                   <Identity payment={payment} tone={AVATARS[index % AVATARS.length]!} />
                   <span className="w-[140px] min-w-0 pr-2">
-                    <span className="block truncate font-mono text-[12px] font-semibold text-slate-800">
+                    <span className="block truncate text-[12px] font-semibold text-slate-800">
                       {payment.document_number}
                     </span>
                     <span className="block truncate text-[11px] text-slate-400">
@@ -357,15 +357,15 @@ function Payments() {
                   <span className="w-[100px]">
                     <StatusBadge status={payment.status} />
                   </span>
-                  <span className="w-[92px] font-mono text-[12px] text-slate-600">
+                  <span className="w-[92px] text-[12px] text-slate-600">
                     {payment.paid_at ? formatDate(payment.paid_at) : '—'}
                   </span>
                   <span className="w-[128px] text-right">
-                    <span className="block font-mono text-[13px] font-semibold text-slate-900">
+                    <span className="block text-[13px] font-semibold text-slate-900">
                       {formatCents(payment.amount_cents, currency)}
                     </span>
                     {payment.status !== 'received' && payment.outstanding_cents > 0 ? (
-                      <span className="block font-mono text-[11px] text-amber-700">
+                      <span className="block text-[11px] text-amber-700">
                         {formatCents(payment.outstanding_cents, currency)} {t('payments.stillDue', 'still due')}
                       </span>
                     ) : null}
@@ -388,14 +388,14 @@ function Payments() {
                   </span>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-[13px] font-semibold text-slate-900">{payment.client_name}</p>
-                    <p className="truncate font-mono text-[11px] text-slate-500">{payment.document_number}</p>
+                    <p className="truncate text-[11px] text-slate-500">{payment.document_number}</p>
                     <div className="mt-2 flex flex-wrap items-center gap-2">
                       <MethodBadge method={payment.payment_method} />
                       <StatusBadge status={payment.status} />
-                      <span className="font-mono text-[13px] font-semibold text-slate-900">
+                      <span className="text-[13px] font-semibold text-slate-900">
                         {formatCents(payment.amount_cents, currency)}
                       </span>
-                      <span className="font-mono text-[11px] text-slate-400">
+                      <span className="text-[11px] text-slate-400">
                         {payment.paid_at ? formatDate(payment.paid_at) : '—'}
                       </span>
                     </div>
@@ -409,10 +409,10 @@ function Payments() {
               <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 text-xs text-slate-500">
                 <span>
                   {t('common.showing', 'Showing')}{' '}
-                  <span className="font-mono text-slate-900">
+                  <span className="text-slate-900">
                     {firstOnPage}-{lastOnPage}
                   </span>{' '}
-                  {t('common.of', 'of')} <span className="font-mono text-slate-900">{meta.total}</span>{' '}
+                  {t('common.of', 'of')} <span className="text-slate-900">{meta.total}</span>{' '}
                   {t('payments.recorded', 'payments')}
                 </span>
                 <span className="flex items-center gap-1.5">
@@ -541,7 +541,7 @@ function Stat({
       <span className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-xl', tile)}>{icon}</span>
       <div className="min-w-0">
         <p className="text-[11px] font-semibold tracking-[0.06em] text-slate-500 uppercase">{label}</p>
-        <p className="font-mono text-[15px] font-bold leading-tight text-slate-900 sm:truncate sm:text-lg">
+        <p className="text-[15px] font-bold leading-tight text-slate-900 sm:truncate sm:text-lg">
           {value}
         </p>
         <p className="text-[11px] leading-snug text-slate-400">{hint}</p>

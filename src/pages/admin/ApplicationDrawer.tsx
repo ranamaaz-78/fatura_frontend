@@ -147,7 +147,7 @@ export function ApplicationDrawer({ applicationId, onClose }: ApplicationDrawerP
                   {application.plan.name}
                 </span>
               ) : null}
-              <span className="font-mono text-[11px] text-slate-400">
+              <span className="text-[11px] text-slate-400">
                 {formatDateTime(application.created_at)}
               </span>
             </div>
@@ -289,7 +289,7 @@ export function ApplicationDrawer({ applicationId, onClose }: ApplicationDrawerP
                       {ACTIVITY_LABELS[activity.type] ?? activity.type}
                     </p>
                     {activity.body ? <p className="text-xs text-slate-600">{activity.body}</p> : null}
-                    <p className="font-mono text-[10px] text-slate-400">
+                    <p className="text-[10px] text-slate-400">
                       {formatDateTime(activity.created_at)}
                       {activity.user ? ` · ${activity.user.name}` : ''}
                     </p>

@@ -30,6 +30,8 @@ export type DataTableProps<T> = {
   sortDir?: 'asc' | 'desc'
   onSort?: (key: string) => void
   rowActions?: (row: T) => ReactNode
+  /** Keep row actions visible instead of revealing them on hover. */
+  rowActionsVisible?: boolean
   page?: number
   pageCount?: number
   onPageChange?: (page: number) => void
@@ -51,6 +53,7 @@ export function DataTable<T>({
   sortDir,
   onSort,
   rowActions,
+  rowActionsVisible = false,
   page,
   pageCount,
   onPageChange,
@@ -128,8 +131,8 @@ export function DataTable<T>({
                           className={cn(
                             'px-4 py-3 text-ink',
                             (column.align === 'right' || column.numeric) && 'text-right',
-                            column.numeric && 'font-mono tabular-nums',
-                            column.mono && 'font-mono text-xs',
+                            column.numeric && 'tabular-nums',
+                            column.mono && 'text-xs',
                           )}
                         >
                           {column.cell(row)}
@@ -137,7 +140,12 @@ export function DataTable<T>({
                       ))}
                       {rowActions ? (
                         <td className="px-4 py-3 text-right">
-                          <div className="inline-flex justify-end opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                          <div
+                            className={cn(
+                              'inline-flex items-center justify-end gap-1',
+                              !rowActionsVisible && 'opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity',
+                            )}
+                          >
                             {rowActions(row)}
                           </div>
                         </td>
@@ -160,8 +168,8 @@ export function DataTable<T>({
                       <span
                         className={cn(
                           'text-right text-sm text-ink',
-                          column.numeric && 'font-mono tabular-nums',
-                          column.mono && 'font-mono text-xs',
+                          column.numeric && 'tabular-nums',
+                          column.mono && 'text-xs',
                         )}
                       >
                         {column.cell(row)}

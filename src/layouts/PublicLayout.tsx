@@ -1,18 +1,13 @@
-import { Outlet, useLocation } from 'react-router-dom'
+import { Outlet } from 'react-router-dom'
 import { Footer } from '../components/layout/Footer'
 import { PublicNavbar } from '../components/layout/PublicNavbar'
-import { cn } from '../lib/cn'
 
+/** The whole public site is one landing page, so the navbar always sits over its dark hero. */
 export function PublicLayout() {
-  const { pathname } = useLocation()
-
-  // The landing hero renders behind its own navbar, so it needs no top offset.
-  const onHero = pathname === '/'
-
   return (
-    <div className="relative flex min-h-full flex-col bg-[#f8f9ff]">
+    <div id="top" className="relative flex min-h-full flex-col bg-[#f8f9ff]">
       <PublicNavbar />
-      <main className={cn('flex-1', !onHero && 'pt-20')}>
+      <main className="flex-1">
         <Outlet />
       </main>
       <Footer />

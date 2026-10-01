@@ -1,6 +1,15 @@
 export type UserRole = 'super_admin' | 'business_admin' | 'staff'
 export type UserStatus = 'active' | 'disabled'
 export type CompanyStatus = 'active' | 'suspended'
+export type SubscriptionState = 'active' | 'expiring' | 'expired' | 'none'
+export type CompanyCounts = {
+  all: number
+  active: number
+  expiring: number
+  expired: number
+  none: number
+  suspended: number
+}
 export type ApplicationStatus = 'new' | 'contacted' | 'approved' | 'rejected'
 export type ActivityType = 'created' | 'status_changed' | 'note' | 'call' | 'whatsapp' | 'email' | 'converted'
 export type PlanInterval = 'month' | 'year'
@@ -83,13 +92,19 @@ export type Company = {
   name: string
   slug: string
   email: string
+  /** NIF, NIE or CIF: one field for whichever the business has. */
+  tax_id?: string | null
   phone: string | null
   whatsapp: string | null
   address: string | null
   city: string | null
+  postal_code?: string | null
   country: string | null
   currency: string
   logo_url?: string | null
+  /** False until every compulsory detail, and the logo, is filled in. */
+  profile_complete?: boolean
+  missing_fields?: string[]
   status: CompanyStatus
   notes: string | null
   created_at: string
@@ -98,6 +113,7 @@ export type Company = {
   active_subscription?: Subscription | null
   latest_subscription?: Subscription | null
   subscriptions?: Subscription[]
+  subscription_state?: SubscriptionState | null
 }
 
 export type ApplicationActivity = {
@@ -165,8 +181,36 @@ export type AdminDashboard = {
   applications: { new: number; contacted: number; approved: number; rejected: number; this_week: number }
   companies: { total: number; active: number; suspended: number }
   subscriptions: { active: number; expiring_soon: number; expired: number }
-  revenue: { currency: string; this_month: number; all_time: number }
+  revenue: {
+    currency: string
+    this_month: number
+    all_time: number
+    last_month: number
+    trend: { month: string; label: string; amount: number }[]
+  }
+  application_trend: { date: string; label: string; count: number }[]
+  conversion: { total: number; converted: number }
+  needs_attention: { expiring: AttentionRow[]; expired: AttentionRow[] }
+  plan_mix: { name: string; count: number; monthly: number }[]
+  latest_payments: {
+    id: number
+    company_id: number
+    company_name: string | null
+    amount: number
+    currency: string
+    method: string | null
+    reference: string | null
+    paid_at: string | null
+  }[]
   latest_applications: Application[]
+}
+
+export type AttentionRow = {
+  company_id: number
+  company_name: string | null
+  plan_name: string
+  ends_at: string | null
+  days_left: number
 }
 
 export type DashboardDocument = {

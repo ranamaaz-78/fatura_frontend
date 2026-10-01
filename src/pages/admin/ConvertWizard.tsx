@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { CheckCircle2, MessageCircle } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, MailCheck, MessageCircle } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
@@ -139,7 +139,11 @@ export function ConvertWizard({ application, open, onClose, onConverted }: Conve
       <Modal
         open={open}
         onClose={onClose}
-        title={t('admin.convertSuccess', 'Account created and access link sent.')}
+        title={
+          result.email_sent
+            ? t('admin.convertSuccess', 'Account created and access link sent.')
+            : t('admin.convertSuccessNoMail', 'Account created, email not sent')
+        }
         maxWidth="md"
         footer={<Button onClick={onClose}>{t('common.done', 'Done')}</Button>}
       >
@@ -148,7 +152,7 @@ export function ConvertWizard({ application, open, onClose, onConverted }: Conve
             <CheckCircle2 className="mt-0.5 h-7 w-7 shrink-0 text-emerald-600" />
             <div className="text-sm text-slate-600">
               <p className="font-semibold text-slate-900">{result.company.name}</p>
-              <p className="font-mono text-xs">{result.owner.email}</p>
+              <p className="text-xs">{result.owner.email}</p>
               <p className="mt-2">
                 {result.subscription.plan_name} ·{' '}
                 {formatCurrency(result.subscription.plan_price, result.subscription.plan_currency, 'en-US')} /{' '}
@@ -157,6 +161,30 @@ export function ConvertWizard({ application, open, onClose, onConverted }: Conve
               </p>
             </div>
           </div>
+          {result.email_sent ? (
+            <p className="flex items-start gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+              <MailCheck className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>
+                {t('admin.mailSentTo', 'The set-password link was emailed to')} <strong>{result.owner.email}</strong>.
+              </span>
+            </p>
+          ) : (
+            <div className="flex items-start gap-2.5 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+              <div>
+                <p className="font-semibold">
+                  {t('admin.mailNotSent', 'The set-password email could not be sent to')} {result.owner.email}.
+                </p>
+                {result.email_error ? <p className="mt-1 text-[11px] break-all opacity-80">{result.email_error}</p> : null}
+                <p className="mt-1.5 text-xs">
+                  {t(
+                    'admin.mailNotSentHelp',
+                    'The account is ready. Send the link on WhatsApp now, or use "Resend access link" on the company page once the mail settings are fixed.',
+                  )}
+                </p>
+              </div>
+            </div>
+          )}
           {result.whatsapp_url ? (
             <a
               href={result.whatsapp_url}
@@ -350,12 +378,12 @@ export function ConvertWizard({ application, open, onClose, onConverted }: Conve
               <div>
                 <dt className="text-[11px] uppercase tracking-wider text-slate-500">{t('admin.companySection', 'Company details')}</dt>
                 <dd className="font-semibold text-slate-900">{draft.company_name}</dd>
-                <dd className="font-mono text-xs text-slate-500">{draft.company_email}</dd>
+                <dd className="text-xs text-slate-500">{draft.company_email}</dd>
               </div>
               <div>
                 <dt className="text-[11px] uppercase tracking-wider text-slate-500">{t('admin.ownerSection', 'Owner login')}</dt>
                 <dd className="font-semibold text-slate-900">{draft.owner_name}</dd>
-                <dd className="font-mono text-xs text-slate-500">{draft.owner_email}</dd>
+                <dd className="text-xs text-slate-500">{draft.owner_email}</dd>
               </div>
               <div>
                 <dt className="text-[11px] uppercase tracking-wider text-slate-500">{t('admin.subscription', 'Subscription')}</dt>
@@ -368,7 +396,7 @@ export function ConvertWizard({ application, open, onClose, onConverted }: Conve
               </div>
               <div>
                 <dt className="text-[11px] uppercase tracking-wider text-slate-500">{t('admin.amount', 'Amount')}</dt>
-                <dd className="font-mono font-semibold text-slate-900">
+                <dd className="font-semibold text-slate-900">
                   {plan ? formatCurrency(draft.amount ? Number(draft.amount) : total, plan.currency, 'en-US') : '—'}
                 </dd>
                 <dd className="text-xs text-slate-500">

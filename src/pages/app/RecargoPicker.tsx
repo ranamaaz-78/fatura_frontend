@@ -60,14 +60,14 @@ export function RecargoPicker({ rates, loading = false, selectedId, onSelect, am
               aria-expanded={open}
               title={t('sales.recargoChange', 'Change rate')}
               onClick={() => setOpen((was) => !was)}
-              className="inline-flex cursor-pointer items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 font-mono text-[11px] font-semibold text-amber-700 hover:bg-amber-100 app-dark:bg-amber-500/15 app-dark:text-amber-300"
+              className="inline-flex cursor-pointer items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700 hover:bg-amber-100 app-dark:bg-amber-500/15 app-dark:text-amber-300"
             >
               {selected.rate}%
               <ChevronDown className={cn('h-3 w-3 transition', open && 'rotate-180')} />
             </button>
           </span>
           <span className="flex shrink-0 items-center gap-1.5">
-            <span className="font-mono font-bold text-slate-800">{formatCents(amountCents, currency)}</span>
+            <span className="font-bold text-slate-800">{formatCents(amountCents, currency)}</span>
             <button
               type="button"
               aria-label={t('sales.recargoRemove', 'Remove recargo de equivalencia')}
@@ -126,7 +126,7 @@ export function RecargoPicker({ rates, loading = false, selectedId, onSelect, am
                         active && 'bg-brand-50/60',
                       )}
                     >
-                      <span className="w-12 font-mono text-[13px] font-bold text-brand-600">{rate.rate}%</span>
+                      <span className="w-12 text-[13px] font-bold text-brand-600">{rate.rate}%</span>
                       <span className="min-w-0 flex-1 truncate font-medium text-slate-800">{rate.name}</span>
                       {active ? <Check className="h-4 w-4 text-brand-600" /> : null}
                     </button>

@@ -4,11 +4,13 @@ import { api, unwrap } from './api'
 export type CompanyDetailsInput = {
   name: string
   email: string
-  phone: string | null
-  whatsapp: string | null
-  address: string | null
-  city: string | null
-  country: string | null
+  tax_id: string
+  phone: string
+  whatsapp: string
+  address: string
+  city: string
+  postal_code: string
+  country: string
   currency: string
 }
 

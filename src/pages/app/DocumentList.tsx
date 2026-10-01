@@ -26,7 +26,7 @@ import { formatDate } from '../../lib/format'
 import { formatCents } from '../../lib/money'
 import { getErrorMessage } from '../../services/api'
 import { getSale, listSales } from '../../services/sales'
-import { isSaleVoided, type IssuableType, type SaleDisplayStatus, type SaleDocument } from '../../types/sales'
+import { isSaleExpired, isSaleVoided, quoteDaysLeft, type IssuableType, type SaleDisplayStatus, type SaleDocument } from '../../types/sales'
 import { rulesFor, typeLabel } from './documentTypes'
 
 type PaymentFilter = SaleDisplayStatus | 'all'
@@ -136,7 +136,7 @@ function Stat({
       <span className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-xl', tile)}>{icon}</span>
       <div className="min-w-0">
         <p className="text-[11px] font-semibold tracking-[0.06em] text-slate-500 uppercase">{label}</p>
-        <p className="truncate font-mono text-lg font-bold text-slate-900">{value}</p>
+        <p className="truncate text-lg font-bold text-slate-900">{value}</p>
         <p className="text-[11px] leading-snug text-slate-400">{hint}</p>
       </div>
     </div>
@@ -162,9 +162,25 @@ function TypeBadges({ document, type }: { document: SaleDocument; type: Issuable
           ) : null}
         </>
       ) : type === 'quotation' ? (
-        <Badge className="bg-slate-100 text-slate-600 ring-1 ring-slate-200">
-          {t('sales.notTaxInvoice', 'Not a tax invoice')}
-        </Badge>
+        isSaleExpired(document) ? (
+          <Badge className="bg-rose-50 text-rose-700 ring-1 ring-rose-200 app-dark:bg-rose-500/15 app-dark:text-rose-300 app-dark:ring-rose-500/30">
+            {t('sales.expired', 'Expired')}
+          </Badge>
+        ) : document.expires_at ? (
+          <Badge
+            className={
+              quoteDaysLeft(document.expires_at) <= 2
+                ? 'bg-amber-50 text-amber-800 ring-1 ring-amber-200 app-dark:bg-amber-500/15 app-dark:text-amber-300 app-dark:ring-amber-500/30'
+                : 'bg-slate-100 text-slate-600 ring-1 ring-slate-200'
+            }
+          >
+            {t('sales.validUntil', 'Valid until')} {formatDate(document.expires_at)}
+          </Badge>
+        ) : (
+          <Badge className="bg-slate-100 text-slate-600 ring-1 ring-slate-200">
+            {t('sales.notTaxInvoice', 'Not a tax invoice')}
+          </Badge>
+        )
       ) : (
         <Badge className="bg-slate-100 text-slate-600 ring-1 ring-slate-200">{t('sales.noTax', 'No tax')}</Badge>
       )}
@@ -442,7 +458,7 @@ export function DocumentList({ type }: { type: IssuableType }) {
                     )}
                   >
                     {chip.label}
-                    <span className={cn('font-mono text-[11px]', on ? 'text-brand-500' : 'text-slate-400')}>
+                    <span className={cn('text-[11px]', on ? 'text-brand-500' : 'text-slate-400')}>
                       {chip.count}
                     </span>
                   </button>
@@ -459,7 +475,7 @@ export function DocumentList({ type }: { type: IssuableType }) {
               ) : (
                 <Badge className="bg-slate-100 text-slate-600 ring-1 ring-slate-200">{t('sales.noTax', 'No tax')}</Badge>
               )}
-              <span className="font-mono text-[11px] text-slate-400">
+              <span className="text-[11px] text-slate-400">
                 {counts.all} {t('sales.documents', 'documents')}
               </span>
             </div>
@@ -530,7 +546,7 @@ export function DocumentList({ type }: { type: IssuableType }) {
                       {initials(document.client_name)}
                     </span>
                     <span className="min-w-0">
-                      <span className="block font-mono text-sm font-bold text-slate-900">{document.number}</span>
+                      <span className="block text-sm font-bold text-slate-900">{document.number}</span>
                       <span className="mt-0.5 block truncate text-[11px] text-slate-400">
                         {document.client_code ?? typeLabel(type)}
                       </span>
@@ -540,11 +556,11 @@ export function DocumentList({ type }: { type: IssuableType }) {
                     <span className="block truncate text-[13px] font-semibold text-slate-800">{document.client_name}</span>
                     <span className="block truncate text-[11px] text-slate-400">{document.client_company ?? '—'}</span>
                   </span>
-                  <span className="w-28 font-mono text-xs text-slate-500">{formatDate(document.issued_at)}</span>
+                  <span className="w-28 text-xs text-slate-500">{formatDate(document.issued_at)}</span>
                   <span className="w-56">
                     <TypeBadges document={document} type={type} />
                   </span>
-                  <span className="w-28 text-right font-mono text-sm font-bold text-slate-900">
+                  <span className="w-28 text-right text-sm font-bold text-slate-900">
                     {formatCents(document.total_cents, currency)}
                   </span>
                   <span className="flex w-[110px] justify-end gap-1">{actions(document)}</span>
@@ -565,8 +581,8 @@ export function DocumentList({ type }: { type: IssuableType }) {
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="flex items-start justify-between gap-3">
-                      <span className="font-mono text-sm font-bold text-slate-900">{document.number}</span>
-                      <span className="shrink-0 font-mono text-sm font-bold text-slate-900">
+                      <span className="text-sm font-bold text-slate-900">{document.number}</span>
+                      <span className="shrink-0 text-sm font-bold text-slate-900">
                         {formatCents(document.total_cents, currency)}
                       </span>
                     </span>
@@ -578,7 +594,7 @@ export function DocumentList({ type }: { type: IssuableType }) {
                     </span>
                     <span className="mt-2 flex flex-wrap items-center gap-1.5">
                       <TypeBadges document={document} type={type} />
-                      <span className="font-mono text-[11px] text-slate-400">{formatDate(document.issued_at)}</span>
+                      <span className="text-[11px] text-slate-400">{formatDate(document.issued_at)}</span>
                     </span>
                   </span>
                   <span className="flex shrink-0 gap-1">{actions(document)}</span>
@@ -590,10 +606,10 @@ export function DocumentList({ type }: { type: IssuableType }) {
               <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 text-xs text-slate-500">
                 <span>
                   {t('common.showing', 'Showing')}{' '}
-                  <span className="font-mono text-slate-900">
+                  <span className="text-slate-900">
                     {firstOnPage}-{lastOnPage}
                   </span>{' '}
-                  {t('common.of', 'of')} <span className="font-mono text-slate-900">{meta.total}</span>{' '}
+                  {t('common.of', 'of')} <span className="text-slate-900">{meta.total}</span>{' '}
                   {t('sales.documents', 'documents')}
                 </span>
                 <span className="flex items-center gap-1.5">

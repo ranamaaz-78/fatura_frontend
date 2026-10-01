@@ -1,26 +1,26 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
-  AlertCircle,
   CheckCircle2,
+  CloudOff,
   Loader2,
   LogOut,
   MessageCircle,
-  QrCode,
   RefreshCw,
   Send,
+  ShieldCheck,
   Smartphone,
-  Sparkles,
+  Zap,
 } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useAuth } from '../../auth/AuthProvider'
-import { Badge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog'
-import { Input } from '../../components/ui/Input'
 import { Textarea } from '../../components/ui/Textarea'
+import { Toggle } from '../../components/ui/Toggle'
 import { useToast } from '../../components/ui/Toast'
 import { t } from '../../i18n'
 import { cn } from '../../lib/cn'
+import { formatCents } from '../../lib/money'
 import { getErrorMessage } from '../../services/api'
 import {
   getWhatsAppStatus,
@@ -29,512 +29,428 @@ import {
   sendWhatsAppTest,
   updateWhatsAppSettings,
 } from '../../services/whatsapp'
+import type { WhatsAppState, WhatsAppStatus } from '../../types/whatsapp'
 
-const DEFAULT_TEMPLATE = `Dear {customer_name},
+export const DEFAULT_WHATSAPP_TEMPLATE = `Dear {customer_name},
 
 Please find attached your {document_type} *#{document_number}* from *{company_name}* for *{total_amount}*.
 
 Thank you for choosing us!`
+
+const TAGS: { tag: string; label: string }[] = [
+  { tag: '{customer_name}', label: t('whatsapp.tagCustomer', 'Customer') },
+  { tag: '{document_type}', label: t('whatsapp.tagType', 'Document type') },
+  { tag: '{document_number}', label: t('whatsapp.tagNumber', 'Number') },
+  { tag: '{total_amount}', label: t('whatsapp.tagTotal', 'Total') },
+  { tag: '{company_name}', label: t('whatsapp.tagCompany', 'Your company') },
+]
+
+const PILL: Record<'ok' | 'wait' | 'off' | 'bad', string> = {
+  ok: 'bg-emerald-50 text-emerald-700 ring-emerald-200 app-dark:bg-emerald-500/15 app-dark:text-emerald-300 app-dark:ring-emerald-500/30',
+  wait: 'bg-amber-50 text-amber-700 ring-amber-200 app-dark:bg-amber-500/15 app-dark:text-amber-300 app-dark:ring-amber-500/30',
+  off: 'bg-slate-100 text-slate-600 ring-slate-200 app-dark:bg-white/10 app-dark:text-slate-300 app-dark:ring-white/15',
+  bad: 'bg-rose-50 text-rose-700 ring-rose-200 app-dark:bg-rose-500/15 app-dark:text-rose-300 app-dark:ring-rose-500/30',
+}
+
+function statusPill(status: WhatsAppStatus): { tone: keyof typeof PILL; label: string } {
+  switch (status) {
+    case 'connected':
+      return { tone: 'ok', label: t('whatsapp.connected', 'Connected') }
+    case 'qrcode':
+      return { tone: 'wait', label: t('whatsapp.waitingScan', 'Waiting for scan') }
+    case 'connecting':
+      return { tone: 'wait', label: t('whatsapp.connecting', 'Connecting') }
+    case 'service_offline':
+    case 'service_misconfigured':
+      return { tone: 'bad', label: t('whatsapp.unavailable', 'Unavailable') }
+    default:
+      return { tone: 'off', label: t('whatsapp.notConnected', 'Not connected') }
+  }
+}
+
+/** WhatsApp shows *words between stars* in bold; the preview does the same. */
+function WhatsAppText({ text }: { text: string }) {
+  return (
+    <>
+      {text.split(/(\*[^*\n]+\*)/g).map((part, index) =>
+        /^\*[^*\n]+\*$/.test(part) ? <strong key={index}>{part.slice(1, -1)}</strong> : <span key={index}>{part}</span>,
+      )}
+    </>
+  )
+}
+
+function Step({ n, children }: { n: number; children: ReactNode }) {
+  return (
+    <li className="flex items-start gap-3">
+      <span className="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-xs font-bold text-white">
+        {n}
+      </span>
+      <span className="text-sm leading-snug text-ink">{children}</span>
+    </li>
+  )
+}
+
+function Benefit({ icon: Icon, children }: { icon: typeof Zap; children: ReactNode }) {
+  return (
+    <li className="flex items-start gap-2.5 text-sm text-ink-muted">
+      <Icon className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+      {children}
+    </li>
+  )
+}
 
 export function WhatsAppTab() {
   const { session } = useAuth()
   const { push } = useToast()
   const queryClient = useQueryClient()
   const company = session?.company ?? null
+  const currency = company?.currency ?? 'EUR'
 
-  const [instanceName, setInstanceName] = useState('')
-  const [autoSend, setAutoSend] = useState(true)
-  const [template, setTemplate] = useState(DEFAULT_TEMPLATE)
-  const [testPhone, setTestPhone] = useState('')
   const [logoutOpen, setLogoutOpen] = useState(false)
+  const [autoSend, setAutoSend] = useState(true)
+  const [template, setTemplate] = useState(DEFAULT_WHATSAPP_TEMPLATE)
+  const previous = useRef<WhatsAppStatus | null>(null)
+  const loaded = useRef(false)
 
-  // Fetch live WhatsApp status & auto-poll while waiting for QR scan
   const statusQuery = useQuery({
     queryKey: ['whatsapp-status'],
     queryFn: getWhatsAppStatus,
+    // Quick while somebody is scanning, relaxed otherwise.
     refetchInterval: (query) => {
       const current = query.state.data?.status
-      return current === 'qrcode' || current === 'connecting' ? 2500 : 15000
+      if (current === 'qrcode' || current === 'connecting') return 2000
+      return current === 'connected' ? 30000 : 15000
     },
   })
 
-  // Sync settings when loaded
+  const state: WhatsAppState | undefined = statusQuery.data
+  const status: WhatsAppStatus = state?.status ?? 'disconnected'
+  const unavailable = status === 'service_offline' || status === 'service_misconfigured'
+
+  // Fill the form once from what is saved.
   useEffect(() => {
-    if (statusQuery.data) {
-      setAutoSend(statusQuery.data.auto_send)
-      if (statusQuery.data.message_template) {
-        setTemplate(statusQuery.data.message_template)
-      }
-      if (statusQuery.data.instance_name) {
-        setInstanceName(statusQuery.data.instance_name)
-      }
+    if (!state || loaded.current) return
+    loaded.current = true
+    setAutoSend(state.auto_send)
+    setTemplate(state.message_template || DEFAULT_WHATSAPP_TEMPLATE)
+  }, [state])
+
+  // A scan that just worked deserves a clear "done".
+  useEffect(() => {
+    const current = state?.status
+    if (!current) return
+    // Only a change seen while the page is open counts, not opening it already connected.
+    if (previous.current && previous.current !== 'connected' && current === 'connected') {
+      push({ tone: 'success', title: t('whatsapp.nowConnected', 'WhatsApp connected. You are ready to send.') })
     }
-  }, [statusQuery.data])
+    previous.current = current
+  }, [state?.status, push])
 
-  const connectMutation = useMutation({
-    mutationFn: () => initWhatsAppInstance(),
-    onSuccess: (data) => {
-      queryClient.setQueryData(['whatsapp-status'], data)
-      push({
-        tone: 'success',
-        title: t('whatsapp.qrReady', 'QR code generated. Scan with WhatsApp on your phone.'),
-      })
-    },
-    onError: (err) => {
-      push({
-        tone: 'danger',
-        title: getErrorMessage(err),
-      })
+  const connect = useMutation({
+    mutationFn: (fresh: boolean) => initWhatsAppInstance(fresh),
+    onSuccess: (data) => queryClient.setQueryData(['whatsapp-status'], data),
+    onError: (error) => {
+      push({ tone: 'danger', title: getErrorMessage(error) })
+      void queryClient.invalidateQueries({ queryKey: ['whatsapp-status'] })
     },
   })
 
-  const logoutMutation = useMutation({
+  const disconnect = useMutation({
     mutationFn: logoutWhatsAppInstance,
-    onSuccess: () => {
+    onSuccess: (data) => {
       setLogoutOpen(false)
-      queryClient.invalidateQueries({ queryKey: ['whatsapp-status'] })
-      push({
-        tone: 'info',
-        title: t('whatsapp.loggedOut', 'WhatsApp session disconnected.'),
-      })
+      queryClient.setQueryData(['whatsapp-status'], data)
+      push({ tone: 'info', title: t('whatsapp.disconnected', 'WhatsApp disconnected.') })
     },
-    onError: (err) => {
-      push({
-        tone: 'danger',
-        title: getErrorMessage(err),
-      })
-    },
+    onError: (error) => push({ tone: 'danger', title: getErrorMessage(error) }),
   })
 
-  const saveSettingsMutation = useMutation({
+  const test = useMutation({
+    mutationFn: () => sendWhatsAppTest(),
+    onSuccess: () =>
+      push({ tone: 'success', title: t('whatsapp.testSent', 'Test message sent. Check WhatsApp on your phone.') }),
+    onError: (error) => push({ tone: 'danger', title: getErrorMessage(error) }),
+  })
+
+  const saved = {
+    autoSend: state?.auto_send ?? true,
+    template: state?.message_template || DEFAULT_WHATSAPP_TEMPLATE,
+  }
+  const dirty = autoSend !== saved.autoSend || template !== saved.template
+
+  const save = useMutation({
     mutationFn: () =>
       updateWhatsAppSettings({
         auto_send: autoSend,
-        message_template: template,
+        message_template: template.trim() === DEFAULT_WHATSAPP_TEMPLATE.trim() ? null : template,
       }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['whatsapp-status'] })
-      push({
-        tone: 'success',
-        title: t('whatsapp.settingsSaved', 'WhatsApp automation settings saved.'),
-      })
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['whatsapp-status'] })
+      push({ tone: 'success', title: t('whatsapp.settingsSaved', 'Saved.') })
     },
-    onError: (err) => {
-      push({
-        tone: 'danger',
-        title: getErrorMessage(err),
-      })
-    },
+    onError: (error) => push({ tone: 'danger', title: getErrorMessage(error) }),
   })
 
-  const testMutation = useMutation({
-    mutationFn: () => sendWhatsAppTest(testPhone.trim()),
-    onSuccess: () => {
-      push({
-        tone: 'success',
-        title: t('whatsapp.testSuccess', 'Test message sent successfully!'),
-      })
-      setTestPhone('')
-    },
-    onError: (err) => {
-      push({
-        tone: 'danger',
-        title: getErrorMessage(err),
-      })
-    },
-  })
+  const preview = useMemo(
+    () =>
+      template
+        .replace(/\{customer_name\}/g, 'Marta Rivas')
+        .replace(/\{document_type\}/g, 'Invoice')
+        .replace(/\{document_number\}/g, 'F-2026/0185')
+        .replace(/\{total_amount\}/g, formatCents(41250, currency))
+        .replace(/\{company_name\}/g, company?.name ?? 'Your company'),
+    [template, currency, company?.name],
+  )
 
-  const isConnected = statusQuery.data?.status === 'connected'
-  const isQr = !isConnected && (statusQuery.data?.status === 'qrcode' || Boolean(statusQuery.data?.qrcode))
-  const isConnecting = !isConnected && !isQr && (connectMutation.isPending || statusQuery.data?.status === 'connecting')
-  const serviceAlive = statusQuery.data?.service_alive !== false
+  const pill = statusPill(status)
+  const starting = connect.isPending || status === 'connecting'
 
   return (
-    <div className="flex flex-col gap-6 p-5 sm:p-6">
-      {/* Service Offline Warning */}
-      {!serviceAlive && (
-        <div className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs text-amber-900">
-          <AlertCircle className="h-5 w-5 shrink-0 text-amber-600" />
-          <div className="flex flex-col gap-1">
-            <span className="font-semibold text-amber-950">
-              {t('whatsapp.serviceOffline', 'WhatsApp microservice is offline')}
-            </span>
-            <span>
-              {t(
-                'whatsapp.serviceOfflineHelp',
-                'Ensure the WhatsApp service (node index.js in whatsapp_service) is running on port 3333.',
-              )}
-            </span>
-          </div>
-        </div>
-      )}
-
-      {/* Main Connection Status Card */}
-      <div className="rounded-2xl border border-line/80 bg-page/40 p-5">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-3">
-            <div
-              className={cn(
-                'flex h-12 w-12 items-center justify-center rounded-2xl text-white shadow-xs',
-                isConnected ? 'bg-emerald-500' : isQr || isConnecting ? 'bg-amber-500' : 'bg-slate-500',
-              )}
-            >
+    <div className="flex max-w-3xl flex-col gap-5 p-5 sm:p-6">
+      {/* The connection */}
+      <section className="overflow-hidden rounded-2xl border border-line/80 bg-card shadow-xs">
+        <header className="flex items-center justify-between gap-3 border-b border-line px-5 py-4">
+          <div className="flex min-w-0 items-center gap-3">
+            <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#25d366] text-white">
               <MessageCircle className="h-6 w-6" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-base font-bold text-ink">
-                  {t('whatsapp.integrationTitle', 'WhatsApp Integration')}
-                </h2>
-                <Badge
-                  tone={isConnected ? 'success' : isQr || isConnecting ? 'warning' : 'neutral'}
-                  className="font-medium"
-                >
-                  {isConnected
-                    ? t('whatsapp.connected', 'Connected')
-                    : isQr
-                      ? t('whatsapp.scanQr', 'Scan QR Code')
-                      : isConnecting
-                        ? t('whatsapp.connecting', 'Connecting...')
-                        : t('whatsapp.disconnected', 'Disconnected')}
-                </Badge>
-              </div>
-              <p className="mt-0.5 text-xs text-ink-muted">
-                {isConnected
-                  ? t(
-                      'whatsapp.connectedDesc',
-                      'Your WhatsApp account is active and ready to deliver printable documents to customers.',
-                    )
-                  : t(
-                      'whatsapp.disconnectedDesc',
-                      'Connect your WhatsApp account to automatically dispatch invoices, quotes, albaranes, and proformas.',
-                    )}
+            </span>
+            <div className="min-w-0">
+              <h2 className="text-base font-bold text-ink">{t('whatsapp.title', 'Your WhatsApp')}</h2>
+              <p className="truncate text-xs text-ink-muted">
+                {t('whatsapp.subtitle', 'Send invoices and quotes to customers from your own number.')}
               </p>
             </div>
           </div>
+          <span className={cn('shrink-0 rounded-full px-3 py-1 text-xs font-semibold ring-1', PILL[pill.tone])}>
+            {pill.label}
+          </span>
+        </header>
 
-          {isConnected && (
-            <Button
-              type="button"
-              tone="danger"
-              variant="outline"
-              size="sm"
-              onClick={() => setLogoutOpen(true)}
-              className="gap-2 shrink-0"
-            >
-              <LogOut className="h-4 w-4" />
-              {t('whatsapp.disconnect', 'Disconnect')}
-            </Button>
-          )}
-        </div>
-
-        {/* State 1: Connected Details */}
-        {isConnected && (
-          <div className="mt-5 grid grid-cols-1 gap-3 rounded-xl border border-emerald-200/80 bg-emerald-50/50 p-4 sm:grid-cols-3">
-            <div className="flex items-center gap-2.5">
-              <Smartphone className="h-4 w-4 text-emerald-600 shrink-0" />
-              <div>
-                <span className="block text-[10px] font-semibold tracking-wider text-emerald-800 uppercase">
-                  {t('whatsapp.linkedNumber', 'Linked Number')}
-                </span>
-                <span className="text-xs font-bold text-emerald-950">
-                  +{statusQuery.data?.connected_phone || '-'}
-                </span>
-              </div>
+        <div className="p-5">
+          {statusQuery.isPending ? (
+            <div className="flex items-center gap-2.5 py-6 text-sm text-ink-muted">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              {t('common.loading', 'Loading')}
             </div>
-
-            <div className="flex items-center gap-2.5">
-              <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+          ) : unavailable ? (
+            <div className="flex flex-col items-start gap-4 rounded-xl border border-amber-200 bg-amber-50 p-5 app-dark:border-amber-500/30 app-dark:bg-amber-500/10">
+              <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-amber-100 text-amber-700">
+                <CloudOff className="h-5 w-5" />
+              </span>
               <div>
-                <span className="block text-[10px] font-semibold tracking-wider text-emerald-800 uppercase">
-                  {t('whatsapp.instance', 'Instance Name')}
-                </span>
-                <span className="text-xs font-bold text-emerald-950">
-                  {statusQuery.data?.instance_name || instanceName}
-                </span>
+                <p className="text-sm font-semibold text-amber-950 app-dark:text-amber-100">
+                  {status === 'service_misconfigured'
+                    ? t('whatsapp.notSetUp', 'WhatsApp is not set up correctly on the server')
+                    : t('whatsapp.tempUnavailable', 'WhatsApp is not available right now')}
+                </p>
+                <p className="mt-1 text-xs leading-relaxed text-amber-900/80 app-dark:text-amber-200/80">
+                  {status === 'service_misconfigured'
+                    ? t('whatsapp.contactSupport', 'Please contact support and we will fix it for you.')
+                    : t('whatsapp.tryAgainSoon', 'This is on our side, not yours. Try again in a minute.')}
+                </p>
               </div>
+              <Button
+                variant="secondary"
+                size="sm"
+                icon={<RefreshCw className={cn('h-3.5 w-3.5', statusQuery.isFetching && 'animate-spin')} />}
+                onClick={() => void statusQuery.refetch()}
+              >
+                {t('whatsapp.tryAgain', 'Try again')}
+              </Button>
             </div>
-
-            <div className="flex items-center gap-2.5">
-              <Sparkles className="h-4 w-4 text-emerald-600 shrink-0" />
-              <div>
-                <span className="block text-[10px] font-semibold tracking-wider text-emerald-800 uppercase">
-                  {t('whatsapp.accountName', 'Account Name')}
+          ) : status === 'connected' ? (
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center gap-4 rounded-xl border border-emerald-200 bg-emerald-50 p-4 app-dark:border-emerald-500/30 app-dark:bg-emerald-500/10">
+                <span className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-white">
+                  <CheckCircle2 className="h-6 w-6" />
                 </span>
-                <span className="text-xs font-bold text-emerald-950 truncate max-w-[140px]">
-                  {statusQuery.data?.connected_name || company?.name || 'Active Session'}
-                </span>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* State 2: QR Code Scanning */}
-        {!isConnected && isQr && (
-          <div className="mt-6 flex flex-col items-center gap-4 rounded-xl border border-line bg-card p-6 text-center">
-            <div className="relative flex items-center justify-center rounded-2xl border-2 border-dashed border-emerald-300 bg-emerald-50/30 p-3 shadow-inner">
-              {statusQuery.data?.qrcode ? (
-                <img
-                  src={statusQuery.data.qrcode}
-                  alt="WhatsApp QR Code"
-                  className="h-64 w-64 rounded-xl object-contain shadow-xs bg-white p-2"
-                />
-              ) : (
-                <div className="flex h-64 w-64 flex-col items-center justify-center gap-2">
-                  <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
-                  <span className="text-xs text-ink-muted">Generating QR code...</span>
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold tracking-wide text-emerald-800 uppercase app-dark:text-emerald-300">
+                    {t('whatsapp.linkedAs', 'Linked as')}
+                  </p>
+                  <p className="truncate text-lg font-bold text-emerald-950 app-dark:text-emerald-50">
+                    {state?.connected_phone ? `+${state.connected_phone}` : t('whatsapp.yourNumber', 'Your number')}
+                  </p>
+                  {state?.connected_name ? (
+                    <p className="truncate text-xs text-emerald-800/80 app-dark:text-emerald-200/80">{state.connected_name}</p>
+                  ) : null}
                 </div>
-              )}
-            </div>
-
-            <div className="flex max-w-md flex-col gap-2">
-              <h3 className="text-sm font-bold text-ink flex items-center justify-center gap-1.5">
-                <QrCode className="h-4 w-4 text-brand-600" />
-                {t('whatsapp.scanQrTitle', 'Scan this QR Code with WhatsApp')}
-              </h3>
-              <ol className="text-left text-xs text-ink-muted list-decimal list-inside space-y-1 bg-page/70 p-3 rounded-xl border border-line/60">
-                <li>
-                  {t('whatsapp.step1', 'Open WhatsApp on your mobile device')}
-                </li>
-                <li>
-                  {t('whatsapp.step2', 'Tap Menu or Settings > Linked Devices')}
-                </li>
-                <li>
-                  {t('whatsapp.step3', 'Tap Link a Device and point your phone at this screen')}
-                </li>
-              </ol>
-            </div>
-
-            <div className="flex items-center gap-2 mt-1">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => connectMutation.mutate()}
-                disabled={connectMutation.isPending}
-                className="gap-1.5"
-              >
-                <RefreshCw className={cn('h-3.5 w-3.5', connectMutation.isPending && 'animate-spin')} />
-                {t('whatsapp.refreshQr', 'Refresh QR Code')}
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => logoutMutation.mutate()}
-                disabled={logoutMutation.isPending}
-              >
-                {t('common.cancel', 'Cancel')}
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {/* State: Connecting */}
-        {!isConnected && !isQr && isConnecting && (
-          <div className="mt-6 flex flex-col items-center justify-center gap-3 rounded-xl border border-line bg-card p-8 text-center">
-            <Loader2 className="h-8 w-8 animate-spin text-brand-600" />
-            <h3 className="text-sm font-bold text-ink">
-              {t('whatsapp.generatingQr', 'Starting WhatsApp session...')}
-            </h3>
-            <p className="text-xs text-ink-muted">
-              {t('whatsapp.waitQr', 'Generating QR code, please wait a moment.')}
-            </p>
-          </div>
-        )}
-
-        {/* State 3: Disconnected / Initial State */}
-        {!isConnected && !isQr && !isConnecting && (
-          <div className="mt-5 flex flex-col gap-4">
-            <div className="max-w-md flex flex-col gap-2">
-              <label htmlFor="wa-instance" className="text-xs font-semibold text-ink">
-                {t('whatsapp.instanceNameLabel', 'WhatsApp Instance Name')}
-              </label>
-              <div className="flex gap-2">
-                <Input
-                  id="wa-instance"
-                  value={instanceName}
-                  readOnly
-                  className="font-mono text-xs"
-                  disabled
-                />
+              </div>
+              <p className="text-sm text-ink-muted">
+                {t('whatsapp.connectedBody', 'Documents are sent from this number. Customers see it as a normal WhatsApp message.')}
+              </p>
+              <div className="flex flex-wrap gap-2.5">
                 <Button
-                  type="button"
-                  tone="brand"
-                  onClick={() => connectMutation.mutate()}
-                  disabled={connectMutation.isPending}
-                  className="gap-2 shrink-0"
+                  variant="secondary"
+                  icon={<Send className="h-4 w-4" />}
+                  loading={test.isPending}
+                  onClick={() => test.mutate()}
                 >
-                  {connectMutation.isPending ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <QrCode className="h-4 w-4" />
-                  )}
-                  {t('whatsapp.connectBtn', 'Connect WhatsApp')}
+                  {t('whatsapp.testMe', 'Send a test to myself')}
+                </Button>
+                <Button variant="ghost" icon={<LogOut className="h-4 w-4" />} onClick={() => setLogoutOpen(true)}>
+                  {t('whatsapp.disconnectBtn', 'Disconnect')}
                 </Button>
               </div>
-              <span className="text-[11px] text-ink-muted">
-                {t(
-                  'whatsapp.instanceHint',
-                  'A unique identifier for your WhatsApp connection (letters, numbers, underscores).',
-                )}
-              </span>
             </div>
-          </div>
-        )}
-      </div>
-
-      {/* Automation Rules & Template */}
-      <div className="rounded-2xl border border-line/80 bg-card p-5 shadow-xs">
-        <h3 className="text-sm font-bold text-ink">
-          {t('whatsapp.automationTitle', 'Document Dispatch Settings')}
-        </h3>
-        <p className="mt-0.5 text-xs text-ink-muted">
-          {t(
-            'whatsapp.automationDesc',
-            'Configure automatic document delivery when invoices, quotes, albaranes, and proformas are created.',
+          ) : status === 'qrcode' && state?.qrcode ? (
+            <div className="grid gap-6 md:grid-cols-[260px_minmax(0,1fr)] md:items-center">
+              <div className="mx-auto w-[260px] rounded-2xl border border-line bg-white p-3 shadow-xs">
+                <img src={state.qrcode} alt={t('whatsapp.qrAlt', 'WhatsApp QR code')} className="block h-auto w-full" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-ink">{t('whatsapp.scanTitle', 'Scan this code with your phone')}</h3>
+                <ol className="mt-4 flex flex-col gap-3.5">
+                  <Step n={1}>{t('whatsapp.step1', 'Open WhatsApp on your phone.')}</Step>
+                  <Step n={2}>{t('whatsapp.step2', 'Tap Settings, then Linked devices, then Link a device.')}</Step>
+                  <Step n={3}>{t('whatsapp.step3', 'Point the camera at this code. That is all.')}</Step>
+                </ol>
+                <p className="mt-4 flex items-center gap-2 text-xs text-ink-muted">
+                  <span className="relative flex h-2 w-2">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75" />
+                    <span className="relative inline-flex h-2 w-2 rounded-full bg-amber-500" />
+                  </span>
+                  {t('whatsapp.waitingHint', 'Waiting for you to scan. The code refreshes by itself.')}
+                </p>
+                <div className="mt-4 flex flex-wrap gap-2.5">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    icon={<RefreshCw className={cn('h-3.5 w-3.5', connect.isPending && 'animate-spin')} />}
+                    disabled={connect.isPending}
+                    onClick={() => connect.mutate(true)}
+                  >
+                    {t('whatsapp.newCode', 'Get a new code')}
+                  </Button>
+                  <Button variant="ghost" size="sm" disabled={disconnect.isPending} onClick={() => disconnect.mutate()}>
+                    {t('common.cancel', 'Cancel')}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          ) : starting ? (
+            <div className="flex flex-col items-center gap-3 py-8 text-center">
+              <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
+              <p className="text-sm font-semibold text-ink">{t('whatsapp.preparing', 'Getting your code ready…')}</p>
+              <p className="text-xs text-ink-muted">{t('whatsapp.preparingHint', 'This takes a few seconds.')}</p>
+            </div>
+          ) : (
+            <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
+              <div>
+                <h3 className="text-base font-bold text-ink">{t('whatsapp.offerTitle', 'Link your WhatsApp in a minute')}</h3>
+                <ul className="mt-3 flex flex-col gap-2.5">
+                  <Benefit icon={Send}>{t('whatsapp.benefit1', 'Send an invoice or quote as a PDF straight from the sale.')}</Benefit>
+                  <Benefit icon={Zap}>{t('whatsapp.benefit2', 'Optional: send automatically the moment a document is issued.')}</Benefit>
+                  <Benefit icon={ShieldCheck}>{t('whatsapp.benefit3', 'It uses your own number. Nobody else can use your link.')}</Benefit>
+                </ul>
+              </div>
+              <Button
+                size="lg"
+                variant="success"
+                icon={<Smartphone className="h-5 w-5" />}
+                loading={connect.isPending}
+                onClick={() => connect.mutate(false)}
+              >
+                {t('whatsapp.connectBtn', 'Connect WhatsApp')}
+              </Button>
+            </div>
           )}
-        </p>
+        </div>
+      </section>
 
-        <div className="mt-4 flex flex-col gap-5">
-          <label className="flex items-start gap-3 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={autoSend}
-              onChange={(e) => setAutoSend(e.target.checked)}
-              className="mt-0.5 h-4 w-4 rounded border-line text-brand-600 focus:ring-brand-500"
-            />
-            <div className="flex flex-col">
-              <span className="text-xs font-semibold text-ink">
-                {t(
-                  'whatsapp.autoSendOnCreate',
-                  'Automatically send PDF via WhatsApp upon document creation',
-                )}
-              </span>
-              <span className="text-[11px] text-ink-muted">
-                {t(
-                  'whatsapp.autoSendHelp',
-                  'When a new Factura, Albarán, Quotation, or Proforma is issued, it will immediately be sent to the customer if their phone number is on WhatsApp.',
-                )}
-              </span>
-            </div>
-          </label>
+      {/* What gets sent */}
+      <section className="rounded-2xl border border-line/80 bg-card p-5 shadow-xs">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <h3 className="text-base font-bold text-ink">{t('whatsapp.autoTitle', 'Send automatically')}</h3>
+            <p className="mt-0.5 text-xs text-ink-muted">
+              {t('whatsapp.autoBody', 'When you issue a document and the customer has a phone number, it goes to their WhatsApp on its own.')}
+            </p>
+          </div>
+          <Toggle checked={autoSend} onChange={setAutoSend} id="wa-auto" />
+        </div>
 
-          <div className="flex flex-col gap-2">
-            <div className="flex items-center justify-between">
-              <label htmlFor="wa-template" className="text-xs font-semibold text-ink">
-                {t('whatsapp.messageTemplate', 'Message Caption Template')}
-              </label>
+        <div className="mt-6">
+          <div className="mb-1.5 flex items-center justify-between gap-3">
+            <label htmlFor="wa-template" className="text-sm font-semibold text-ink">
+              {t('whatsapp.messageLabel', 'Message')}
+            </label>
+            {template !== DEFAULT_WHATSAPP_TEMPLATE ? (
               <button
                 type="button"
-                onClick={() => setTemplate(DEFAULT_TEMPLATE)}
-                className="text-[11px] font-medium text-brand-600 hover:text-brand-700"
+                className="cursor-pointer text-xs font-semibold text-brand-600 hover:text-brand-500"
+                onClick={() => setTemplate(DEFAULT_WHATSAPP_TEMPLATE)}
               >
-                {t('whatsapp.resetDefault', 'Reset to default')}
+                {t('whatsapp.useDefault', 'Use the standard message')}
               </button>
+            ) : null}
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-2">
+            <div className="flex flex-col gap-2.5">
+              <Textarea
+                id="wa-template"
+                rows={9}
+                value={template}
+                onChange={(event) => setTemplate(event.target.value)}
+                className="text-sm leading-relaxed"
+              />
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-[11px] font-medium text-ink-muted">{t('whatsapp.insert', 'Insert:')}</span>
+                {TAGS.map((item) => (
+                  <button
+                    key={item.tag}
+                    type="button"
+                    title={item.tag}
+                    onClick={() => setTemplate((current) => `${current}${current.endsWith(' ') || current.endsWith('\n') || current === '' ? '' : ' '}${item.tag}`)}
+                    className="cursor-pointer rounded-full border border-line bg-page px-2.5 py-1 text-[11px] font-medium text-ink hover:border-brand-500/40 hover:bg-card"
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
             </div>
 
-            <Textarea
-              id="wa-template"
-              rows={4}
-              value={template}
-              onChange={(e) => setTemplate(e.target.value)}
-              className="text-xs font-sans leading-relaxed"
-            />
-
-            <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-ink-muted">
-              <span className="font-semibold">{t('whatsapp.availableTags', 'Available tags:')}</span>
-              {[
-                '{customer_name}',
-                '{document_type}',
-                '{document_number}',
-                '{total_amount}',
-                '{company_name}',
-              ].map((tag) => (
-                <button
-                  key={tag}
-                  type="button"
-                  onClick={() => setTemplate((prev) => `${prev} ${tag}`)}
-                  className="rounded-md border border-line bg-page px-1.5 py-0.5 font-mono text-[10px] text-ink hover:bg-card"
-                >
-                  {tag}
-                </button>
-              ))}
+            <div>
+              <p className="mb-1.5 text-[11px] font-semibold tracking-wide text-ink-muted uppercase">
+                {t('whatsapp.preview', 'How it looks')}
+              </p>
+              <div className="rounded-2xl bg-[#e7ddd3] p-3 app-dark:bg-[#1d2b24]">
+                <div className="ml-auto max-w-[92%] rounded-xl rounded-tr-sm bg-[#d9fdd3] px-3 py-2 text-[13px] leading-snug whitespace-pre-wrap text-[#111b21] shadow-xs">
+                  <div className="mb-1.5 flex items-center gap-2 rounded-lg bg-white/60 px-2.5 py-2 text-xs font-medium">
+                    <span className="inline-flex h-7 w-6 items-center justify-center rounded bg-rose-500 text-[8px] font-bold text-white">PDF</span>
+                    F-2026/0185.pdf
+                  </div>
+                  <WhatsAppText text={preview} />
+                </div>
+              </div>
             </div>
           </div>
-
-          <div className="flex justify-end">
-            <Button
-              type="button"
-              tone="brand"
-              size="sm"
-              onClick={() => saveSettingsMutation.mutate()}
-              disabled={saveSettingsMutation.isPending}
-              className="gap-2"
-            >
-              {saveSettingsMutation.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-              {t('common.save', 'Save Settings')}
-            </Button>
-          </div>
         </div>
-      </div>
 
-      {/* Test Message Card */}
-      {isConnected && (
-        <div className="rounded-2xl border border-line/80 bg-card p-5 shadow-xs">
-          <h3 className="text-sm font-bold text-ink">
-            {t('whatsapp.testTitle', 'Send a Test Message')}
-          </h3>
-          <p className="mt-0.5 text-xs text-ink-muted">
-            {t(
-              'whatsapp.testDesc',
-              'Send a quick test message to any WhatsApp phone number to verify your connection.',
-            )}
-          </p>
-
-          <div className="mt-4 flex max-w-md gap-2">
-            <Input
-              value={testPhone}
-              onChange={(e) => setTestPhone(e.target.value)}
-              placeholder="e.g. +34612345678 or +923001234567"
-              className="text-xs"
-              disabled={testMutation.isPending}
-            />
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => testMutation.mutate()}
-              disabled={testMutation.isPending || !testPhone.trim()}
-              className="gap-1.5 shrink-0"
-            >
-              {testMutation.isPending ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <Send className="h-3.5 w-3.5" />
-              )}
-              {t('whatsapp.sendTest', 'Send Test')}
-            </Button>
-          </div>
+        <div className="mt-5 flex items-center justify-end gap-3">
+          {dirty ? <span className="text-xs text-ink-muted">{t('whatsapp.unsaved', 'You have unsaved changes')}</span> : null}
+          <Button disabled={!dirty} loading={save.isPending} onClick={() => save.mutate()}>
+            {t('common.save', 'Save')}
+          </Button>
         </div>
-      )}
+      </section>
 
-      {/* Disconnect Dialog */}
       <ConfirmDialog
         open={logoutOpen}
-        title={t('whatsapp.disconnectConfirmTitle', 'Disconnect WhatsApp Session?')}
+        onClose={() => setLogoutOpen(false)}
+        onConfirm={() => disconnect.mutate()}
+        loading={disconnect.isPending}
+        tone="warning"
+        title={t('whatsapp.disconnectTitle', 'Disconnect your WhatsApp?')}
         description={t(
-          'whatsapp.disconnectConfirmDesc',
-          'Automated WhatsApp messages will be paused until you link your WhatsApp again.',
+          'whatsapp.disconnectBody',
+          'Documents will stop going out on WhatsApp until you link a number again. Nothing is deleted.',
         )}
-        confirmLabel={t('whatsapp.disconnect', 'Disconnect')}
-        tone="danger"
-        confirming={logoutMutation.isPending}
-        onConfirm={() => logoutMutation.mutate()}
-        onCancel={() => setLogoutOpen(false)}
+        confirmLabel={t('whatsapp.disconnectBtn', 'Disconnect')}
       />
     </div>
   )
 }
-export default WhatsAppTab
 
+export default WhatsAppTab

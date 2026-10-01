@@ -78,7 +78,7 @@ export function DiscountEditor({
               aria-label={option === 'percent' ? t('sales.discountPercent', 'Percent') : t('sales.discountAmount', 'Amount')}
               onClick={() => onKind(option)}
               className={cn(
-                'flex h-7 min-w-8 cursor-pointer items-center justify-center rounded-md px-2 font-mono text-xs font-bold transition',
+                'flex h-7 min-w-8 cursor-pointer items-center justify-center rounded-md px-2 text-xs font-bold transition',
                 kind === option ? 'bg-brand-600 text-brand-on shadow-xs' : 'text-slate-500 hover:text-slate-800',
               )}
             >
@@ -96,7 +96,7 @@ export function DiscountEditor({
           aria-invalid={error !== null}
           placeholder={kind === 'percent' ? '10' : '0.00'}
           className={cn(
-            'h-8 w-20 min-w-0 flex-1 rounded-lg border bg-card px-2.5 text-right font-mono text-[13px] font-semibold text-ink outline-none focus:ring-2',
+            'h-8 w-20 min-w-0 flex-1 rounded-lg border bg-card px-2.5 text-right text-[13px] font-semibold text-ink outline-none focus:ring-2',
             error
               ? 'border-rose-300 focus:border-rose-500 focus:ring-rose-500/20'
               : 'border-line focus:border-brand-600 focus:ring-brand-600/20',
@@ -106,7 +106,7 @@ export function DiscountEditor({
         <span className="ml-auto flex items-center gap-1.5">
           <span
             className={cn(
-              'font-mono text-xs font-bold',
+              'text-xs font-bold',
               appliedCents > 0 ? 'text-emerald-600 app-dark:text-emerald-300' : 'text-slate-400',
             )}
           >

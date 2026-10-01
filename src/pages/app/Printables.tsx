@@ -90,6 +90,8 @@ function sampleDocument(type: PrintableType): SaleDocument {
     type,
     number: sampleNumber(type),
     issued_at: new Date().toISOString(),
+    expires_at: type === 'quotation' ? new Date(Date.now() + 7 * 86_400_000).toISOString() : null,
+    is_expired: false,
     payment_status: 'pending',
     payment_method_id: null,
     payment_method: null,
@@ -382,7 +384,7 @@ function Printables() {
                   <input
                     value={draft.primary_color}
                     onChange={(event) => patch({ primary_color: event.target.value })}
-                    className="h-[38px] min-w-0 flex-1 rounded-xl border border-line bg-card px-3 font-mono text-[13px] text-ink outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-600/20"
+                    className="h-[38px] min-w-0 flex-1 rounded-xl border border-line bg-card px-3 text-[13px] text-ink outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-600/20"
                   />
                 </span>
               </label>

@@ -249,7 +249,7 @@ function Suppliers() {
                   )}
                 >
                   {chip.label}
-                  <span className={cn('font-mono text-[11px]', on ? 'text-brand-500' : 'text-slate-400')}>
+                  <span className={cn('text-[11px]', on ? 'text-brand-500' : 'text-slate-400')}>
                     {chip.count}
                   </span>
                 </button>
@@ -306,8 +306,8 @@ function Suppliers() {
                   )}
                 >
                   <Identity supplier={supplier} />
-                  <span className="w-36 truncate font-mono text-xs text-slate-600">{supplier.phone ?? '—'}</span>
-                  <span className="w-40 truncate font-mono text-xs text-slate-600">{taxId(supplier) || '—'}</span>
+                  <span className="w-36 truncate text-xs text-slate-600">{supplier.phone ?? '—'}</span>
+                  <span className="w-40 truncate text-xs text-slate-600">{taxId(supplier) || '—'}</span>
                   <span className="w-36">
                     <ActiveSwitch
                       supplier={supplier}
@@ -330,7 +330,7 @@ function Suppliers() {
                       <RowActions supplier={supplier} onEdit={startEdit} onDelete={setDeleting} />
                     </div>
                   </div>
-                  <p className="truncate font-mono text-[11px] text-slate-500">
+                  <p className="truncate text-[11px] text-slate-500">
                     {[supplier.phone, taxId(supplier)].filter(Boolean).join(' · ') || '—'}
                   </p>
                   <ActiveSwitch
@@ -404,7 +404,7 @@ function Stat({
       <span className={cn('flex h-10 w-10 items-center justify-center rounded-xl', tile)}>{icon}</span>
       <div className="min-w-0">
         <p className="text-[11px] font-semibold tracking-[0.06em] text-slate-500 uppercase">{label}</p>
-        <p className="font-mono text-lg font-bold text-slate-900">{value}</p>
+        <p className="text-lg font-bold text-slate-900">{value}</p>
         <p className="text-[11px] leading-snug text-slate-400">{hint}</p>
       </div>
     </div>
@@ -428,7 +428,7 @@ function Identity({ supplier }: { supplier: Supplier }) {
           {supplier.name}
         </p>
         <p className="mt-0.5 flex items-center gap-1.5 truncate">
-          <span className="rounded-md bg-brand-50 px-1.5 py-0.5 font-mono text-[10px] font-bold text-brand-600">
+          <span className="rounded-md bg-brand-50 px-1.5 py-0.5 text-[10px] font-bold text-brand-600">
             {supplier.code}
           </span>
           {supplier.company_name ? (

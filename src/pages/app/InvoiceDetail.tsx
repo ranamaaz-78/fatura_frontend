@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, FileDown, ImageDown, MessageCircle, Pencil, Printer } from 'lucide-react'
+import { ArrowLeft, CalendarClock, CalendarX2, FileDown, ImageDown, MessageCircle, Pencil, Printer } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../../auth/AuthProvider'
@@ -9,12 +9,15 @@ import { useToast } from '../../components/ui/Toast'
 import { t } from '../../i18n'
 import { cn } from '../../lib/cn'
 import { downloadSaleDocumentSheet } from '../../lib/exportSaleSheet'
+import { formatDate } from '../../lib/format'
 import { formatCents } from '../../lib/money'
 import { getErrorMessage } from '../../services/api'
 import { convertSale, getSale, settleSale, updateSalePayment, updateSaleSettlement, voidSale } from '../../services/sales'
 import {
   isSaleConverted,
+  isSaleExpired,
   isSaleVoided,
+  quoteDaysLeft,
   saleDisplayStatus,
   type PaymentStatus,
   type SaleDisplayStatus,
@@ -172,7 +175,9 @@ function InvoiceDetail() {
   const display = saleDisplayStatus(document)
   const voided = isSaleVoided(document)
   const canVoid = canVoidType(document.type) && document.payment_status === 'paid' && !voided
-  const openQuote = document.type === 'quotation' && !isSaleConverted(document)
+  const quoteExpired = document.type === 'quotation' && !isSaleConverted(document) && isSaleExpired(document)
+  const openQuote = document.type === 'quotation' && !isSaleConverted(document) && !quoteExpired
+  const quoteDays = openQuote && document.expires_at ? quoteDaysLeft(document.expires_at) : null
   const canSettle = rules.settlesLines && document.payment_status !== 'paid'
   const settlements = document.settlements ?? []
 
@@ -186,7 +191,7 @@ function InvoiceDetail() {
             {typeLabel(document.type)}
           </Link>
           <div className="mt-1 flex flex-wrap items-center gap-3">
-            <h1 className="font-mono text-[22px] font-bold tracking-tight text-slate-900">{document.number}</h1>
+            <h1 className="text-[22px] font-bold tracking-tight text-slate-900">{document.number}</h1>
             {rules.settlesPayment || rules.settlesLines || voided ? (
               <span className={cn('rounded-full px-3 py-0.5 text-xs font-semibold', paymentClass(display))}>
                 {paymentLabel(display)}
@@ -195,6 +200,11 @@ function InvoiceDetail() {
             {!voided && document.payment_status === 'paid' && document.payment_method ? (
               <span className="rounded-full bg-brand-50 px-3 py-0.5 text-xs font-semibold text-brand-600">
                 {document.payment_method.name}
+              </span>
+            ) : null}
+            {quoteExpired ? (
+              <span className="rounded-full bg-rose-50 px-3 py-0.5 text-xs font-semibold text-rose-700 app-dark:bg-rose-500/15 app-dark:text-rose-300">
+                {t('sales.expired', 'Expired')}
               </span>
             ) : null}
             <span className="text-xs text-slate-500">
@@ -314,6 +324,49 @@ function InvoiceDetail() {
         </div>
       </div>
 
+      {quoteExpired && document.expires_at ? (
+        <div className="no-print flex items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50 px-5 py-4 app-dark:border-rose-500/30 app-dark:bg-rose-500/10">
+          <CalendarX2 className="mt-0.5 h-5 w-5 shrink-0 text-rose-600" />
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-slate-900">
+              {t('sales.quoteExpiredTitle', 'This quotation expired on')} {formatDate(document.expires_at)}
+            </p>
+            <p className="mt-0.5 text-xs leading-relaxed text-slate-600">
+              {t(
+                'sales.quoteExpiredBody',
+                'A quotation is open for one week. It can no longer be edited or turned into an invoice or delivery note, but you can still view, print and send it. Make a new quotation if the customer is still interested.',
+              )}
+            </p>
+          </div>
+          <Link
+            to="/app/invoices/new?type=quotation"
+            className="inline-flex h-9 shrink-0 items-center rounded-xl bg-brand-600 px-3.5 text-xs font-semibold text-brand-on"
+          >
+            {t('sales.newQuotation', 'New quotation')}
+          </Link>
+        </div>
+      ) : null}
+
+      {quoteDays !== null && document.expires_at ? (
+        <div
+          className={cn(
+            'no-print flex items-center gap-3 rounded-2xl border px-5 py-3.5',
+            quoteDays <= 2
+              ? 'border-amber-200 bg-amber-50 app-dark:border-amber-500/30 app-dark:bg-amber-500/10'
+              : 'border-line/80 bg-card shadow-xs',
+          )}
+        >
+          <CalendarClock className={cn('h-5 w-5 shrink-0', quoteDays <= 2 ? 'text-amber-600' : 'text-brand-600')} />
+          <p className="text-sm text-slate-700">
+            {t('sales.validUntil', 'Valid until')} <strong className="text-slate-900">{formatDate(document.expires_at)}</strong>
+            {' · '}
+            {quoteDays <= 0
+              ? t('sales.lastDay', 'last day to edit or convert')
+              : `${quoteDays} ${quoteDays === 1 ? t('sales.dayLeft', 'day left') : t('sales.daysLeft', 'days left')}`}
+          </p>
+        </div>
+      ) : null}
+
       {settlements.length > 0 ? (
         <div className="no-print rounded-2xl border border-line/80 bg-card px-5 py-4 shadow-xs">
           <p className="text-[11px] font-semibold tracking-[0.06em] text-slate-500 uppercase">
@@ -326,12 +379,12 @@ function InvoiceDetail() {
                   <span className="block text-sm font-semibold text-slate-800">
                     {row.payment_method?.name ?? t('sales.payment', 'Payment')}
                   </span>
-                  <span className="font-mono text-[11px] text-slate-400">
+                  <span className="text-[11px] text-slate-400">
                     {new Date(row.created_at).toLocaleString()}
                   </span>
                 </span>
                 <span className="flex shrink-0 items-center gap-1">
-                  <span className="font-mono text-sm font-bold text-slate-900">
+                  <span className="text-sm font-bold text-slate-900">
                     {formatCents(row.total_cents, currency)}
                   </span>
                   {rules.settlesLines ? (

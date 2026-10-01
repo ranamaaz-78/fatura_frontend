@@ -1,16 +1,24 @@
-import type { Company, CompanyStatus, PageMeta, Subscription } from '../../types/module01'
+import type { Company, CompanyCounts, CompanyStatus, PageMeta, Subscription, SubscriptionState } from '../../types/module01'
+import { isAxiosError } from 'axios'
 import { api, unwrap } from '../api'
 
 export type CompanyList = {
   items: Company[]
   meta: PageMeta
+  counts: CompanyCounts
 }
 
-export function listCompanies(query: { status?: CompanyStatus | 'all'; search?: string; page?: number }): Promise<CompanyList> {
+export function listCompanies(query: {
+  status?: CompanyStatus
+  subscription?: SubscriptionState
+  search?: string
+  page?: number
+}): Promise<CompanyList> {
   return unwrap<CompanyList>(
     api.get('/admin/companies', {
       params: {
-        status: query.status === 'all' ? undefined : query.status,
+        status: query.status,
+        subscription: query.subscription,
         search: query.search || undefined,
         page: query.page,
       },
@@ -45,4 +53,29 @@ export function cancelSubscription(subscriptionId: number): Promise<Subscription
 
 export function resendAccess(companyId: number): Promise<{ whatsapp_url: string | null }> {
   return unwrap<{ whatsapp_url: string | null }>(api.post(`/admin/companies/${companyId}/resend-access`))
+}
+
+/** When the email fails the server still hands back the WhatsApp link, so the admin is not stuck. */
+export function whatsappFromError(error: unknown): string | null {
+  if (!isAxiosError(error)) return null
+  const data = error.response?.data as { data?: { whatsapp_url?: string | null } } | undefined
+  return data?.data?.whatsapp_url ?? null
+}
+
+export type CompanyWhatsApp = {
+  instance_name: string
+  has_instance: boolean
+  status: 'disconnected' | 'connecting' | 'qrcode' | 'connected'
+  connected_phone: string | null
+  connected_name: string | null
+  service_alive: boolean
+}
+
+/** One company's own WhatsApp link, as the service reports it right now. */
+export function getCompanyWhatsApp(companyId: number): Promise<CompanyWhatsApp> {
+  return unwrap<CompanyWhatsApp>(api.get(`/admin/companies/${companyId}/whatsapp`))
+}
+
+export function disconnectCompanyWhatsApp(companyId: number): Promise<CompanyWhatsApp> {
+  return unwrap<CompanyWhatsApp>(api.post(`/admin/companies/${companyId}/whatsapp/disconnect`))
 }

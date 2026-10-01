@@ -126,7 +126,7 @@ export function RatesManager({
             inputMode="decimal"
             onChange={(event) => setRate(event.target.value)}
             placeholder={ratePlaceholder}
-            className={`${fieldClass} font-mono`}
+            className={`${fieldClass}`}
           />
         </label>
         <button
@@ -160,7 +160,7 @@ export function RatesManager({
                   inputMode="decimal"
                   aria-label={t('settings.ratePercent', 'Percent')}
                   onChange={(event) => setEditRate(event.target.value)}
-                  className="h-[34px] w-full rounded-lg border border-line bg-card px-3 font-mono text-[13px] font-medium text-ink outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-600/20 sm:w-24"
+                  className="h-[34px] w-full rounded-lg border border-line bg-card px-3 text-[13px] font-medium text-ink outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-600/20 sm:w-24"
                 />
                 <input
                   value={editName}
@@ -190,7 +190,7 @@ export function RatesManager({
               </li>
             ) : (
               <li key={item.id} className="flex items-center gap-3 px-5 py-3">
-                <span className="w-16 font-mono text-sm font-bold text-brand-600">{item.rate}%</span>
+                <span className="w-16 text-sm font-bold text-brand-600">{item.rate}%</span>
                 <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-slate-800">{item.name}</span>
                 <Tooltip content={t('common.edit', 'Edit')} align="end">
                   <button

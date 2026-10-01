@@ -100,14 +100,14 @@ export function EditProformaSettlementModal({
         <p className="text-sm text-slate-500">{t('common.loading', 'Loading')}</p>
       ) : (
         <div className="flex flex-col gap-3">
-          <p className="text-right font-mono text-sm font-bold text-slate-900">
+          <p className="text-right text-sm font-bold text-slate-900">
             {t('sales.thisPayment', 'This payment')} {formatCents(runningCents, currency)}
           </p>
           {rows.map((row) => (
             <div key={row.lineId} className="flex flex-col gap-2 rounded-xl border border-slate-200 px-3 py-3 sm:flex-row sm:items-center">
               <span className="min-w-0 flex-1">
                 <span className="block text-sm font-semibold text-slate-800">{row.article}</span>
-                <span className="font-mono text-[11px] text-slate-400">
+                <span className="text-[11px] text-slate-400">
                   {formatCents(row.unitPrice, currency)} · {row.max} {t('sales.left', 'left')}
                 </span>
               </span>
@@ -130,7 +130,7 @@ export function EditProformaSettlementModal({
                 }}
                 className="sm:w-24"
               />
-              <span className="text-right font-mono text-sm font-bold text-slate-900 sm:w-24">
+              <span className="text-right text-sm font-bold text-slate-900 sm:w-24">
                 {formatCents(row.quantity * row.unitPrice, currency)}
               </span>
             </div>

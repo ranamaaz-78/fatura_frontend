@@ -181,7 +181,7 @@ export function SettleProformaModal({
                   }}
                   label={t('sales.selectAll', 'Select all')}
                 />
-                <p className="font-mono text-sm font-bold text-slate-900">
+                <p className="text-sm font-bold text-slate-900">
                   {t('sales.thisPayment', 'This payment')} {formatCents(runningCents, currency)}
                 </p>
               </div>
@@ -248,7 +248,7 @@ export function SettleProformaModal({
                           className="sm:w-28"
                         />
                       </span>
-                      <span className="text-right font-mono text-sm font-bold text-slate-900 sm:w-24">
+                      <span className="text-right text-sm font-bold text-slate-900 sm:w-24">
                         {formatCents(lineTotal, currency)}
                       </span>
                     </div>
@@ -272,7 +272,7 @@ export function SettleProformaModal({
           </div>
         ) : (
           <div className="flex flex-col gap-3">
-            <p className="font-mono text-sm font-bold text-slate-900">
+            <p className="text-sm font-bold text-slate-900">
               {t('sales.thisPayment', 'This payment')} {formatCents(runningCents, currency)}
             </p>
             <div className="flex flex-col gap-2">

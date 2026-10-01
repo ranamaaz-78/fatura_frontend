@@ -1,9 +1,10 @@
-import { useMutation, useQuery } from '@tanstack/react-query'
-import { AlertTriangle, Building2, Coins, CreditCard, KeyRound, Mail, MessageCircle, Percent, Settings, type LucideIcon } from 'lucide-react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { AlertTriangle, Building2, Coins, CreditCard, ImagePlus, KeyRound, Mail, MessageCircle, Percent, Settings, type LucideIcon } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../auth/AuthProvider'
 import { Badge } from '../../components/ui/Badge'
+import { FileDropzone } from '../../components/ui/FileDropzone'
 import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
 import { Select } from '../../components/ui/Select'
@@ -27,6 +28,7 @@ import {
   updateTaxRate,
 } from '../../services/catalog'
 import { updateCompany } from '../../services/company'
+import { loadLogoBlob, uploadCompanyLogo } from '../../services/printables'
 import type { Company } from '../../types/module01'
 
 import { RatesManager, type RatesApi } from './RatesManager'
@@ -37,10 +39,12 @@ type TabId = 'company' | 'subscription' | 'password' | 'iva' | 'recargo' | 'what
 type CompanyDraft = {
   name: string
   email: string
+  tax_id: string
   phone: string
   whatsapp: string
   address: string
   city: string
+  postal_code: string
   country: string
   currency: string
 }
@@ -63,10 +67,12 @@ function blankDraft(): CompanyDraft {
   return {
     name: '',
     email: '',
+    tax_id: '',
     phone: '',
     whatsapp: '',
     address: '',
     city: '',
+    postal_code: '',
     country: '',
     currency: 'USD',
   }
@@ -76,18 +82,15 @@ function draftFrom(company: Company): CompanyDraft {
   return {
     name: company.name,
     email: company.email,
+    tax_id: company.tax_id ?? '',
     phone: company.phone ?? '',
     whatsapp: company.whatsapp ?? '',
     address: company.address ?? '',
     city: company.city ?? '',
+    postal_code: company.postal_code ?? '',
     country: company.country ?? '',
     currency: company.currency,
   }
-}
-
-function optional(value: string): string | null {
-  const trimmed = value.trim()
-  return trimmed === '' ? null : trimmed
 }
 
 function CompanyTab() {
@@ -118,11 +121,13 @@ function CompanyTab() {
       updateCompany({
         name: draft.name.trim(),
         email: draft.email.trim(),
-        phone: optional(draft.phone),
-        whatsapp: optional(draft.whatsapp),
-        address: optional(draft.address),
-        city: optional(draft.city),
-        country: optional(draft.country),
+        tax_id: draft.tax_id.trim(),
+        phone: draft.phone.trim(),
+        whatsapp: draft.whatsapp.trim(),
+        address: draft.address.trim(),
+        city: draft.city.trim(),
+        postal_code: draft.postal_code.trim(),
+        country: draft.country.trim(),
         currency: draft.currency,
       }),
     onSuccess: async () => {
@@ -136,13 +141,82 @@ function CompanyTab() {
     },
   })
 
-  const canSave = draft.name.trim() !== '' && draft.email.trim() !== '' && draft.currency.length === 3
+  const queryClient = useQueryClient()
+  const logoUrl = company?.logo_url ?? null
+  const logoBlob = useQuery({
+    queryKey: ['app', 'print-logo', logoUrl],
+    queryFn: () => loadLogoBlob(logoUrl),
+    enabled: Boolean(logoUrl),
+  })
+
+  const logoUp = useMutation({
+    mutationFn: (file: File) => uploadCompanyLogo(file),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['app', 'print-logo'] }),
+        queryClient.invalidateQueries({ queryKey: ['app', 'print-templates'] }),
+      ])
+      await refresh()
+      setErrors((current) => Object.fromEntries(Object.entries(current).filter(([key]) => key !== 'logo')))
+      push({ tone: 'success', title: t('settings.logoSaved', 'Logo saved.') })
+    },
+    onError: (error) => push({ tone: 'danger', title: getErrorMessage(error) }),
+  })
+
+  // Everything but WhatsApp is compulsory: it prints on every invoice.
+  const missingLogo = !logoUrl
+  const canSave =
+    [draft.name, draft.email, draft.tax_id, draft.phone, draft.whatsapp, draft.address, draft.city, draft.postal_code, draft.country].every(
+      (value) => value.trim() !== '',
+    ) &&
+    draft.currency.length === 3 &&
+    !missingLogo
 
   return (
     <div className="flex flex-col gap-5 p-5">
       <p className="text-xs text-slate-500">
-        {t('settings.companyHint', 'This name, address and currency print on invoices, quotes and delivery notes.')}
+        {t(
+          'settings.companyHint',
+          'These details print on your invoices, quotes and proformas, so every one of them is compulsory.',
+        )}
       </p>
+
+      <div
+        className={cn(
+          'rounded-2xl border p-4',
+          errors.logo || (missingLogo && !logoUp.isPending) ? 'border-rose-300 bg-rose-50/40' : 'border-line bg-page/60',
+        )}
+      >
+        <p className="text-sm font-semibold text-slate-900">
+          {t('settings.companyLogo', 'Company logo')} <span className="text-rose-600">*</span>
+        </p>
+        <p className="mt-0.5 text-xs text-slate-500">
+          {t('settings.logoHint', 'Shown at the top of your documents. A square or wide logo on a plain or transparent background looks best.')}
+        </p>
+        <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center">
+          <span className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-line bg-white">
+            {logoBlob.data ? (
+              <img src={logoBlob.data} alt="" className="h-full w-full object-contain p-1" />
+            ) : (
+              <ImagePlus className="h-6 w-6 text-slate-300" />
+            )}
+          </span>
+          <div className="min-w-0 flex-1">
+            <FileDropzone accept="image/jpeg,image/png,image/webp" disabled={logoUp.isPending} onFile={(file) => logoUp.mutate(file)}>
+              <p className="text-xs font-semibold text-slate-700">
+                {logoUrl
+                  ? t('settings.replaceLogo', 'Drop a new logo or click to replace it')
+                  : t('settings.dropLogo', 'Drop your logo or click to upload')}
+              </p>
+              <p className="mt-1 text-[11px] text-slate-400">{t('settings.logoTypes', 'JPEG, PNG or WebP · 5 MB max')}</p>
+            </FileDropzone>
+          </div>
+        </div>
+        {errors.logo || (missingLogo && !logoUp.isPending) ? (
+          <p className="mt-2 text-xs font-medium text-rose-600">{errors.logo ?? t('settings.logoRequired', 'Upload your company logo.')}</p>
+        ) : null}
+      </div>
+
       <div className="grid gap-4 sm:grid-cols-2">
         <Input
           label={t('settings.companyName', 'Company name')}
@@ -160,15 +234,26 @@ function CompanyTab() {
           onChange={(event) => patch({ email: event.target.value })}
         />
         <Input
+          label={t('settings.taxId', 'NIF / NIE / CIF')}
+          hint={t('settings.taxIdHint', 'Your tax number, printed on every invoice.')}
+          value={draft.tax_id}
+          error={errors.tax_id}
+          required
+          autoCapitalize="characters"
+          onChange={(event) => patch({ tax_id: event.target.value })}
+        />
+        <Input
           label={t('settings.phone', 'Phone')}
           value={draft.phone}
           error={errors.phone}
+          required
           onChange={(event) => patch({ phone: event.target.value })}
         />
         <Input
           label={t('settings.whatsapp', 'WhatsApp')}
           value={draft.whatsapp}
           error={errors.whatsapp}
+          required
           onChange={(event) => patch({ whatsapp: event.target.value })}
         />
         <div className="sm:col-span-2">
@@ -177,6 +262,7 @@ function CompanyTab() {
             rows={3}
             value={draft.address}
             error={errors.address}
+            required
             onChange={(event) => patch({ address: event.target.value })}
           />
         </div>
@@ -184,12 +270,22 @@ function CompanyTab() {
           label={t('settings.city', 'City')}
           value={draft.city}
           error={errors.city}
+          required
           onChange={(event) => patch({ city: event.target.value })}
+        />
+        <Input
+          label={t('settings.postalCode', 'Postal code')}
+          value={draft.postal_code}
+          error={errors.postal_code}
+          required
+          autoCapitalize="characters"
+          onChange={(event) => patch({ postal_code: event.target.value })}
         />
         <Input
           label={t('settings.country', 'Country')}
           value={draft.country}
           error={errors.country}
+          required
           onChange={(event) => patch({ country: event.target.value })}
         />
         <Select
@@ -211,7 +307,7 @@ function CompanyTab() {
         </Select>
       </div>
       <p className="text-[11px] text-slate-400">
-        {t('settings.logoOnPrintables', 'The company logo is uploaded under Printables.')}
+        {t('settings.properCase', 'Names, address and city are saved with capital letters, for example "Taller de Marta S.L.".')}
       </p>
       <div>
         <Button type="button" disabled={!canSave} loading={save.isPending} onClick={() => save.mutate()}>
@@ -387,7 +483,7 @@ function SubscriptionTab() {
             {t('expired.body', 'Your workspace is safe and your data is untouched. Renew to pick up where you left off.')}
           </p>
           {subscription ? (
-            <p className="mt-3 font-mono text-xs text-slate-500">
+            <p className="mt-3 text-xs text-slate-500">
               {t('expired.endedOn', 'Ended on')} {formatDate(subscription.ends_at)}
             </p>
           ) : null}
@@ -426,7 +522,7 @@ function SubscriptionTab() {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-sm font-bold text-slate-900">{subscription.plan_name}</h2>
-          <p className="mt-1 font-mono text-sm text-slate-600">
+          <p className="mt-1 text-sm text-slate-600">
             {formatCurrency(subscription.plan_price, subscription.plan_currency, 'en-US')} /{' '}
             {subscription.plan_interval}
           </p>

@@ -85,6 +85,9 @@ export type ConvertResult = {
   owner: { id: number; name: string; email: string }
   subscription: Subscription
   whatsapp_url: string | null
+  /** False when the set-password email could not be sent; the account still exists. */
+  email_sent: boolean
+  email_error: string | null
   application: Application
 }
 
