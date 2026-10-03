@@ -6,7 +6,7 @@ import { useAuth } from '../../auth/AuthProvider'
 import { ConfettiBurst } from '../../components/ui/ConfettiBurst'
 import { IconButton } from '../../components/ui/IconButton'
 import { useToast } from '../../components/ui/Toast'
-import { t } from '../../i18n'
+import { t, intlLocale } from '../../i18n'
 import { cn } from '../../lib/cn'
 import { downloadSaleDocumentSheet } from '../../lib/exportSaleSheet'
 import { formatDate } from '../../lib/format'
@@ -208,7 +208,7 @@ function InvoiceDetail() {
               </span>
             ) : null}
             <span className="text-xs text-slate-500">
-              {issued.toLocaleString()} · {document.client_name}
+              {issued.toLocaleString(intlLocale())} · {document.client_name}
             </span>
           </div>
         </div>
@@ -380,7 +380,7 @@ function InvoiceDetail() {
                     {row.payment_method?.name ?? t('sales.payment', 'Payment')}
                   </span>
                   <span className="text-[11px] text-slate-400">
-                    {new Date(row.created_at).toLocaleString()}
+                    {new Date(row.created_at).toLocaleString(intlLocale())}
                   </span>
                 </span>
                 <span className="flex shrink-0 items-center gap-1">

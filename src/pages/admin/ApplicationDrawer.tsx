@@ -28,11 +28,12 @@ import {
   updateApplicationStatus,
 } from '../../services/admin/applications'
 import { ConvertWizard } from './ConvertWizard'
+import { localCountry } from '../../lib/countries'
 
 const ACTIVITY_LABELS: Record<string, string> = {
   created: 'Application received',
   status_changed: 'Status changed',
-  note: 'Note',
+  note: t('applicationDrawer.note', 'Note'),
   call: 'Call logged',
   whatsapp: 'WhatsApp logged',
   email: 'Email logged',
@@ -110,7 +111,7 @@ export function ApplicationDrawer({ applicationId, onClose }: ApplicationDrawerP
     mutationFn: () => getApplicationWhatsAppLink(applicationId as number),
     onSuccess: (data) => {
       window.open(data.whatsapp_url, '_blank', 'noreferrer')
-      activityMutation.mutate({ type: 'whatsapp', body: 'Opened WhatsApp chat.' })
+      activityMutation.mutate({ type: 'whatsapp', body: t('applicationDrawer.opened_whatsapp_chat', 'Opened WhatsApp chat.') })
     },
     onError: (error) => push({ tone: 'danger', title: getErrorMessage(error) }),
   })
@@ -155,7 +156,7 @@ export function ApplicationDrawer({ applicationId, onClose }: ApplicationDrawerP
             <div className="grid grid-cols-2 gap-2">
               <a
                 href={`tel:${application.phone}`}
-                onClick={() => activityMutation.mutate({ type: 'call', body: 'Dialled from the inbox.' })}
+                onClick={() => activityMutation.mutate({ type: 'call', body: t('applicationDrawer.dialled_from_the_inbox', 'Dialled from the inbox.') })}
                 className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
               >
                 <Phone className="h-4 w-4 text-blue-600" />
@@ -172,7 +173,7 @@ export function ApplicationDrawer({ applicationId, onClose }: ApplicationDrawerP
               </button>
               <a
                 href={`mailto:${application.email}`}
-                onClick={() => activityMutation.mutate({ type: 'email', body: 'Opened an email draft.' })}
+                onClick={() => activityMutation.mutate({ type: 'email', body: t('applicationDrawer.opened_an_email_draft', 'Opened an email draft.') })}
                 className="col-span-2 inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
               >
                 <Mail className="h-4 w-4 text-indigo-600" />
@@ -186,7 +187,7 @@ export function ApplicationDrawer({ applicationId, onClose }: ApplicationDrawerP
               <Field label={t('apply.phone', 'Phone')} value={application.phone} />
               <Field label={t('apply.whatsapp', 'WhatsApp')} value={application.whatsapp} />
               <Field label={t('apply.city', 'City')} value={application.city} />
-              <Field label={t('apply.country', 'Country')} value={application.country} />
+              <Field label={t('apply.country', 'Country')} value={localCountry(application.country)} />
               <Field label={t('apply.businessType', 'What do you do?')} value={application.business_type} />
               <Field label={t('apply.teamSize', 'Team size')} value={application.team_size} />
             </dl>

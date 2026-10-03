@@ -27,7 +27,7 @@ import { RowMenu, type RowMenuItem } from '../../components/ui/RowMenu'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { Textarea } from '../../components/ui/Textarea'
 import { useToast } from '../../components/ui/Toast'
-import { t } from '../../i18n'
+import { t, intlLocale } from '../../i18n'
 import { cn } from '../../lib/cn'
 import { formatDateTime } from '../../lib/format'
 import { getErrorMessage } from '../../services/api'
@@ -40,6 +40,7 @@ import {
 import type { Application, ApplicationStatus } from '../../types/module01'
 import { ApplicationDrawer } from './ApplicationDrawer'
 import { ConvertWizard } from './ConvertWizard'
+import { localCountry } from '../../lib/countries'
 
 type TabId = ApplicationStatus | 'all'
 
@@ -55,12 +56,12 @@ const TILES: { id: TabId; label: string; fallback: string; icon: LucideIcon; ton
 function timeAgo(value: string): string {
   const minutes = Math.max(0, Math.round((Date.now() - new Date(value).getTime()) / 60000))
   if (minutes < 1) return t('admin.justNow', 'Just now')
-  if (minutes < 60) return `${minutes} min ago`
+  if (minutes < 60) return t('admin.min_ago', '{n} min ago', { n: minutes })
   const hours = Math.round(minutes / 60)
-  if (hours < 24) return `${hours} h ago`
+  if (hours < 24) return t('admin.h_ago', '{n} h ago', { n: hours })
   const days = Math.round(hours / 24)
-  if (days < 14) return `${days} d ago`
-  return new Date(value).toLocaleDateString()
+  if (days < 14) return t('admin.d_ago', '{n} d ago', { n: days })
+  return new Date(value).toLocaleDateString(intlLocale())
 }
 
 function Chip({ icon: Icon, children }: { icon: LucideIcon; children: ReactNode }) {
@@ -128,7 +129,7 @@ function AdminApplications() {
     mutationFn: (row: Application) => getApplicationWhatsAppLink(row.id),
     onSuccess: (data, row) => {
       window.open(data.whatsapp_url, '_blank', 'noreferrer')
-      logMutation.mutate({ id: row.id, type: 'whatsapp', body: 'Opened WhatsApp chat.' })
+      logMutation.mutate({ id: row.id, type: 'whatsapp', body: t('applicationDrawer.opened_whatsapp_chat', 'Opened WhatsApp chat.') })
     },
     onError: (error) => push({ tone: 'danger', title: getErrorMessage(error) }),
   })
@@ -163,7 +164,7 @@ function AdminApplications() {
       cell: (row) =>
         row.city || row.country ? (
           <span className="block max-w-[120px]">
-            <Chip icon={MapPin}>{[row.city, row.country].filter(Boolean).join(', ')}</Chip>
+            <Chip icon={MapPin}>{[row.city, localCountry(row.country)].filter(Boolean).join(', ')}</Chip>
           </span>
         ) : (
           <span className="text-ink-muted">—</span>
@@ -199,7 +200,7 @@ function AdminApplications() {
         icon: Mail,
         onSelect: () => {
           window.location.href = `mailto:${row.email}`
-          logMutation.mutate({ id: row.id, type: 'email', body: 'Opened an email draft.' })
+          logMutation.mutate({ id: row.id, type: 'email', body: t('applicationDrawer.opened_an_email_draft', 'Opened an email draft.') })
         },
       },
     ]
@@ -311,7 +312,7 @@ function AdminApplications() {
         page={meta?.current_page}
         pageCount={meta?.last_page}
         onPageChange={setPage}
-        summary={meta ? `${meta.total} total` : undefined}
+        summary={meta ? t('common.total_count', '{count} total', { count: meta.total }) : undefined}
         rowActionsVisible
         empty={
           <EmptyState

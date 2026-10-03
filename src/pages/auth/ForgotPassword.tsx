@@ -10,7 +10,7 @@ import { t } from '../../i18n'
 import { getErrorCode, getErrorMessage } from '../../services/api'
 import { forgotPassword } from '../../services/auth'
 
-const schema = z.object({ email: z.email('Enter a valid email address.') })
+const schema = z.object({ email: z.email(t('setup.emailInvalid', 'Enter a valid email address.')) })
 
 type ForgotForm = z.infer<typeof schema>
 
@@ -139,7 +139,7 @@ function ForgotPassword() {
           type="email"
           autoComplete="email"
           required
-          placeholder="you@business.com"
+          placeholder={t('forgotPassword.you_business_com', 'you@business.com')}
           error={errors.email?.message}
           {...register('email', {
             onChange: () => {

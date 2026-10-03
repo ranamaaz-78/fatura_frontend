@@ -22,21 +22,21 @@ import { Card } from '../../components/ui/Card'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { Skeleton } from '../../components/ui/Skeleton'
-import { t } from '../../i18n'
+import { t, tp } from '../../i18n'
 import { cn } from '../../lib/cn'
-import { formatCurrency, formatDate } from '../../lib/format'
+import { formatCurrency, formatDate, formatMonth } from '../../lib/format'
 import { getErrorMessage } from '../../services/api'
 import { getAdminDashboard } from '../../services/admin/dashboard'
 import type { AdminDashboard as DashboardData, AttentionRow } from '../../types/module01'
 
 function greetingFor(hour: number): string {
-  if (hour < 12) return 'Good morning'
-  if (hour < 18) return 'Good afternoon'
-  return 'Good evening'
+  if (hour < 12) return t('dashboard.good_morning', 'Good morning')
+  if (hour < 18) return t('dashboard.good_afternoon', 'Good afternoon')
+  return t('dashboard.good_evening', 'Good evening')
 }
 
 function money(value: number, currency: string, decimals = 0): string {
-  return formatCurrency(value, currency, 'en-US', decimals)
+  return formatCurrency(value, currency, undefined, decimals)
 }
 
 function Kpi({
@@ -115,7 +115,7 @@ function RevenueChart({ data }: { data: DashboardData['revenue'] }) {
                 {money(point.amount, data.currency)}
               </span>
               <div
-                title={`${point.label}: ${money(point.amount, data.currency)}`}
+                title={`${formatMonth(point.month, 'long')}: ${money(point.amount, data.currency)}`}
                 className={cn(
                   'w-full max-w-[56px] rounded-t-lg transition-all',
                   current
@@ -124,7 +124,7 @@ function RevenueChart({ data }: { data: DashboardData['revenue'] }) {
                 )}
                 style={{ height: `${height}%` }}
               />
-              <span className={cn('text-[11px] font-medium', current ? 'text-ink' : 'text-ink-muted')}>{point.label}</span>
+              <span className={cn('text-[11px] font-medium', current ? 'text-ink' : 'text-ink-muted')}>{formatMonth(point.month)}</span>
             </div>
           )
         })}
@@ -139,10 +139,10 @@ function PipelineCard({ data }: { data: DashboardData }) {
   const rate = conversion.total > 0 ? Math.round((conversion.converted / conversion.total) * 100) : 0
   const max = Math.max(...trend.map((day) => day.count), 1)
   const split = [
-    { key: 'new', label: 'New', value: applications.new, color: 'bg-blue-500' },
-    { key: 'contacted', label: 'Contacted', value: applications.contacted, color: 'bg-amber-500' },
-    { key: 'approved', label: 'Approved', value: applications.approved, color: 'bg-emerald-500' },
-    { key: 'rejected', label: 'Rejected', value: applications.rejected, color: 'bg-rose-400' },
+    { key: 'new', label: t('status.NEW', 'New'), value: applications.new, color: 'bg-blue-500' },
+    { key: 'contacted', label: t('status.CONTACTED', 'Contacted'), value: applications.contacted, color: 'bg-amber-500' },
+    { key: 'approved', label: t('status.APPROVED', 'Approved'), value: applications.approved, color: 'bg-emerald-500' },
+    { key: 'rejected', label: t('status.REJECTED', 'Rejected'), value: applications.rejected, color: 'bg-rose-400' },
   ]
   const sum = Math.max(split.reduce((total, item) => total + item.value, 0), 1)
   const radius = 34
@@ -240,7 +240,7 @@ function AttentionList({ rows, tone, empty }: { rows: AttentionRow[]; tone: 'amb
                   : 'bg-rose-50 text-rose-700 app-dark:bg-rose-500/15 app-dark:text-rose-300',
               )}
             >
-              {tone === 'amber' ? (row.days_left <= 0 ? 'Today' : `${row.days_left} d left`) : 'Expired'}
+              {tone === 'amber' ? (row.days_left <= 0 ? t('dashboard.today', 'Today') : t('dashboard.days_short_left', '{n} d left', { n: row.days_left })) : t('admin.expired', 'Expired')}
             </span>
             <Link to={`/admin/companies/${row.company_id}`}>
               <Button size="sm" variant={tone === 'rose' ? 'primary' : 'secondary'}>
@@ -324,19 +324,20 @@ function AdminDashboard() {
             <p className="mt-2 text-sm leading-relaxed text-[#cbd5e1]">
               {data.applications.new > 0 ? (
                 <>
-                  <strong className="text-white">{data.applications.new}</strong> new{' '}
-                  {data.applications.new === 1 ? 'application is' : 'applications are'} waiting for a reply
+                  <strong className="text-white">{data.applications.new}</strong>{' '}
+                  {tp('dashboard.new_waiting', 'new application is waiting for a reply|new applications are waiting for a reply', data.applications.new)}
                 </>
               ) : (
-                'No new applications waiting'
+                t('dashboard.no_new_waiting', 'No new applications waiting')
               )}
               {attention > 0 ? (
                 <>
                   {' · '}
-                  <strong className="text-white">{attention}</strong> {attention === 1 ? 'subscription needs' : 'subscriptions need'} attention.
+                  <strong className="text-white">{attention}</strong>{' '}
+                  {tp('dashboard.needs_attention_count', 'subscription needs attention.|subscriptions need attention.', attention)}
                 </>
               ) : (
-                ' · every subscription is in good standing.'
+                t('dashboard.all_in_standing', ' · every subscription is in good standing.')
               )}
             </p>
             <div className="mt-5 flex flex-wrap gap-3">
@@ -353,9 +354,9 @@ function AdminDashboard() {
 
           <div className="grid grid-cols-3 gap-3 sm:gap-4">
             {[
-              { label: 'Monthly recurring', value: money(monthly, currency) },
-              { label: 'Companies', value: String(data.companies.total) },
-              { label: 'Conversion', value: `${data.conversion.total > 0 ? Math.round((data.conversion.converted / data.conversion.total) * 100) : 0}%` },
+              { label: t('dashboard.monthly_recurring', 'Monthly recurring'), value: money(monthly, currency) },
+              { label: t('nav.companies', 'Companies'), value: String(data.companies.total) },
+              { label: t('dashboard.conversion', 'Conversion'), value: `${data.conversion.total > 0 ? Math.round((data.conversion.converted / data.conversion.total) * 100) : 0}%` },
             ].map((item) => (
               <div key={item.label} className="rounded-xl border border-white/12 bg-white/8 px-4 py-3 backdrop-blur">
                 <p className="text-xl font-bold tracking-tight sm:text-2xl">{item.value}</p>
@@ -380,7 +381,7 @@ function AdminDashboard() {
           value={data.companies.active}
           icon={Building2}
           tone="bg-indigo-50 text-indigo-600 app-dark:bg-indigo-500/15 app-dark:text-indigo-300"
-          note={`${data.companies.suspended} suspended`}
+          note={t('dashboard.suspended_count', '{count} suspended', { count: data.companies.suspended })}
           to="/admin/companies"
         />
         <Kpi
@@ -396,7 +397,9 @@ function AdminDashboard() {
           value={money(data.revenue.this_month, currency, 0)}
           icon={Wallet}
           tone="bg-amber-50 text-amber-600 app-dark:bg-amber-500/15 app-dark:text-amber-300"
-          note={revenueDelta ? `vs ${money(data.revenue.last_month, currency)} last month` : 'No payments last month'}
+          note={revenueDelta
+              ? t('dashboard.vs_last_month', 'vs {amount} last month', { amount: money(data.revenue.last_month, currency) })
+              : t('dashboard.no_payments_last_month', 'No payments last month')}
           delta={revenueDelta}
           to="/admin/companies"
         />

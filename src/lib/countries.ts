@@ -5,10 +5,11 @@ import {
   type CountryCode,
 } from 'libphonenumber-js'
 import type { SearchableSelectOption } from '../components/ui/SearchableSelect'
+import { intlLocale } from '../i18n'
 
 export type Country = { code: CountryCode; name: string; dial: string }
 
-const regionNames = new Intl.DisplayNames(['en'], { type: 'region' })
+const regionNames = new Intl.DisplayNames([intlLocale()], { type: 'region' })
 
 /** Every country libphonenumber knows, A to Z, each with its dialling code ("+92"). */
 export const COUNTRIES: Country[] = getCountries()
@@ -17,7 +18,7 @@ export const COUNTRIES: Country[] = getCountries()
     name: regionNames.of(code) ?? code,
     dial: `+${getCountryCallingCode(code)}`,
   }))
-  .sort((a, b) => a.name.localeCompare(b.name))
+  .sort((a, b) => a.name.localeCompare(b.name, intlLocale()))
 
 /** Several countries share a code. This picks the one people mean when they choose the code. */
 const PRIMARY_FOR_DIAL: Record<string, CountryCode> = {
@@ -36,8 +37,31 @@ const PRIMARY_FOR_DIAL: Record<string, CountryCode> = {
 
 export const DEFAULT_COUNTRY: Country = COUNTRIES.find((country) => country.code === 'ES') ?? COUNTRIES[0]
 
+/** Every language's name for a country, so a country saved in English is still found when the app is in Spanish. */
+const OTHER_NAMES: Map<string, CountryCode> = (() => {
+  const map = new Map<string, CountryCode>()
+  for (const locale of ['en', 'es']) {
+    const names = new Intl.DisplayNames([locale], { type: 'region' })
+    for (const code of getCountries()) {
+      const name = names.of(code)
+      if (name) map.set(name.toLowerCase(), code)
+    }
+  }
+  return map
+})()
+
 export function countryByName(name: string | undefined): Country | undefined {
-  return COUNTRIES.find((country) => country.name === name)
+  if (!name) return undefined
+  const exact = COUNTRIES.find((country) => country.name === name)
+  if (exact) return exact
+  const code = OTHER_NAMES.get(name.trim().toLowerCase())
+  return code ? COUNTRIES.find((country) => country.code === code) : undefined
+}
+
+/** A stored country name shown in the current language ("Spain" becomes "España"); unknown text is left as it is. */
+export function localCountry(name: string | null | undefined): string {
+  if (!name) return ''
+  return countryByName(name)?.name ?? name
 }
 
 /** The country to assume for a dialling code, keeping the current one if it already uses it. */

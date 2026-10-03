@@ -8,12 +8,13 @@ import { Select } from '../../components/ui/Select'
 import { Stepper } from '../../components/ui/Stepper'
 import { useToast } from '../../components/ui/Toast'
 import { t } from '../../i18n'
-import { formatCurrency, formatDate } from '../../lib/format'
+import { formatCurrency, formatDate, formatInterval } from '../../lib/format'
 import { getErrorMessage, mapValidationErrors } from '../../services/api'
 import { convertApplication, type ConvertResult } from '../../services/admin/applications'
 import { listPaymentMethods } from '../../services/admin/paymentMethods'
 import { listPlans } from '../../services/admin/plans'
 import type { Application } from '../../types/module01'
+import { localCountry } from '../../lib/countries'
 
 type Draft = {
   company_name: string
@@ -40,7 +41,7 @@ function draftFrom(application: Application): Draft {
     company_phone: application.phone ?? '',
     company_whatsapp: application.whatsapp ?? '',
     city: application.city ?? '',
-    country: application.country ?? '',
+    country: localCountry(application.country),
     owner_name: application.contact_name,
     owner_email: application.email,
     owner_phone: application.phone ?? '',
@@ -155,8 +156,8 @@ export function ConvertWizard({ application, open, onClose, onConverted }: Conve
               <p className="text-xs">{result.owner.email}</p>
               <p className="mt-2">
                 {result.subscription.plan_name} ·{' '}
-                {formatCurrency(result.subscription.plan_price, result.subscription.plan_currency, 'en-US')} /{' '}
-                {result.subscription.plan_interval} · {t('admin.renewsOn', 'Renews on')}{' '}
+                {formatCurrency(result.subscription.plan_price, result.subscription.plan_currency)} /{' '}
+                {formatInterval(result.subscription.plan_interval)} · {t('admin.renewsOn', 'Renews on')}{' '}
                 {formatDate(result.subscription.ends_at)}
               </p>
             </div>
@@ -327,7 +328,7 @@ export function ConvertWizard({ application, open, onClose, onConverted }: Conve
               <option value="">—</option>
               {plans.map((item) => (
                 <option key={item.id} value={item.id}>
-                  {item.name} — {formatCurrency(item.price, item.currency, 'en-US')} / {item.interval}
+                  {item.name} — {formatCurrency(item.price, item.currency)} / {formatInterval(item.interval)}
                 </option>
               ))}
             </Select>
@@ -397,7 +398,7 @@ export function ConvertWizard({ application, open, onClose, onConverted }: Conve
               <div>
                 <dt className="text-[11px] uppercase tracking-wider text-slate-500">{t('admin.amount', 'Amount')}</dt>
                 <dd className="font-semibold text-slate-900">
-                  {plan ? formatCurrency(draft.amount ? Number(draft.amount) : total, plan.currency, 'en-US') : '—'}
+                  {plan ? formatCurrency(draft.amount ? Number(draft.amount) : total, plan.currency) : '—'}
                 </dd>
                 <dd className="text-xs text-slate-500">
                   {methods.find((method) => String(method.id) === draft.payment_method_id)?.name ??

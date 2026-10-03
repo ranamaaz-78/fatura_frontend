@@ -1,25 +1,16 @@
-export const COMPANY_CURRENCIES = [
-  { code: 'EUR', label: 'Euro' },
-  { code: 'USD', label: 'US Dollar' },
-  { code: 'GBP', label: 'British Pound' },
-  { code: 'PKR', label: 'Pakistani Rupee' },
-  { code: 'AED', label: 'UAE Dirham' },
-  { code: 'SAR', label: 'Saudi Riyal' },
-  { code: 'INR', label: 'Indian Rupee' },
-  { code: 'MAD', label: 'Moroccan Dirham' },
-  { code: 'CHF', label: 'Swiss Franc' },
-  { code: 'CAD', label: 'Canadian Dollar' },
-  { code: 'AUD', label: 'Australian Dollar' },
-  { code: 'MXN', label: 'Mexican Peso' },
-  { code: 'BRL', label: 'Brazilian Real' },
-  { code: 'TRY', label: 'Turkish Lira' },
-  { code: 'EGP', label: 'Egyptian Pound' },
-  { code: 'QAR', label: 'Qatari Riyal' },
-  { code: 'KWD', label: 'Kuwaiti Dinar' },
-  { code: 'OMR', label: 'Omani Rial' },
-  { code: 'BHD', label: 'Bahraini Dinar' },
-  { code: 'BDT', label: 'Bangladeshi Taka' },
-  { code: 'NGN', label: 'Nigerian Naira' },
+import { intlLocale } from '../i18n'
+
+const CODES = [
+  'EUR', 'USD', 'GBP', 'PKR', 'AED', 'SAR', 'INR', 'MAD', 'CHF', 'CAD', 'AUD',
+  'MXN', 'BRL', 'TRY', 'EGP', 'QAR', 'KWD', 'OMR', 'BHD', 'BDT', 'NGN',
 ] as const
 
-export type CompanyCurrency = (typeof COMPANY_CURRENCIES)[number]['code']
+export type CompanyCurrency = (typeof CODES)[number]
+
+const names = new Intl.DisplayNames([intlLocale()], { type: 'currency' })
+
+/** Each currency named in the current language ("Euro", "Dólar estadounidense"). */
+export const COMPANY_CURRENCIES: { code: CompanyCurrency; label: string }[] = CODES.map((code) => ({
+  code,
+  label: names.of(code) ?? code,
+}))

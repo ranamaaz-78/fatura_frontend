@@ -28,9 +28,9 @@ import { PageHeader } from '../../components/ui/PageHeader'
 import { RowMenu, type RowMenuItem } from '../../components/ui/RowMenu'
 import { SkeletonCard } from '../../components/ui/Skeleton'
 import { useToast } from '../../components/ui/Toast'
-import { t } from '../../i18n'
+import { t, tp } from '../../i18n'
 import { cn } from '../../lib/cn'
-import { formatCurrency, formatDate } from '../../lib/format'
+import { formatCurrency, formatDate, formatInterval } from '../../lib/format'
 import { daysText, STATE_LABEL, STATE_STYLE, subscriptionInfo } from '../../lib/subscription'
 import { getErrorMessage } from '../../services/api'
 import {
@@ -43,6 +43,7 @@ import {
   whatsappFromError,
 } from '../../services/admin/companies'
 import { RenewSubscriptionModal } from './RenewSubscriptionModal'
+import { localCountry } from '../../lib/countries'
 
 function Detail({ icon: Icon, children }: { icon: typeof Mail; children: ReactNode }) {
   return (
@@ -230,10 +231,10 @@ function CompanyDetail() {
               <AlertTriangle className={cn('h-5 w-5', info.state === 'expiring' ? 'text-amber-600' : 'text-blue-600')} />
             )}
             {info.state === 'expired'
-              ? `The subscription ended on ${formatDate(info.subscription?.ends_at ?? new Date())}. The workspace is locked until it is renewed.`
+              ? t('companyDetail.sub_ended', 'The subscription ended on {date}. The workspace is locked until it is renewed.', { date: formatDate(info.subscription?.ends_at ?? new Date()) })
               : info.state === 'expiring'
-                ? `The subscription ends on ${formatDate(info.subscription?.ends_at ?? new Date())} (${daysText(info).toLowerCase()}).`
-                : 'This company has no subscription yet, so its owner cannot use the workspace.'}
+                ? t('companyDetail.sub_ends', 'The subscription ends on {date} ({left}).', { date: formatDate(info.subscription?.ends_at ?? new Date()), left: daysText(info).toLowerCase() })
+                : t('companyDetail.sub_none', 'This company has no subscription yet, so its owner cannot use the workspace.')}
           </p>
           <div className="flex gap-2">
             {whatsappNumber ? (
@@ -268,7 +269,7 @@ function CompanyDetail() {
                 <div>
                   <p className="text-xl font-bold text-ink">{info.subscription.plan_name}</p>
                   <p className="mt-0.5 text-sm text-ink-muted">
-                    {formatCurrency(info.subscription.plan_price, info.subscription.plan_currency, 'en-US')} / {info.subscription.plan_interval}
+                    {formatCurrency(info.subscription.plan_price, info.subscription.plan_currency)} / {formatInterval(info.subscription.plan_interval)}
                   </p>
                 </div>
                 <p className={cn('text-2xl font-bold tracking-tight', info.state === 'expired' ? 'text-rose-600' : info.state === 'expiring' ? 'text-amber-600' : 'text-ink')}>
@@ -323,11 +324,11 @@ function CompanyDetail() {
                   <p className="pt-1 text-xs">
                     {company.owner.has_password ? (
                       <span className="inline-flex items-center gap-1 font-medium text-emerald-700">
-                        <CheckCircle2 className="h-3.5 w-3.5" /> Password set
+                        <CheckCircle2 className="h-3.5 w-3.5" /> {t('companyDetail.password_set', 'Password set')}
                       </span>
                     ) : (
                       <span className="inline-flex items-center gap-1 font-medium text-amber-700">
-                        <Send className="h-3.5 w-3.5" /> Waiting for the invite link
+                        <Send className="h-3.5 w-3.5" /> {t('companyDetail.waiting_for_the_invite_link', 'Waiting for the invite link')}
                       </span>
                     )}
                   </p>
@@ -341,17 +342,17 @@ function CompanyDetail() {
           <Card title={t('admin.company', 'Company')} actions={<Badge status={company.status.toUpperCase()} />}>
             <div className="space-y-2.5">
               <Detail icon={Mail}>{company.email}</Detail>
-              {company.tax_id ? <Detail icon={FileText}>NIF/NIE/CIF: {company.tax_id}</Detail> : null}
+              {company.tax_id ? <Detail icon={FileText}>{t('companyDetail.tax_id', 'NIF/NIE/CIF: {value}', { value: company.tax_id })}</Detail> : null}
               {company.phone ? <Detail icon={Phone}>{company.phone}</Detail> : null}
               {company.whatsapp ? <Detail icon={MessageCircle}>{company.whatsapp}</Detail> : null}
               {company.address || company.city || company.country ? (
                 <Detail icon={MapPin}>
-                  {[company.address, [company.postal_code, company.city].filter(Boolean).join(' '), company.country].filter(Boolean).join(', ')}
+                  {[company.address, [company.postal_code, company.city].filter(Boolean).join(' '), localCountry(company.country)].filter(Boolean).join(', ')}
                 </Detail>
               ) : null}
               {company.users_count !== undefined ? (
                 <Detail icon={Users}>
-                  {company.users_count} {company.users_count === 1 ? 'user' : 'users'}
+                  {tp('admin.users_count', '{count} user|{count} users', company.users_count)}
                 </Detail>
               ) : null}
               <p className="pt-1 text-xs text-ink-muted">
@@ -419,7 +420,7 @@ function CompanyDetail() {
         loading={disconnectWhatsApp.isPending}
         tone="warning"
         title={t('admin.waDisconnectTitle', 'Disconnect this company\'s WhatsApp?')}
-        description={`${company?.name ?? ''} will have to scan a new QR code before it can send documents on WhatsApp again.`}
+        description={t('companyDetail.wa_disconnect_body', '{name} will have to scan a new QR code before it can send documents on WhatsApp again.', { name: company?.name ?? '' })}
         confirmLabel={t('admin.waDisconnect', 'Disconnect')}
       />
 
@@ -439,7 +440,7 @@ function CompanyDetail() {
                   </div>
                   <div className="flex items-center gap-3">
                     <span className="text-xs font-medium text-ink-muted">
-                      {formatCurrency(subscription.plan_price, subscription.plan_currency, 'en-US')}
+                      {formatCurrency(subscription.plan_price, subscription.plan_currency)}
                     </span>
                     <Badge status={subscription.status.toUpperCase()} />
                   </div>
@@ -453,7 +454,7 @@ function CompanyDetail() {
                           {payment.payment_method ? ` · ${payment.payment_method.name}` : ''}
                           {payment.reference ? ` · ${payment.reference}` : ''}
                         </span>
-                        <span className="font-semibold text-ink">{formatCurrency(payment.amount, payment.currency, 'en-US')}</span>
+                        <span className="font-semibold text-ink">{formatCurrency(payment.amount, payment.currency)}</span>
                       </li>
                     ))}
                   </ul>
@@ -473,7 +474,7 @@ function CompanyDetail() {
         loading={statusMutation.isPending}
         tone="warning"
         title={t('admin.suspendTitle', 'Suspend this company?')}
-        description={`${company.name} will not be able to sign in until you reactivate it. Nothing is deleted.`}
+        description={t('companyDetail.suspend_body', '{name} will not be able to sign in until you reactivate it. Nothing is deleted.', { name: company.name })}
         confirmLabel={t('admin.suspend', 'Suspend')}
       />
 
@@ -483,7 +484,7 @@ function CompanyDetail() {
         onConfirm={() => cancelMutation.mutate(cancelId as number)}
         loading={cancelMutation.isPending}
         title={t('admin.cancelSubscription', 'Cancel subscription')}
-        description="The company loses access to the workspace as soon as this is cancelled."
+        description={t('companyDetail.the_company_loses_access_to_the_workspace', 'The company loses access to the workspace as soon as this is cancelled.')}
         confirmLabel={t('admin.cancelSubscription', 'Cancel subscription')}
       />
     </>

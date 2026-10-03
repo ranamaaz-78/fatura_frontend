@@ -10,6 +10,7 @@ import { getPrintTemplates, loadLogoBlob } from '../../services/printables'
 import type { Company } from '../../types/module01'
 import type { PrintTemplate } from '../../types/printables'
 import { saleDisplayStatus, type SaleDisplayStatus, type SaleDocument, type SaleLine } from '../../types/sales'
+import { localCountry } from '../../lib/countries'
 
 export type PrintSheetProps = {
   document: SaleDocument
@@ -99,7 +100,7 @@ function companyPlace(company: Company | null): string[] {
   if (!company) return []
   const lines: string[] = []
   if (company.address) lines.push(company.address)
-  const cityCountry = [[company.postal_code, company.city].filter(Boolean).join(' '), company.country].filter(Boolean).join(', ')
+  const cityCountry = [[company.postal_code, company.city].filter(Boolean).join(' '), localCountry(company.country)].filter(Boolean).join(', ')
   if (cityCountry) lines.push(cityCountry)
   if (company.tax_id) lines.push(`${t('sales.taxIdLabel', 'NIF/CIF')}: ${company.tax_id}`)
   return lines
@@ -164,7 +165,7 @@ function discountColumn(lines: SaleLine[], width: number): Column[] {
   return [
     {
       key: 'dto',
-      label: t('sales.dto', 'Disc.'),
+      label: t('print.dto', 'Disc.'),
       width,
       render: (line) => (line.discount_percent ? `${line.discount_percent}%` : '—'),
     },
@@ -518,7 +519,7 @@ function TaxSummary({ lines, currency }: { lines: SaleLine[]; currency: string }
         <thead>
           <tr className="border-b border-[#e2e8f0] text-[#64748b]">
             <th className="pb-1.5 text-left font-medium">{t('sales.rate', 'Rate')}</th>
-            <th className="pb-1.5 text-right font-medium">{t('sales.base', 'Base')}</th>
+            <th className="pb-1.5 text-right font-medium">{t('print.base', 'Base')}</th>
             <th className="pb-1.5 text-right font-medium">IVA</th>
           </tr>
         </thead>
@@ -598,7 +599,7 @@ function InvoiceSheet({ document, company, currency, lines, issued, theme, logoS
   const contact = companyContact(company)
 
   const columns: Column[] = [
-    { key: 'qty', label: t('sales.qty', 'Qty'), width: 48, render: (line) => qtyText(line.quantity) },
+    { key: 'qty', label: t('print.qty', 'Qty'), width: 48, render: (line) => qtyText(line.quantity) },
     { key: 'price', label: t('sales.unitPrice', 'Unit price'), width: 88, render: (line) => formatCents(line.unit_price, currency) },
     ...discountColumn(lines, 52),
     { key: 'iva', label: 'IVA', width: 46, render: (line) => `${line.iva_percent}%` },
@@ -697,14 +698,14 @@ function QuotationSheet({ document, company, currency, lines, issued, theme, log
   const contact = companyContact(company)
 
   const columns: Column[] = [
-    { key: 'qty', label: t('sales.qty', 'Qty'), width: 44, render: (line) => qtyText(line.quantity) },
+    { key: 'qty', label: t('print.qty', 'Qty'), width: 44, render: (line) => qtyText(line.quantity) },
     { key: 'price', label: t('sales.unitPrice', 'Unit price'), width: 80, render: (line) => formatCents(line.unit_price, currency) },
     ...discountColumn(lines, 48),
     { key: 'iva', label: 'IVA', width: 44, render: (line) => `${line.iva_percent}%` },
-    { key: 'net', label: t('sales.priceNet', 'Net'), width: 84, render: (line) => formatCents(grossOf(line).base, currency) },
+    { key: 'net', label: t('print.priceNet', 'Net'), width: 84, render: (line) => formatCents(grossOf(line).base, currency) },
     {
       key: 'gross',
-      label: t('sales.priceGross', 'With IVA'),
+      label: t('print.priceGross', 'With IVA'),
       width: 92,
       className: 'font-semibold text-[#0f172a]',
       render: (line) => formatCents(grossOf(line).total, currency),
@@ -714,7 +715,7 @@ function QuotationSheet({ document, company, currency, lines, issued, theme, log
   const stats: { label: string; value: string; accent?: boolean }[] = [
     { label: t('sales.date', 'Date'), value: issued },
     document.expires_at
-      ? { label: t('sales.validUntil', 'Valid until'), value: new Date(document.expires_at).toLocaleDateString() }
+      ? { label: t('sales.validUntil', 'Valid until'), value: formatDate(document.expires_at) }
       : { label: t('sales.items', 'Items'), value: String(lines.length) },
     { label: t('sales.totalWithTax', 'Total with tax'), value: formatCents(document.total_cents, currency), accent: true },
   ]
@@ -830,7 +831,7 @@ function ProformaSheet({ document, company, currency, lines, issued, theme, logo
   const id = taxId(document)
 
   const columns: Column[] = [
-    { key: 'qty', label: t('sales.qty', 'Qty'), width: 60, render: (line) => qtyText(line.quantity) },
+    { key: 'qty', label: t('print.qty', 'Qty'), width: 60, render: (line) => qtyText(line.quantity) },
     { key: 'price', label: t('sales.unitPrice', 'Unit price'), width: 104, render: (line) => formatCents(line.unit_price, currency) },
     {
       key: 'amount',
@@ -850,7 +851,7 @@ function ProformaSheet({ document, company, currency, lines, issued, theme, logo
 
   const clientFacts = [
     { label: 'N.I.F / N.I.E', value: id },
-    { label: t('sales.phone', 'Phone'), value: document.client_phone },
+    { label: t('print.phone', 'Phone'), value: document.client_phone },
     { label: t('sales.attn', 'Attn.'), value: attn },
   ].filter((fact) => fact.value)
 
@@ -976,7 +977,7 @@ function AlbaranSheet({ document, currency, lines, issued, theme }: SheetProps) 
   const columns: Column[] = [
     {
       key: 'qty',
-      label: t('sales.qty', 'Qty'),
+      label: t('print.qty', 'Qty'),
       width: 60,
       className: 'font-bold text-[#0f172a]',
       render: (line) => qtyText(line.quantity),
@@ -1009,7 +1010,7 @@ function AlbaranSheet({ document, currency, lines, issued, theme }: SheetProps) 
         </div>
         <div className="grid shrink-0 grid-cols-2 overflow-hidden rounded-md border-2 border-[#0f172a] text-center">
           <div className="border-r-2 border-[#0f172a] px-5 py-2.5">
-            <p className="m-0 text-[9px] font-semibold tracking-[0.1em] text-[#64748b] uppercase">{t('sales.number', 'No.')}</p>
+            <p className="m-0 text-[9px] font-semibold tracking-[0.1em] text-[#64748b] uppercase">{t('print.number', 'No.')}</p>
             <p className="mt-1 mb-0 text-[15px] font-bold tabular-nums">{document.number}</p>
           </div>
           <div className="px-5 py-2.5">
@@ -1026,7 +1027,7 @@ function AlbaranSheet({ document, currency, lines, issued, theme }: SheetProps) 
           {attn ? field(t('sales.attn', 'Attn.'), attn) : null}
           <div className="grid grid-cols-2 gap-8">
             {field('N.I.F / N.I.E', id)}
-            {field(t('sales.phone', 'Phone'), document.client_phone)}
+            {field(t('print.phone', 'Phone'), document.client_phone)}
           </div>
           {document.client_address ? field(t('sales.clientAddress', 'Address'), document.client_address) : null}
         </div>

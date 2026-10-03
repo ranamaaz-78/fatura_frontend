@@ -1,5 +1,6 @@
 import { useEffect, useRef, type ClipboardEvent, type KeyboardEvent } from 'react'
 import { cn } from '../../lib/cn'
+import { t } from '../../i18n'
 
 type OtpInputProps = {
   value: string
@@ -24,7 +25,7 @@ export function OtpInput({
   disabled = false,
   autoFocus = false,
   describedBy,
-  'aria-label': ariaLabel = 'Verification code',
+  'aria-label': ariaLabel = t('otp.verification_code', 'Verification code'),
 }: OtpInputProps) {
   const refs = useRef<Array<HTMLInputElement | null>>([])
   const digits = Array.from({ length }, (_, index) => value[index] ?? '')
@@ -103,7 +104,7 @@ export function OtpInput({
           maxLength={index === 0 ? length : 1}
           value={digit}
           disabled={disabled}
-          aria-label={`${ariaLabel}, digit ${index + 1} of ${length}`}
+          aria-label={t('otp.digit_of', '{label}, digit {n} of {total}', { label: ariaLabel, n: index + 1, total: length })}
           aria-invalid={error || undefined}
           aria-describedby={describedBy}
           onFocus={(event) => event.target.select()}

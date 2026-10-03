@@ -31,11 +31,10 @@ import {
 } from '../../services/whatsapp'
 import type { WhatsAppState, WhatsAppStatus } from '../../types/whatsapp'
 
-export const DEFAULT_WHATSAPP_TEMPLATE = `Dear {customer_name},
-
-Please find attached your {document_type} *#{document_number}* from *{company_name}* for *{total_amount}*.
-
-Thank you for choosing us!`
+export const DEFAULT_WHATSAPP_TEMPLATE = t(
+  'whatsapp.default_template',
+  'Dear {customer_name},\n\nPlease find attached your {document_type} *#{document_number}* from *{company_name}* for *{total_amount}*.\n\nThank you for choosing us!',
+)
 
 const TAGS: { tag: string; label: string }[] = [
   { tag: '{customer_name}', label: t('whatsapp.tagCustomer', 'Customer') },
@@ -198,7 +197,7 @@ export function WhatsAppTab() {
         .replace(/\{document_type\}/g, 'Invoice')
         .replace(/\{document_number\}/g, 'F-2026/0185')
         .replace(/\{total_amount\}/g, formatCents(41250, currency))
-        .replace(/\{company_name\}/g, company?.name ?? 'Your company'),
+        .replace(/\{company_name\}/g, company?.name ?? t('whatsapp.your_company', 'Your company')),
     [template, currency, company?.name],
   )
 

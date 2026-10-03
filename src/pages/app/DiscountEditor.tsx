@@ -1,5 +1,5 @@
 import { Percent, Plus, X } from 'lucide-react'
-import { t } from '../../i18n'
+import { t, intlLocale } from '../../i18n'
 import { cn } from '../../lib/cn'
 import { formatCents } from '../../lib/money'
 import type { DiscountType } from '../../types/sales'
@@ -23,7 +23,7 @@ type DiscountEditorProps = {
 function currencySymbol(currency: string): string {
   try {
     const text = (0)
-      .toLocaleString('en-US', { style: 'currency', currency, maximumFractionDigits: 0 })
+      .toLocaleString(intlLocale(), { style: 'currency', currency, maximumFractionDigits: 0 })
       .replace(/[0-9.,\s]/g, '')
     return text === '' ? currency : text
   } catch {

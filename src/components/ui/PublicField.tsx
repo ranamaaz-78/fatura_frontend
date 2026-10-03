@@ -10,6 +10,7 @@ import {
 import { ArrowRight } from 'lucide-react'
 import { cn } from '../../lib/cn'
 import { optionsFromChildren, SearchableSelect } from './SearchableSelect'
+import { t } from '../../i18n'
 
 /**
  * Form controls for the marketing and auth shells. They are taller and softer
@@ -57,7 +58,7 @@ export function PublicFieldShell({
           <label htmlFor={id} className="text-[13px] font-semibold text-[#334155]">
             {label}
             {required ? <span className="ml-0.5 text-[#be123c]">*</span> : null}
-            {optional ? <span className="ml-1 font-normal text-[#64748b]">(optional)</span> : null}
+            {optional ? <span className="ml-1 font-normal text-[#64748b]">{t('publicField.optional', '(optional)')}</span> : null}
           </label>
           {action}
         </div>

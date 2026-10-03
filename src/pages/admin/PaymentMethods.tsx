@@ -92,7 +92,7 @@ function AdminPaymentMethods() {
           <EmptyState
             icon={Wallet}
             title={t('common.empty', 'Nothing here yet')}
-            description="Add the ways your customers can pay you."
+            description={t('paymentMethods.add_the_ways_your_customers_can_pay_you', 'Add the ways your customers can pay you.')}
           />
         ) : (
           <ul className="divide-y divide-slate-100">
@@ -148,14 +148,14 @@ function AdminPaymentMethods() {
         {draft ? (
           <div className="space-y-4">
             <Input
-              label="Name"
+              label={t('clients.name', 'Name')}
               required
               value={draft.name}
               error={errors.name}
               onChange={(event) => set('name', event.target.value)}
             />
             <Input
-              label="Description"
+              label={t('sales.description', 'Description')}
               value={draft.description ?? ''}
               error={errors.description}
               onChange={(event) => set('description', event.target.value)}
@@ -169,7 +169,7 @@ function AdminPaymentMethods() {
             />
             <div className="flex items-center justify-between">
               <Input
-                label="Sort order"
+                label={t('paymentMethods.sort_order', 'Sort order')}
                 type="number"
                 min={0}
                 value={String(draft.sort_order)}

@@ -18,6 +18,10 @@ export type SubscriptionStatus = 'active' | 'expired' | 'cancelled'
 export type Plan = {
   id: number
   name: string
+  /** The Spanish wording the admin wrote; empty means the English text is shown. */
+  name_es?: string | null
+  description_es?: string | null
+  features_es?: string[]
   slug: string
   description: string | null
   price: number
@@ -172,6 +176,8 @@ export type SupportContact = {
 export type SessionPayload = {
   user: AuthUser
   role: UserRole
+  /** The language this person sees: their own, else their company's. */
+  locale?: 'en' | 'es'
   company: Company | null
   subscription: Subscription | null
   support: SupportContact

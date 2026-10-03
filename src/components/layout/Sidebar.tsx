@@ -5,6 +5,7 @@ import { t } from '../../i18n'
 import { cn } from '../../lib/cn'
 import { Logo } from '../brand/Logo'
 import { Avatar } from '../ui/Avatar'
+import { LanguageSwitcher } from '../ui/LanguageSwitcher'
 import { ADMIN_NAV, APP_NAV, type Accent } from './nav'
 
 export type SidebarProps = {
@@ -87,6 +88,12 @@ export function Sidebar({ accent = 'blue', onNavigate }: SidebarProps) {
           </div>
         ))}
       </nav>
+
+      {isAdmin ? (
+        <div className="border-t border-sidebar-line px-3 pt-3">
+          <LanguageSwitcher tone="dark" variant="menu" />
+        </div>
+      ) : null}
 
       <div className="flex items-center gap-2.5 border-t border-sidebar-line p-3">
         <Avatar name={userName} size="sm" />

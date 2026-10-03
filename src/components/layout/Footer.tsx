@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { t } from '../../i18n'
 import { supportEmail, supportWhatsappUrl } from '../../lib/support'
 import { Logo } from '../brand/Logo'
+import { LanguageSwitcher } from '../ui/LanguageSwitcher'
 
 /** One page: every link points at a section of it. Terms and privacy open as a dialog. */
 const COLUMNS = [
@@ -95,7 +96,8 @@ export function Footer() {
 
         <div className="mt-12 flex flex-col gap-4 border-t border-white/8 pt-6 text-[13px] text-[#94a3b8] sm:flex-row sm:items-center sm:justify-between">
           <span>{t('footer.rights', '© 2026 YK Digital Solutions. All rights reserved.')}</span>
-          <span className="flex items-center gap-6">
+          <span className="flex flex-wrap items-center gap-6">
+            <LanguageSwitcher tone="dark" />
             <Link to="/login" className="text-[#cbd5e1] transition-colors hover:text-white">
               {t('footer.login', 'Log in to your account')}
             </Link>

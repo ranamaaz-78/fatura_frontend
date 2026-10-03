@@ -12,7 +12,7 @@ import { Textarea } from '../../components/ui/Textarea'
 import { Toggle } from '../../components/ui/Toggle'
 import { useToast } from '../../components/ui/Toast'
 import { t } from '../../i18n'
-import { formatCurrency } from '../../lib/format'
+import { formatCurrency, formatInterval } from '../../lib/format'
 import { getErrorMessage, mapValidationErrors } from '../../services/api'
 import { createPlan, listPlans, togglePlan, updatePlan, type PlanInput } from '../../services/admin/plans'
 import type { Plan, PlanInterval } from '../../types/module01'
@@ -20,6 +20,9 @@ import { PlanCard } from '../public/PricingCards'
 
 type Draft = {
   name: string
+  name_es: string
+  description_es: string
+  features_es: string
   description: string
   price: string
   currency: string
@@ -33,6 +36,9 @@ type Draft = {
 
 const BLANK: Draft = {
   name: '',
+  name_es: '',
+  description_es: '',
+  features_es: '',
   description: '',
   price: '0',
   currency: 'USD',
@@ -47,6 +53,9 @@ const BLANK: Draft = {
 function draftFrom(plan: Plan): Draft {
   return {
     name: plan.name,
+    name_es: plan.name_es ?? '',
+    description_es: plan.description_es ?? '',
+    features_es: (plan.features_es ?? []).join('\n'),
     description: plan.description ?? '',
     price: String(plan.price),
     currency: plan.currency,
@@ -62,6 +71,12 @@ function draftFrom(plan: Plan): Draft {
 function toInput(draft: Draft): PlanInput {
   return {
     name: draft.name,
+    name_es: draft.name_es.trim() || null,
+    description_es: draft.description_es.trim() || null,
+    features_es: draft.features_es
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean),
     description: draft.description || undefined,
     price: Number(draft.price) || 0,
     currency: draft.currency.toUpperCase(),
@@ -165,7 +180,7 @@ function AdminPlans() {
           <EmptyState
             icon={CreditCard}
             title={t('common.empty', 'Nothing here yet')}
-            description="Create a plan so visitors have something to apply for."
+            description={t('plans.create_a_plan_so_visitors_have_something', 'Create a plan so visitors have something to apply for.')}
             primaryAction={<Button onClick={() => setDraft(BLANK)}>{t('admin.newPlan', 'New plan')}</Button>}
           />
         </Card>
@@ -177,7 +192,7 @@ function AdminPlans() {
                 <div>
                   <p className="text-sm font-bold text-slate-900">{plan.name}</p>
                   <p className="text-xs text-slate-500">
-                    {formatCurrency(plan.price, plan.currency, 'en-US')} / {plan.interval}
+                    {formatCurrency(plan.price, plan.currency)} / {formatInterval(plan.interval)}
                   </p>
                 </div>
                 <Button
@@ -237,7 +252,7 @@ function AdminPlans() {
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="sm:col-span-2">
                 <Input
-                  label="Name"
+                  label={t('clients.name', 'Name')}
                   required
                   value={draft.name}
                   error={errors.name}
@@ -246,7 +261,7 @@ function AdminPlans() {
               </div>
               <div className="sm:col-span-2">
                 <Textarea
-                  label="Description"
+                  label={t('sales.description', 'Description')}
                   rows={2}
                   value={draft.description}
                   error={errors.description}
@@ -254,7 +269,7 @@ function AdminPlans() {
                 />
               </div>
               <Input
-                label="Price"
+                label={t('sales.price', 'Price')}
                 inputMode="decimal"
                 required
                 value={draft.price}
@@ -262,23 +277,23 @@ function AdminPlans() {
                 onChange={(event) => set('price', event.target.value)}
               />
               <Input
-                label="Currency"
+                label={t('settings.currency', 'Currency')}
                 maxLength={3}
                 value={draft.currency}
                 error={errors.currency}
                 onChange={(event) => set('currency', event.target.value.toUpperCase())}
               />
               <Select
-                label="Interval"
+                label={t('plans.interval', 'Interval')}
                 value={draft.interval}
                 error={errors.interval}
                 onChange={(event) => set('interval', event.target.value as PlanInterval)}
               >
-                <option value="month">month</option>
-                <option value="year">year</option>
+                <option value="month">{t('plans.month', 'month')}</option>
+                <option value="year">{t('plans.year', 'year')}</option>
               </Select>
               <Input
-                label="Max users"
+                label={t('plans.max_users', 'Max users')}
                 type="number"
                 min={1}
                 value={draft.max_users}
@@ -293,8 +308,34 @@ function AdminPlans() {
                   onChange={(event) => set('features', event.target.value)}
                 />
               </div>
+              <div className="rounded-xl border border-line bg-page/60 p-4 sm:col-span-2">
+                <p className="text-sm font-semibold text-ink">{t('admin.planSpanish', 'Spanish version')}</p>
+                <p className="mt-0.5 mb-3 text-xs text-ink-muted">
+                  {t('admin.planSpanishHint', 'Shown on the Spanish site and in Spanish accounts. Leave a box empty to show the English text.')}
+                </p>
+                <div className="grid gap-4">
+                  <Input
+                    label={t('admin.planNameEs', 'Name in Spanish')}
+                    value={draft.name_es}
+                    error={errors.name_es}
+                    onChange={(event) => set('name_es', event.target.value)}
+                  />
+                  <Input
+                    label={t('admin.planDescriptionEs', 'Description in Spanish')}
+                    value={draft.description_es}
+                    error={errors.description_es}
+                    onChange={(event) => set('description_es', event.target.value)}
+                  />
+                  <Textarea
+                    label={t('admin.planFeaturesEs', 'Features in Spanish, one per line')}
+                    rows={5}
+                    value={draft.features_es}
+                    onChange={(event) => set('features_es', event.target.value)}
+                  />
+                </div>
+              </div>
               <Input
-                label="Sort order"
+                label={t('paymentMethods.sort_order', 'Sort order')}
                 type="number"
                 min={0}
                 value={draft.sort_order}

@@ -1,6 +1,7 @@
 import type { Company } from '../../../types/module01'
 import type { PrintableType, PrintTemplate } from '../../../types/printables'
 import type { PaymentStatus, SaleDocument, SaleLine, SaleType } from '../../../types/sales'
+import { t } from '../../../i18n'
 
 /**
  * Made-up documents for the landing page. They go through the same sheet components as a real
@@ -33,11 +34,11 @@ type Row = {
 }
 
 const ROWS: Row[] = [
-  { article: 'Cordless drill 18 V, 2 batteries', sr: 'DR-1802', qty: 2, price: 8900, iva: 21 },
-  { article: 'Drill bit set, 25 pieces', sr: 'BT-025', qty: 4, price: 1490, iva: 21, discount: 10 },
-  { article: 'Work gloves, size L', sr: 'GL-210', qty: 12, price: 395, iva: 21 },
-  { article: 'Wood screws 4 x 40 mm, box of 200', sr: 'SC-440', qty: 6, price: 560, iva: 21 },
-  { article: 'Technical manual (print)', sr: 'MN-004', qty: 2, price: 1200, iva: 4 },
+  { article: t('sample.drill', 'Cordless drill 18 V, 2 batteries'), sr: 'DR-1802', qty: 2, price: 8900, iva: 21 },
+  { article: t('sample.bits', 'Drill bit set, 25 pieces'), sr: 'BT-025', qty: 4, price: 1490, iva: 21, discount: 10 },
+  { article: t('sample.gloves', 'Work gloves, size L'), sr: 'GL-210', qty: 12, price: 395, iva: 21 },
+  { article: t('sample.screws', 'Wood screws 4 x 40 mm, box of 200'), sr: 'SC-440', qty: 6, price: 560, iva: 21 },
+  { article: t('sample.manual', 'Technical manual (print)'), sr: 'MN-004', qty: 2, price: 1200, iva: 4 },
 ]
 
 function lines(taxed: boolean, discounted: boolean): SaleLine[] {
@@ -120,7 +121,7 @@ export const SAMPLE_DOCUMENTS: Record<PrintableType, SaleDocument> = {
     discounted: true,
     status: 'pending',
     recargo: 5.2,
-    note: 'Bank transfer to ES91 2100 0418 4502 0005 1332. Please quote the invoice number.',
+    note: t('sampleDocuments.bank_transfer_to_es91_2100_0418_4502_0005', 'Bank transfer to ES91 2100 0418 4502 0005 1332. Please quote the invoice number.'),
   }),
   quotation: sample('quotation', 'Q-2026/0042', {
     taxed: true,

@@ -3,6 +3,7 @@ import { Link, Outlet } from 'react-router-dom'
 import { t } from '../i18n'
 import { supportEmail, supportWhatsappUrl } from '../lib/support'
 import { Logo } from '../components/brand/Logo'
+import { LanguageSwitcher } from '../components/ui/LanguageSwitcher'
 
 const ASIDE_BACKGROUND = {
   backgroundImage:
@@ -12,9 +13,9 @@ const ASIDE_BACKGROUND = {
 }
 
 const PROMISES = [
-  'Invoices and quotes in seconds',
-  'Stock that updates itself as you sell',
-  'One account for your computer and your phone',
+  t('authLayout.invoices_and_quotes_in_seconds', 'Invoices and quotes in seconds'),
+  t('authLayout.stock_that_updates_itself_as_you_sell', 'Stock that updates itself as you sell'),
+  t('authLayout.one_account_for_your_computer_and_your', 'One account for your computer and your phone'),
 ]
 
 export function AuthLayout() {
@@ -73,7 +74,8 @@ export function AuthLayout() {
       </aside>
 
       <main className="flex flex-1 flex-col px-5 py-10 sm:px-10">
-        <div className="flex justify-end">
+        <div className="flex items-center justify-end gap-5">
+          <LanguageSwitcher tone="light" />
           <Link to="/" className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#434655] hover:text-[#004ac6]">
             <ChevronLeft className="h-4 w-4" />
             {t('public.backHome', 'Back to home')}

@@ -1,15 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { parsePhoneNumberFromString } from 'libphonenumber-js'
-import { ArrowLeft, ArrowRight, Check, ImagePlus, Loader2, LogOut, MapPin, Store } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Check, ImagePlus, Languages, Loader2, LogOut, MapPin, Store } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../auth/AuthProvider'
 import { Logo } from '../../components/brand/Logo'
 import { FileDropzone } from '../../components/ui/FileDropzone'
+import { LanguageChoice, useChangeLanguage } from '../../components/ui/LanguageSwitcher'
 import { PublicFieldShell, PublicInput, PublicSelect, PublicTextarea, publicControlClass } from '../../components/ui/PublicField'
 import { SearchableSelect } from '../../components/ui/SearchableSelect'
 import { useToast } from '../../components/ui/Toast'
-import { t } from '../../i18n'
+import { getLocale, t } from '../../i18n'
 import { cn } from '../../lib/cn'
 import { COUNTRIES, DEFAULT_COUNTRY, DIAL_OPTIONS, countryByName, localDigits } from '../../lib/countries'
 import { COMPANY_CURRENCIES } from '../../lib/currencies'
@@ -35,7 +36,10 @@ type Draft = {
 
 type FieldName = keyof Draft | 'logo'
 
+const RESUME_KEY = 'setup-resume'
+
 const STEPS: { id: string; title: string; hint: string; icon: typeof Store }[] = [
+  { id: 'language', title: t('setup.stepLanguage', 'Language'), hint: t('setup.stepLanguageHint', 'English or Spanish, for the whole company'), icon: Languages },
   { id: 'business', title: t('setup.stepBusiness', 'Your business'), hint: t('setup.stepBusinessHint', 'Name, tax number and how to reach you'), icon: Store },
   { id: 'place', title: t('setup.stepPlace', 'Where you are'), hint: t('setup.stepPlaceHint', 'Address and currency'), icon: MapPin },
   { id: 'logo', title: t('setup.stepLogo', 'Your logo'), hint: t('setup.stepLogoHint', 'Then you are ready'), icon: ImagePlus },
@@ -43,19 +47,19 @@ const STEPS: { id: string; title: string; hint: string; icon: typeof Store }[] =
 
 /** Which step each field lives on, so a server error can send the person back to it. */
 const STEP_OF: Record<FieldName, number> = {
-  name: 0,
-  tax_id: 0,
-  email: 0,
-  phone_dial: 0,
-  phone: 0,
-  whatsapp_dial: 0,
-  whatsapp: 0,
-  address: 1,
-  country: 1,
-  city: 1,
-  postal_code: 1,
-  currency: 1,
-  logo: 2,
+  name: 1,
+  tax_id: 1,
+  email: 1,
+  phone_dial: 1,
+  phone: 1,
+  whatsapp_dial: 1,
+  whatsapp: 1,
+  address: 2,
+  country: 2,
+  city: 2,
+  postal_code: 2,
+  currency: 2,
+  logo: 3,
 }
 
 function splitPhone(value: string | null | undefined, fallbackDial: string): { dial: string; number: string } {
@@ -181,7 +185,17 @@ export default function CompanySetup() {
   const queryClient = useQueryClient()
   const company = session?.company ?? null
 
-  const [step, setStep] = useState(0)
+  // Choosing the other language reloads the page; this puts the person back on the step after it.
+  const [step, setStep] = useState(() => {
+    try {
+      const resume = window.sessionStorage.getItem(RESUME_KEY) === '1'
+      window.sessionStorage.removeItem(RESUME_KEY)
+      return resume ? 1 : 0
+    } catch {
+      return 0
+    }
+  })
+  const changing = useChangeLanguage()
   const [draft, setDraft] = useState<Draft>(() => draftFrom(company))
   const [errors, setErrors] = useState<Partial<Record<FieldName, string>>>({})
 
@@ -238,7 +252,7 @@ export default function CompanySetup() {
       const mapped: Partial<Record<FieldName, string>> = {}
       for (const [field, message] of Object.entries(server)) mapped[field as FieldName] = message
       setErrors(mapped)
-      const earliest = Math.min(...fields.map((field) => STEP_OF[field as FieldName] ?? 2))
+      const earliest = Math.min(...fields.map((field) => STEP_OF[field as FieldName] ?? 3))
       setStep(earliest)
     },
   })
@@ -257,7 +271,7 @@ export default function CompanySetup() {
   }
 
   function next() {
-    const found = validate(step, draft, Boolean(logoUrl))
+    const found = validate(step - 1, draft, Boolean(logoUrl))
     setErrors(found)
     if (Object.keys(found).length === 0) setStep((current) => current + 1)
   }
@@ -285,7 +299,7 @@ export default function CompanySetup() {
           {t('setup.title', 'Let us set up your company')}
         </h1>
         <p className="mt-3 text-[15px] leading-relaxed text-[#cbd5e1]">
-          {t('setup.intro', 'Three quick steps. These details print on your invoices, and your workspace opens as soon as you finish.')}
+          {t('setup.intro', 'Four quick steps. These details print on your invoices, and your workspace opens as soon as you finish.')}
         </p>
 
         <ol className="mt-8 hidden flex-col gap-1 lg:flex">
@@ -346,11 +360,35 @@ export default function CompanySetup() {
           <div className="mt-7 flex flex-col gap-4.5">
             {step === 0 ? (
               <>
+                <LanguageChoice
+                  value={getLocale()}
+                  busy={changing.pending ? getLocale() : null}
+                  onChange={(next) => {
+                    if (next === getLocale()) {
+                      setStep(1)
+                      return
+                    }
+                    // Saving the language reloads the page; remember to come back to the next step, not the first.
+                    try {
+                      window.sessionStorage.setItem(RESUME_KEY, '1')
+                    } catch {
+                      /* the wizard then simply starts again, in the new language */
+                    }
+                    void changing.change(next)
+                  }}
+                />
+                <p className="text-[13px] text-[#64748b]">
+                  {t('setup.languageNote', 'This is the language of your whole company: the app, invoices, quotations, emails and WhatsApp messages. You can change it later in Settings.')}
+                </p>
+              </>
+            ) : null}
+            {step === 1 ? (
+              <>
                 <PublicInput
                   label={t('settings.companyName', 'Company name')}
                   required
                   autoComplete="organization"
-                  placeholder="e.g. Taller de Marta S.L."
+                  placeholder={t('companySetup.e_g_taller_de_marta_s_l', 'e.g. Taller de Marta S.L.')}
                   value={draft.name}
                   error={errors.name}
                   onChange={(event) => patch({ name: event.target.value })}
@@ -360,7 +398,7 @@ export default function CompanySetup() {
                   required
                   hint={t('setup.taxIdHint', 'Your tax number, printed on every invoice.')}
                   autoCapitalize="characters"
-                  placeholder="e.g. B12345678"
+                  placeholder={t('companySetup.e_g_b12345678', 'e.g. B12345678')}
                   value={draft.tax_id}
                   error={errors.tax_id}
                   onChange={(event) => patch({ tax_id: event.target.value })}
@@ -395,14 +433,14 @@ export default function CompanySetup() {
               </>
             ) : null}
 
-            {step === 1 ? (
+            {step === 2 ? (
               <>
                 <PublicTextarea
                   label={t('settings.address', 'Address')}
                   required
                   rows={3}
                   autoComplete="street-address"
-                  placeholder="Street, number, floor"
+                  placeholder={t('companySetup.street_number_floor', 'Street, number, floor')}
                   value={draft.address}
                   error={errors.address}
                   onChange={(event) => patch({ address: event.target.value })}
@@ -458,7 +496,7 @@ export default function CompanySetup() {
               </>
             ) : null}
 
-            {step === 2 ? (
+            {step === 3 ? (
               <>
                 <div className={cn('rounded-2xl border bg-white p-4', errors.logo ? 'border-[#e11d48]' : 'border-[#dbe1ff]')}>
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center">

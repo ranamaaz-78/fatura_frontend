@@ -1,5 +1,6 @@
 import { barcodeGeometry } from './barcode'
 import { formatCents } from './money'
+import { getLocale, t } from '../i18n'
 
 /** A ready-made size ("a4-24", "roll-40x30") or "custom". */
 export type LabelSheet = string
@@ -52,7 +53,7 @@ const BAR_FACTOR: Record<BarHeight, number> = { short: 0.75, normal: 1, tall: 1.
 function roll(width: number, height: number): LabelSheetSpec {
   return {
     id: `roll-${width}x${height}`,
-    label: `Roll label ${width} × ${height} mm`,
+    label: t('printLabels.roll_label', 'Roll label {width} × {height} mm', { width, height }),
     columns: 1,
     labelWidth: width,
     labelHeight: height,
@@ -72,9 +73,9 @@ const ROLL_SIZES: [number, number][] = [
 ]
 
 export const LABEL_SHEETS: LabelSheetSpec[] = [
-  { id: 'a4-24', label: 'A4 sheet, 24 labels (64 × 33.9 mm)', columns: 3, labelWidth: 64, labelHeight: 33.9, page: 'A4', margin: 8, gap: 2, perSheet: 24 },
-  { id: 'a4-40', label: 'A4 sheet, 40 labels (48.5 × 25.4 mm)', columns: 4, labelWidth: 48.5, labelHeight: 25.4, page: 'A4', margin: 8, gap: 2, perSheet: 40 },
-  { id: 'thermal-58', label: 'Thermal roll 58 mm', columns: 1, labelWidth: 54, labelHeight: 30, page: '58mm 30mm', margin: 1, gap: 0, perSheet: 1 },
+  { id: 'a4-24', label: t('printLabels.a4_sheet_24_labels_64_33_9_mm', 'A4 sheet, 24 labels (64 × 33.9 mm)'), columns: 3, labelWidth: 64, labelHeight: 33.9, page: 'A4', margin: 8, gap: 2, perSheet: 24 },
+  { id: 'a4-40', label: t('printLabels.a4_sheet_40_labels_48_5_25_4_mm', 'A4 sheet, 40 labels (48.5 × 25.4 mm)'), columns: 4, labelWidth: 48.5, labelHeight: 25.4, page: 'A4', margin: 8, gap: 2, perSheet: 40 },
+  { id: 'thermal-58', label: t('printLabels.thermal_roll_58_mm', 'Thermal roll 58 mm'), columns: 1, labelWidth: 54, labelHeight: 30, page: '58mm 30mm', margin: 1, gap: 0, perSheet: 1 },
   ...ROLL_SIZES.map(([width, height]) => roll(width, height)),
 ]
 
@@ -125,7 +126,7 @@ function customSpec(raw: CustomLabel): LabelSheetSpec {
   const custom = cleanCustom(raw)
 
   if (custom.layout === 'roll') {
-    return { ...roll(custom.width, custom.height), id: CUSTOM_SHEET, label: `Custom ${custom.width} × ${custom.height} mm` }
+    return { ...roll(custom.width, custom.height), id: CUSTOM_SHEET, label: t('printLabels.custom_roll', 'Custom {width} × {height} mm', { width: custom.width, height: custom.height }) }
   }
 
   const page = PAGES[custom.page]
@@ -133,7 +134,7 @@ function customSpec(raw: CustomLabel): LabelSheetSpec {
 
   return {
     id: CUSTOM_SHEET,
-    label: `Custom ${custom.width} × ${custom.height} mm on ${custom.page}`,
+    label: t('printLabels.custom_sheet', 'Custom {width} × {height} mm on {page}', { width: custom.width, height: custom.height, page: custom.page }),
     columns: custom.columns,
     labelWidth: custom.width,
     labelHeight: custom.height,
@@ -165,10 +166,10 @@ export function layoutProblem(spec: LabelSheetSpec, custom: CustomLabel, usingCu
   const across = spec.columns * spec.labelWidth + (spec.columns - 1) * spec.gap + spec.margin * 2
 
   if (across > page.width + 0.01) {
-    return `${spec.columns} labels of ${spec.labelWidth} mm are ${Math.round(across)} mm wide, but the page is ${page.width} mm. Use fewer labels per row, smaller labels or smaller margins.`
+    return t('printLabels.too_wide', '{columns} labels of {width} mm are {across} mm wide, but the page is {page} mm. Use fewer labels per row, smaller labels or smaller margins.', { columns: spec.columns, width: spec.labelWidth, across: Math.round(across), page: page.width })
   }
   if (spec.labelHeight + spec.margin * 2 > page.height + 0.01) {
-    return `A label ${spec.labelHeight} mm tall does not fit on the page.`
+    return t('printLabels.too_tall', 'A label {height} mm tall does not fit on the page.', { height: spec.labelHeight })
   }
 
   return null
@@ -229,10 +230,10 @@ export function buildLabelSheet(products: LabelProduct[], options: LabelOptions)
     .join('')
 
   return `<!doctype html>
-<html lang="en">
+<html lang="${getLocale()}">
 <head>
 <meta charset="utf-8">
-<title>Barcode labels</title>
+<title>${escapeHtml(t('printLabels.title', 'Barcode labels'))}</title>
 <style>
   @page { size: ${spec.page}; margin: ${spec.margin}mm; }
   * { box-sizing: border-box; }

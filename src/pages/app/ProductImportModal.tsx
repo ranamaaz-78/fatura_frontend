@@ -208,7 +208,7 @@ export function ProductImportModal({ open, onClose, onImported }: ProductImportM
   const importMutation = useMutation({
     mutationFn: () => importProducts(grid.map(toImportRow)),
     onSuccess: (result) => {
-      push({ tone: 'success', title: `${result.created} ${t('import.inserted', 'products imported.')}` })
+      push({ tone: 'success', title: t('import.imported_count', '{count} products imported.', { count: result.created }) })
       onImported()
       close()
     },

@@ -5,15 +5,16 @@ import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../auth/AuthProvider'
 import { Badge } from '../../components/ui/Badge'
 import { FileDropzone } from '../../components/ui/FileDropzone'
+import { LanguageChoice, useChangeLanguage } from '../../components/ui/LanguageSwitcher'
 import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
 import { Select } from '../../components/ui/Select'
 import { Textarea } from '../../components/ui/Textarea'
 import { useToast } from '../../components/ui/Toast'
-import { t } from '../../i18n'
+import { getLocale, t } from '../../i18n'
 import { cn } from '../../lib/cn'
 import { COMPANY_CURRENCIES } from '../../lib/currencies'
-import { formatCurrency, formatDate } from '../../lib/format'
+import { formatCurrency, formatDate, formatInterval } from '../../lib/format'
 import { getAppSubscription } from '../../services/app'
 import { changePassword } from '../../services/auth'
 import { getErrorMessage, mapValidationErrors } from '../../services/api'
@@ -33,6 +34,7 @@ import type { Company } from '../../types/module01'
 
 import { RatesManager, type RatesApi } from './RatesManager'
 import { WhatsAppTab } from './WhatsAppTab'
+import { localCountry } from '../../lib/countries'
 
 type TabId = 'company' | 'subscription' | 'password' | 'iva' | 'recargo' | 'whatsapp'
 
@@ -88,7 +90,7 @@ function draftFrom(company: Company): CompanyDraft {
     address: company.address ?? '',
     city: company.city ?? '',
     postal_code: company.postal_code ?? '',
-    country: company.country ?? '',
+    country: localCountry(company.country),
     currency: company.currency,
   }
 }
@@ -142,6 +144,7 @@ function CompanyTab() {
   })
 
   const queryClient = useQueryClient()
+  const { change: changeLanguage, pending: languagePending, canChange: canChangeLanguage } = useChangeLanguage()
   const logoUrl = company?.logo_url ?? null
   const logoBlob = useQuery({
     queryKey: ['app', 'print-logo', logoUrl],
@@ -180,6 +183,21 @@ function CompanyTab() {
           'These details print on your invoices, quotes and proformas, so every one of them is compulsory.',
         )}
       </p>
+
+      <div className="rounded-2xl border border-line bg-page/60 p-4">
+        <p className="text-sm font-semibold text-slate-900">{t('settings.language', 'Language')}</p>
+        <p className="mt-0.5 mb-3 text-xs text-slate-500">
+          {canChangeLanguage
+            ? t('settings.languageHint', 'The language of your whole company: the app, invoices, quotations, emails and WhatsApp messages.')
+            : t('settings.languageStaff', 'Your company owner chooses the language for everyone.')}
+        </p>
+        <LanguageChoice
+          value={getLocale()}
+          disabled={!canChangeLanguage}
+          busy={languagePending ? getLocale() : null}
+          onChange={(next) => void changeLanguage(next)}
+        />
+      </div>
 
       <div
         className={cn(
@@ -523,8 +541,8 @@ function SubscriptionTab() {
         <div>
           <h2 className="text-sm font-bold text-slate-900">{subscription.plan_name}</h2>
           <p className="mt-1 text-sm text-slate-600">
-            {formatCurrency(subscription.plan_price, subscription.plan_currency, 'en-US')} /{' '}
-            {subscription.plan_interval}
+            {formatCurrency(subscription.plan_price, subscription.plan_currency)} /{' '}
+            {formatInterval(subscription.plan_interval)}
           </p>
         </div>
         <Badge status={subscription.status.toUpperCase()} />

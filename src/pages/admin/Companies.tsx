@@ -27,7 +27,7 @@ import { IconButton } from '../../components/ui/IconButton'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { RowMenu, type RowMenuItem } from '../../components/ui/RowMenu'
 import { useToast } from '../../components/ui/Toast'
-import { t } from '../../i18n'
+import { t, tp } from '../../i18n'
 import { cn } from '../../lib/cn'
 import { formatDate } from '../../lib/format'
 import { daysText, STATE_LABEL, STATE_STYLE, subscriptionInfo } from '../../lib/subscription'
@@ -35,16 +35,17 @@ import { getErrorMessage } from '../../services/api'
 import { cancelSubscription, listCompanies, resendAccess, setCompanyStatus, whatsappFromError } from '../../services/admin/companies'
 import type { Company, CompanyCounts, CompanyStatus, SubscriptionState } from '../../types/module01'
 import { RenewSubscriptionModal } from './RenewSubscriptionModal'
+import { localCountry } from '../../lib/countries'
 
 type TabId = 'all' | SubscriptionState | 'suspended'
 
 const TILES: { id: TabId; label: string; icon: LucideIcon; tone: string }[] = [
-  { id: 'all', label: 'All companies', icon: Layers, tone: 'bg-slate-100 text-slate-600 app-dark:bg-white/10 app-dark:text-slate-300' },
-  { id: 'active', label: 'Active', icon: CheckCircle2, tone: 'bg-emerald-50 text-emerald-600 app-dark:bg-emerald-500/15 app-dark:text-emerald-300' },
-  { id: 'expiring', label: 'Expiring soon', icon: Timer, tone: 'bg-amber-50 text-amber-600 app-dark:bg-amber-500/15 app-dark:text-amber-300' },
-  { id: 'expired', label: 'Expired', icon: CalendarX2, tone: 'bg-rose-50 text-rose-600 app-dark:bg-rose-500/15 app-dark:text-rose-300' },
-  { id: 'none', label: 'No plan', icon: AlertTriangle, tone: 'bg-blue-50 text-blue-600 app-dark:bg-blue-500/15 app-dark:text-blue-300' },
-  { id: 'suspended', label: 'Suspended', icon: PauseCircle, tone: 'bg-slate-100 text-slate-600 app-dark:bg-white/10 app-dark:text-slate-300' },
+  { id: 'all', label: t('companies.all_companies', 'All companies'), icon: Layers, tone: 'bg-slate-100 text-slate-600 app-dark:bg-white/10 app-dark:text-slate-300' },
+  { id: 'active', label: t('clients.active', 'Active'), icon: CheckCircle2, tone: 'bg-emerald-50 text-emerald-600 app-dark:bg-emerald-500/15 app-dark:text-emerald-300' },
+  { id: 'expiring', label: t('companies.expiring_soon', 'Expiring soon'), icon: Timer, tone: 'bg-amber-50 text-amber-600 app-dark:bg-amber-500/15 app-dark:text-amber-300' },
+  { id: 'expired', label: t('admin.expired', 'Expired'), icon: CalendarX2, tone: 'bg-rose-50 text-rose-600 app-dark:bg-rose-500/15 app-dark:text-rose-300' },
+  { id: 'none', label: t('companies.no_plan', 'No plan'), icon: AlertTriangle, tone: 'bg-blue-50 text-blue-600 app-dark:bg-blue-500/15 app-dark:text-blue-300' },
+  { id: 'suspended', label: t('status.SUSPENDED', 'Suspended'), icon: PauseCircle, tone: 'bg-slate-100 text-slate-600 app-dark:bg-white/10 app-dark:text-slate-300' },
 ]
 
 const COUNT_KEY: Record<TabId, keyof CompanyCounts> = {
@@ -81,7 +82,9 @@ function TermCell({ company }: { company: Company }) {
       <p className="mt-1.5 text-[11px] text-ink-muted">
         <span className="font-semibold text-ink">{daysText(info)}</span>
         {' · '}
-        {info.state === 'expired' ? 'ended' : 'ends'} {formatDate(info.subscription.ends_at)}
+        {info.state === 'expired'
+          ? t('admin.ended_on', 'ended {date}', { date: formatDate(info.subscription.ends_at) })
+          : t('admin.ends_on', 'ends {date}', { date: formatDate(info.subscription.ends_at) })}
       </p>
     </div>
   )
@@ -92,8 +95,16 @@ function reminderLink(company: Company): string | null {
   if (!number) return null
   const info = subscriptionInfo(company)
   const when =
-    info.state === 'expired' ? 'has expired' : info.state === 'none' ? 'is not active yet' : `ends on ${formatDate(info.subscription?.ends_at ?? new Date())}`
-  const text = `Hello ${company.owner?.name ?? ''}, your YK Digital Solutions subscription for ${company.name} ${when}. Reply here and we will renew it for you.`
+    info.state === 'expired'
+      ? t('admin.reminder_expired', 'has expired')
+      : info.state === 'none'
+        ? t('admin.reminder_inactive', 'is not active yet')
+        : t('admin.reminder_ends', 'ends on {date}', { date: formatDate(info.subscription?.ends_at ?? new Date()) })
+  const text = t(
+    'admin.reminder_message',
+    'Hello {owner}, your YK Digital Solutions subscription for {company} {when}. Reply here and we will renew it for you.',
+    { owner: company.owner?.name ?? '', company: company.name, when },
+  )
   return `https://wa.me/${number}?text=${encodeURIComponent(text)}`
 }
 
@@ -180,7 +191,7 @@ function AdminCompanies() {
           <span className="min-w-0">
             <span className="block truncate font-semibold text-ink hover:text-brand-600">{row.name}</span>
             <span className="block truncate text-xs text-ink-muted">
-              {[row.city, row.country].filter(Boolean).join(', ') || row.email}
+              {[row.city, localCountry(row.country)].filter(Boolean).join(', ') || row.email}
             </span>
           </span>
         </Link>
@@ -195,7 +206,7 @@ function AdminCompanies() {
           <p className="truncate text-xs text-ink-muted">{row.owner?.email ?? ''}</p>
           {row.owner && !row.owner.has_password ? (
             <span className="mt-1 inline-flex items-center gap-1 text-[11px] font-medium text-amber-600">
-              <Send className="h-3 w-3" /> Invite pending
+              <Send className="h-3 w-3" /> {t('companies.invite_pending', 'Invite pending')}
             </span>
           ) : null}
         </div>
@@ -210,7 +221,7 @@ function AdminCompanies() {
           <Badge status={row.status.toUpperCase()} />
           {row.users_count !== undefined ? (
             <span className="text-[11px] text-ink-muted">
-              {row.users_count} {row.users_count === 1 ? 'user' : 'users'}
+              {tp('admin.users_count', '{count} user|{count} users', row.users_count)}
             </span>
           ) : null}
         </div>
@@ -324,7 +335,7 @@ function AdminCompanies() {
         page={meta?.current_page}
         pageCount={meta?.last_page}
         onPageChange={setPage}
-        summary={meta ? `${meta.total} total` : undefined}
+        summary={meta ? t('common.total_count', '{count} total', { count: meta.total }) : undefined}
         rowActionsVisible
         empty={
           <EmptyState
@@ -349,7 +360,7 @@ function AdminCompanies() {
         loading={statusMutation.isPending}
         tone="warning"
         title={t('admin.suspendTitle', 'Suspend this company?')}
-        description={`${suspending?.name ?? ''} will not be able to sign in until you reactivate it. Nothing is deleted.`}
+        description={t('companyDetail.suspend_body', '{name} will not be able to sign in until you reactivate it. Nothing is deleted.', { name: suspending?.name ?? '' })}
         confirmLabel={t('admin.suspend', 'Suspend')}
       />
 
@@ -359,7 +370,7 @@ function AdminCompanies() {
         onConfirm={() => cancelling?.active_subscription && cancelMutation.mutate(cancelling.active_subscription.id)}
         loading={cancelMutation.isPending}
         title={t('admin.cancelSubscription', 'Cancel subscription')}
-        description={`${cancelling?.name ?? ''} loses access to the workspace as soon as this is cancelled.`}
+        description={t('companies.cancel_body', '{name} loses access to the workspace as soon as this is cancelled.', { name: cancelling?.name ?? '' })}
         confirmLabel={t('admin.cancelSubscription', 'Cancel subscription')}
       />
     </>

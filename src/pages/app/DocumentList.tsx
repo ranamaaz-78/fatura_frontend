@@ -358,7 +358,7 @@ export function DocumentList({ type }: { type: IssuableType }) {
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat
-          label={t('sales.documents', 'Documents')}
+          label={t('sales.documentsTitle', 'Documents')}
           value={counts.all}
           hint={t('sales.issuedSoFar', 'Issued so far')}
           tile="bg-brand-50 text-brand-600"

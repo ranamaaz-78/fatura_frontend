@@ -12,12 +12,12 @@ import { resetPassword } from '../../services/auth'
 
 const schema = z
   .object({
-    password: z.string().min(8, 'Use at least 8 characters.'),
-    password_confirmation: z.string().min(1, 'Repeat your password.'),
+    password: z.string().min(8, t('settings.passwordRule', 'Use at least 8 characters.')),
+    password_confirmation: z.string().min(1, t('resetPassword.repeat_your_password', 'Repeat your password.')),
   })
   .refine((values) => values.password === values.password_confirmation, {
     path: ['password_confirmation'],
-    message: 'Passwords do not match.',
+    message: t('resetPassword.passwords_do_not_match', 'Passwords do not match.'),
   })
 
 type ResetForm = z.infer<typeof schema>

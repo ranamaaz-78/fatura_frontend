@@ -2,7 +2,7 @@ import { ArrowRight, Check } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { t } from '../../i18n'
 import { cn } from '../../lib/cn'
-import { formatPlanPrice } from '../../lib/format'
+import { formatPlanPrice, formatInterval } from '../../lib/format'
 import type { Plan } from '../../types/module01'
 
 type PlanCardProps = {
@@ -42,7 +42,7 @@ export function PlanCard({ plan, tone = 'onLight', className }: PlanCardProps) {
         <span className="text-[56px] leading-none font-extrabold tracking-[-0.04em] text-[#0b1c30] sm:text-[64px]">
           {formatPlanPrice(plan.price, plan.currency)}
         </span>
-        <span className="text-[17px] font-medium text-[#434655]">/ {plan.interval}</span>
+        <span className="text-[17px] font-medium text-[#434655]">/ {formatInterval(plan.interval)}</span>
       </div>
       <p className="mt-2 text-[13px] text-[#64748b]">
         {t('public.pricingBilling', 'Billed per period. No setup fee.')}

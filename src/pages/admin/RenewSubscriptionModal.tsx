@@ -6,7 +6,7 @@ import { Modal } from '../../components/ui/Modal'
 import { Select } from '../../components/ui/Select'
 import { useToast } from '../../components/ui/Toast'
 import { t } from '../../i18n'
-import { formatCurrency, formatDate } from '../../lib/format'
+import { formatCurrency, formatDate, formatInterval } from '../../lib/format'
 import { getErrorMessage } from '../../services/api'
 import { startSubscription } from '../../services/admin/companies'
 import { listPaymentMethods } from '../../services/admin/paymentMethods'
@@ -89,7 +89,7 @@ export function RenewSubscriptionModal({ company, onClose }: RenewSubscriptionMo
           <option value="">—</option>
           {(plansQuery.data ?? []).map((item) => (
             <option key={item.id} value={item.id}>
-              {item.name} — {formatCurrency(item.price, item.currency, 'en-US')} / {item.interval}
+              {item.name} — {formatCurrency(item.price, item.currency)} / {formatInterval(item.interval)}
             </option>
           ))}
         </Select>
@@ -118,13 +118,17 @@ export function RenewSubscriptionModal({ company, onClose }: RenewSubscriptionMo
         <div className="mt-5 rounded-xl border border-line bg-page p-4 text-sm">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <span className="text-ink-muted">
-              {sameAsCurrent ? 'Continues from' : 'Starts'} {formatDate(startsOn)}
+              {sameAsCurrent
+                ? t('renewSubscriptionModal.continues_from', 'Continues from {date}', { date: formatDate(startsOn) })
+                : t('renewSubscriptionModal.starts', 'Starts {date}', { date: formatDate(startsOn) })}
             </span>
-            <span className="font-semibold text-ink">Ends {formatDate(endsOn)}</span>
+            <span className="font-semibold text-ink">{t('renewSubscriptionModal.ends_on', 'Ends {date}', { date: formatDate(endsOn) })}</span>
           </div>
           {methodId ? (
             <p className="mt-2 text-xs text-ink-muted">
-              A payment of {formatCurrency(plan.price * count, plan.currency, 'en-US')} will be recorded.
+              {t('renewSubscriptionModal.payment_recorded', 'A payment of {amount} will be recorded.', {
+                amount: formatCurrency(plan.price * count, plan.currency),
+              })}
             </p>
           ) : null}
         </div>

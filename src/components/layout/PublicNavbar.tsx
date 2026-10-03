@@ -6,6 +6,7 @@ import { cn } from '../../lib/cn'
 import { useActiveSection, useScrolled } from '../../pages/public/landing/hooks'
 import { LANDING_SECTIONS } from '../../pages/public/landing/sections'
 import { Logo } from '../brand/Logo'
+import { LanguageSwitcher } from '../ui/LanguageSwitcher'
 import { Tooltip } from '../ui/Tooltip'
 
 /** The site is one page, so every link scrolls to a section of it. */
@@ -36,7 +37,7 @@ export function PublicNavbar() {
           : 'border-b border-transparent',
       )}
     >
-      <div className="mx-auto flex h-20 max-w-[1200px] items-center justify-between gap-6 px-5">
+      <div className="mx-auto flex h-20 max-w-[1320px] items-center justify-between gap-4 px-5">
         <a href="#top" onClick={() => setOpen(false)} className="flex shrink-0 items-center" aria-label={t('app.name', 'YK Digital Solutions')}>
           <Logo on={solid ? 'light' : 'dark'} className="h-12 sm:h-14" />
         </a>
@@ -50,7 +51,7 @@ export function PublicNavbar() {
                 href={`#${link.id}`}
                 aria-current={on ? 'true' : undefined}
                 className={cn(
-                  'relative rounded-lg px-3.5 py-2 text-[15px] font-medium transition-colors',
+                  'relative rounded-lg px-2.5 py-2 text-[15px] font-medium whitespace-nowrap transition-colors 2xl:px-3.5',
                   solid
                     ? on
                       ? 'text-[#004ac6]'
@@ -64,7 +65,7 @@ export function PublicNavbar() {
                 <span
                   aria-hidden="true"
                   className={cn(
-                    'absolute right-3.5 -bottom-0.5 left-3.5 h-0.5 origin-left rounded-full transition-transform duration-300',
+                    'absolute right-2.5 -bottom-0.5 left-2.5 h-0.5 2xl:right-3.5 2xl:left-3.5 origin-left rounded-full transition-transform duration-300',
                     solid ? 'bg-[#004ac6]' : 'bg-[#4edea3]',
                     on ? 'scale-x-100' : 'scale-x-0',
                   )}
@@ -74,11 +75,12 @@ export function PublicNavbar() {
           })}
         </nav>
 
-        <div className="hidden items-center gap-3 md:flex">
+        <div className="hidden shrink-0 items-center gap-2 md:flex">
+          <LanguageSwitcher tone={solid ? 'light' : 'dark'} />
           <Link
             to="/login"
             className={cn(
-              'px-4 py-2.5 text-[15px] font-semibold transition-colors',
+              'px-3 py-2.5 text-[15px] font-semibold whitespace-nowrap transition-colors',
               solid ? 'text-[#434655] hover:text-[#004ac6]' : 'text-white hover:text-[#cbd5e1]',
             )}
           >
@@ -86,7 +88,7 @@ export function PublicNavbar() {
           </Link>
           <Link
             to="/apply"
-            className="inline-flex h-11 items-center rounded-[10px] bg-[#004ac6] px-5 text-[15px] font-semibold text-white shadow-[0_8px_20px_rgba(0,74,198,0.3)] transition-all hover:-translate-y-px hover:bg-[#2563eb]"
+            className="inline-flex h-11 items-center rounded-[10px] bg-[#004ac6] px-5 text-[15px] font-semibold whitespace-nowrap text-white shadow-[0_8px_20px_rgba(0,74,198,0.3)] transition-all hover:-translate-y-px hover:bg-[#2563eb]"
           >
             {t('public.applyNow', 'Apply now')}
           </Link>
@@ -122,6 +124,7 @@ export function PublicNavbar() {
               </a>
             ))}
             <div className="mt-2 flex flex-col gap-2.5 border-t border-[#e5eeff] pt-4">
+              <LanguageSwitcher tone="light" className="justify-center" />
               <Link
                 to="/login"
                 onClick={() => setOpen(false)}

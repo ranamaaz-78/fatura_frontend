@@ -28,7 +28,7 @@ export type DocumentRules = {
 
 const RULES: Record<SaleType, DocumentRules> = {
   factura: {
-    title: 'Invoice',
+    title: t('nav.invoice', 'Invoice'),
     allowsRecargo: true,
     movesStock: true,
     carriesTax: true,
@@ -56,7 +56,7 @@ const RULES: Record<SaleType, DocumentRules> = {
     listPath: '/app/delivery-notes',
   },
   quotation: {
-    title: 'Quotation',
+    title: t('sales.typeQuotation', 'Quotation'),
     allowsRecargo: true,
     movesStock: false,
     carriesTax: true,
@@ -70,7 +70,7 @@ const RULES: Record<SaleType, DocumentRules> = {
     listPath: '/app/quotes',
   },
   proforma: {
-    title: 'Proforma',
+    title: t('sales.typeProforma', 'Proforma'),
     allowsRecargo: false,
     movesStock: true,
     carriesTax: false,
@@ -84,7 +84,7 @@ const RULES: Record<SaleType, DocumentRules> = {
     listPath: '/app/proformas',
   },
   abono: {
-    title: 'Abono',
+    title: t('sales.typeAbono', 'Abono'),
     allowsRecargo: false,
     movesStock: true,
     carriesTax: true,

@@ -10,8 +10,8 @@ import { t } from '../../i18n'
 import { getErrorMessage, mapValidationErrors } from '../../services/api'
 
 const schema = z.object({
-  email: z.email('Enter a valid email address.'),
-  password: z.string().min(1, 'Enter your password.'),
+  email: z.email(t('setup.emailInvalid', 'Enter a valid email address.')),
+  password: z.string().min(1, t('login.enter_your_password', 'Enter your password.')),
 })
 
 type LoginForm = z.infer<typeof schema>
@@ -62,7 +62,7 @@ function Login() {
           type="email"
           autoComplete="email"
           required
-          placeholder="you@business.com"
+          placeholder={t('forgotPassword.you_business_com', 'you@business.com')}
           error={errors.email?.message}
           {...register('email')}
         />

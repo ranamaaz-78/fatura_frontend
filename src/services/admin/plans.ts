@@ -3,6 +3,9 @@ import { api, unwrap } from '../api'
 
 export type PlanInput = {
   name: string
+  name_es?: string | null
+  description_es?: string | null
+  features_es?: string[]
   description?: string
   price: number
   currency: string

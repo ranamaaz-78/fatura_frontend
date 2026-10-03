@@ -2,6 +2,7 @@ import { Barcode, BarChart3, BadgeCheck, Boxes, MessageCircle, ScanLine, Users, 
 import type { ReactNode } from 'react'
 import { BarcodeSvg } from '../../../components/ui/BarcodeSvg'
 import { t } from '../../../i18n'
+import { formatCurrency } from '../../../lib/format'
 import { cn } from '../../../lib/cn'
 import { Reveal } from './hooks'
 
@@ -76,8 +77,8 @@ function ScanVisual() {
       </div>
       <div className="flex flex-col gap-2 text-[13px]">
         {[
-          ['HDMI cable 2 m', 'x2'],
-          ['USB-C charger', 'x1'],
+          [t('mockups.hdmi_cable', 'HDMI cable 2 m'), 'x2'],
+          [t('mockups.usb_c_charger', 'USB-C charger'), 'x1'],
         ].map(([name, qty], index) => (
           <span
             key={name}
@@ -97,9 +98,9 @@ function ScanVisual() {
 
 function StockVisual() {
   const rows = [
-    { name: 'Cordless drill 18 V', value: 78, tone: 'bg-[#004ac6]' },
-    { name: 'Work gloves, L', value: 46, tone: 'bg-[#004ac6]' },
-    { name: 'Wood screws 4 x 40', value: 12, tone: 'bg-amber-500' },
+    { name: t('sample.drill_short', 'Cordless drill 18 V'), value: 78, tone: 'bg-[#004ac6]' },
+    { name: t('sample.gloves_short', 'Work gloves, L'), value: 46, tone: 'bg-[#004ac6]' },
+    { name: t('sample.screws_short', 'Wood screws 4 x 40'), value: 12, tone: 'bg-amber-500' },
   ]
   return (
     <div className="flex w-full flex-col gap-3.5">
@@ -128,7 +129,7 @@ function LabelVisual() {
   return (
     <div className="w-full rounded-2xl border border-dashed border-[#c3d4ff] bg-[#f8f9ff] p-4">
       <div className="mx-auto w-full max-w-[210px] rounded-lg border border-[#e5eeff] bg-white px-4 pt-3 pb-2 shadow-sm">
-        <span className="block text-[11px] font-bold text-[#0b1c30]">USB-C charger 65 W</span>
+        <span className="block text-[11px] font-bold text-[#0b1c30]">{t('featureBento.usb_c_charger_65_w', 'USB-C charger 65 W')}</span>
         <BarcodeSvg code="8412345678905" className="mt-1 h-[58px] w-full" />
       </div>
     </div>
@@ -137,9 +138,9 @@ function LabelVisual() {
 
 function PeopleVisual() {
   const rows = [
-    { name: 'Taller Rivas', tag: 'Owes €245.60', tone: 'bg-amber-50 text-amber-700', initials: 'TR' },
-    { name: 'Luna Textiles', tag: 'Paid', tone: 'bg-emerald-50 text-emerald-700', initials: 'LT' },
-    { name: 'Gráficas Sur', tag: 'Paid', tone: 'bg-emerald-50 text-emerald-700', initials: 'GS' },
+    { name: 'Taller Rivas', tag: t('featureBento.owes', 'Owes {amount}', { amount: formatCurrency(245.6, 'EUR') }), tone: 'bg-amber-50 text-amber-700', initials: 'TR' },
+    { name: 'Luna Textiles', tag: t('status.PAID', 'Paid'), tone: 'bg-emerald-50 text-emerald-700', initials: 'LT' },
+    { name: 'Gráficas Sur', tag: t('status.PAID', 'Paid'), tone: 'bg-emerald-50 text-emerald-700', initials: 'GS' },
   ]
   return (
     <div className="flex w-full flex-col gap-2">
@@ -218,8 +219,8 @@ function ShareVisual() {
           PDF
         </span>
         <span className="min-w-0">
-          <span className="block truncate font-semibold">F-2026-0185.pdf</span>
-          <span className="block text-[11px] text-[#5b6b5b]">2 pages · sent ✓✓</span>
+          <span className="block truncate font-semibold">{t('featureBento.f_2026_0185_pdf', 'F-2026-0185.pdf')}</span>
+          <span className="block text-[11px] text-[#5b6b5b]">{t('featureBento.2_pages_sent', '2 pages · sent ✓✓')}</span>
         </span>
       </span>
     </div>
@@ -251,8 +252,8 @@ export function FeatureBento() {
             tone="navy"
             span="lg:col-span-3"
             delay={0}
-            title="Scan and sell"
-            body="Use a USB or Bluetooth scanner at the counter, or your phone camera anywhere. Scan the same item twice and the quantity goes up."
+            title={t('featureBento.scan_and_sell', 'Scan and sell')}
+            body={t('featureBento.use_a_usb_or_bluetooth_scanner_at_the', 'Use a USB or Bluetooth scanner at the counter, or your phone camera anywhere. Scan the same item twice and the quantity goes up.')}
           >
             <ScanVisual />
           </Card>
@@ -260,8 +261,8 @@ export function FeatureBento() {
             icon={Boxes}
             span="lg:col-span-3"
             delay={80}
-            title="Stock you can trust"
-            body="Every sale and purchase moves stock with a full history. Low stock alerts tell you what to reorder before the shelf is empty."
+            title={t('featureBento.stock_you_can_trust', 'Stock you can trust')}
+            body={t('featureBento.every_sale_and_purchase_moves_stock_with_a', 'Every sale and purchase moves stock with a full history. Low stock alerts tell you what to reorder before the shelf is empty.')}
           >
             <StockVisual />
           </Card>
@@ -270,8 +271,8 @@ export function FeatureBento() {
             icon={Barcode}
             span="lg:col-span-2"
             delay={0}
-            title="Barcode labels"
-            body="Import your catalog from Excel, generate barcodes for items that have none, and print sharp label sheets."
+            title={t('featureBento.barcode_labels', 'Barcode labels')}
+            body={t('featureBento.import_your_catalog_from_excel_generate', 'Import your catalog from Excel, generate barcodes for items that have none, and print sharp label sheets.')}
           >
             <LabelVisual />
           </Card>
@@ -279,8 +280,8 @@ export function FeatureBento() {
             icon={Users}
             span="lg:col-span-2"
             delay={80}
-            title="Customers and suppliers"
-            body="See who owes you and every document you exchanged. Record payments against invoices in seconds."
+            title={t('featureBento.customers_and_suppliers', 'Customers and suppliers')}
+            body={t('featureBento.see_who_owes_you_and_every_document_you', 'See who owes you and every document you exchanged. Record payments against invoices in seconds.')}
           >
             <PeopleVisual />
           </Card>
@@ -288,8 +289,8 @@ export function FeatureBento() {
             icon={BarChart3}
             span="md:col-span-2 lg:col-span-2"
             delay={160}
-            title="Reports that answer"
-            body="Sales by day, best sellers, unpaid invoices and stock value, ready to export to Excel."
+            title={t('featureBento.reports_that_answer', 'Reports that answer')}
+            body={t('featureBento.sales_by_day_best_sellers_unpaid_invoices', 'Sales by day, best sellers, unpaid invoices and stock value, ready to export to Excel.')}
           >
             <ReportVisual />
           </Card>
@@ -299,8 +300,8 @@ export function FeatureBento() {
             tone="blue"
             span="lg:col-span-3"
             delay={0}
-            title="Ready for Spanish tax"
-            body="Set your own IVA rates, add recargo de equivalencia on invoices and quotations, and keep N.I.F / N.I.E on every client."
+            title={t('featureBento.ready_for_spanish_tax', 'Ready for Spanish tax')}
+            body={t('featureBento.set_your_own_iva_rates_add_recargo_de', 'Set your own IVA rates, add recargo de equivalencia on invoices and quotations, and keep N.I.F / N.I.E on every client.')}
           >
             <TaxVisual />
           </Card>
@@ -308,8 +309,8 @@ export function FeatureBento() {
             icon={MessageCircle}
             span="lg:col-span-3"
             delay={80}
-            title="Share on WhatsApp"
-            body="Send the PDF to your customer straight from the sale, or download it as an image. Your logo and colours come with it."
+            title={t('featureBento.share_on_whatsapp', 'Share on WhatsApp')}
+            body={t('featureBento.send_the_pdf_to_your_customer_straight', 'Send the PDF to your customer straight from the sale, or download it as an image. Your logo and colours come with it.')}
           >
             <ShareVisual />
           </Card>

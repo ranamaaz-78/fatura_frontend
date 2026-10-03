@@ -1,7 +1,7 @@
 import { formatCurrency } from './format'
 
 export function formatCents(cents: number, currency: string): string {
-  return formatCurrency(cents / 100, currency, 'en-US')
+  return formatCurrency(cents / 100, currency)
 }
 
 /** Cents back to the text an amount input shows, always with two decimals. */

@@ -7,6 +7,7 @@ import { A4_CSS_HEIGHT, A4_CSS_WIDTH, downloadSheetImage, downloadSheetPdf, gene
 import { getPrintTemplates, loadLogoBlob } from '../services/printables'
 import { waitForPrintFont } from './printFonts'
 import { pickPrintTemplate } from './printTheme'
+import { t } from '../i18n'
 
 function waitForPaint(): Promise<void> {
   return new Promise((resolve) => {
@@ -26,7 +27,7 @@ async function waitForSheetNode(host: HTMLElement): Promise<HTMLElement> {
     }
     await new Promise((resolve) => window.setTimeout(resolve, 20))
   }
-  throw new Error('The document sheet is not on the page.')
+  throw new Error(t('downloadSheetImage.the_document_sheet_is_not_on_the_page', 'The document sheet is not on the page.'))
 }
 
 export async function downloadSaleDocumentSheet(

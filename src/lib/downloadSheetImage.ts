@@ -1,5 +1,6 @@
 import { toBlob, toJpeg } from 'html-to-image'
 import { jsPDF } from 'jspdf'
+import { t } from '../i18n'
 
 /** On-screen A4 frame (210mm × 297mm at 96dpi). */
 export const A4_CSS_WIDTH = 794
@@ -44,7 +45,7 @@ const captureOptions = {
 
 function asError(error: unknown): Error {
   if (error instanceof Error) return error
-  return new Error('Could not render the document.')
+  return new Error(t('downloadSheetImage.could_not_render_the_document', 'Could not render the document.'))
 }
 
 export async function captureSheetPngBlob(node: HTMLElement): Promise<Blob> {
@@ -54,7 +55,7 @@ export async function captureSheetPngBlob(node: HTMLElement): Promise<Blob> {
       toBlob(node, captureOptions),
       withTimeout(12000).then(() => null),
     ])
-    if (!blob) throw new Error('Could not render the document.')
+    if (!blob) throw new Error(t('downloadSheetImage.could_not_render_the_document', 'Could not render the document.'))
     return blob
   } catch (error) {
     throw asError(error)
@@ -73,7 +74,7 @@ function blobToDataUrl(blob: Blob): Promise<string> {
 function sheetNode(node?: HTMLElement | null): HTMLElement {
   const target = node ?? document.getElementById('printable-invoice')
   if (!target) {
-    throw new Error('The document sheet is not on the page.')
+    throw new Error(t('downloadSheetImage.the_document_sheet_is_not_on_the_page', 'The document sheet is not on the page.'))
   }
   return target
 }
@@ -110,7 +111,7 @@ export async function generateSheetPdfBase64(node?: HTMLElement | null): Promise
     toJpeg(target, { ...captureOptions, quality: 0.88 }),
     withTimeout(12000).then(() => null),
   ])
-  if (!jpegDataUrl) throw new Error('Could not render the document for WhatsApp.')
+  if (!jpegDataUrl) throw new Error(t('downloadSheetImage.could_not_render_the_document_for_whatsapp', 'Could not render the document for WhatsApp.'))
   const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true })
   pdf.addImage(jpegDataUrl, 'JPEG', 0, 0, 210, 297, undefined, 'FAST')
   return pdf.output('datauristring')

@@ -6,6 +6,7 @@ import { Controller, useForm, useWatch, type UseFormRegisterReturn } from 'react
 import { Link, useSearchParams } from 'react-router-dom'
 import { z } from 'zod'
 import { Logo } from '../../components/brand/Logo'
+import { LanguageSwitcher } from '../../components/ui/LanguageSwitcher'
 import { Modal } from '../../components/ui/Modal'
 import { OtpInput } from '../../components/ui/OtpInput'
 import { PublicFieldShell, PublicInput, PublicSelect, PublicTextarea, publicControlClass } from '../../components/ui/PublicField'
@@ -23,7 +24,7 @@ import {
   isPossibleNumber,
   localDigits,
 } from '../../lib/countries'
-import { formatPlanPrice } from '../../lib/format'
+import { formatPlanPrice, formatInterval } from '../../lib/format'
 import { supportWhatsappUrl } from '../../lib/support'
 import { getErrorMessage, mapValidationErrors } from '../../services/api'
 import { requestApplicationOtp, submitApplication, type ApplicationInput } from '../../services/applications'
@@ -38,25 +39,25 @@ const ASIDE_BACKGROUND = {
 }
 
 const STEPS = [
-  { title: 'Send your application', body: 'You are here. Takes about two minutes.' },
-  { title: 'We contact you', body: 'By phone or WhatsApp within one working day.' },
-  { title: 'Get your login', body: 'Link by email and WhatsApp, and you are live.' },
+  { title: t('apply.send_your_application', 'Send your application'), body: t('apply.you_are_here_takes_about_two_minutes', 'You are here. Takes about two minutes.') },
+  { title: t('apply.we_contact_you', 'We contact you'), body: t('apply.by_phone_or_whatsapp_within_one_working', 'By phone or WhatsApp within one working day.') },
+  { title: t('apply.get_your_login', 'Get your login'), body: t('apply.link_by_email_and_whatsapp_and_you_are', 'Link by email and WhatsApp, and you are live.') },
 ]
 
 const schema = z
   .object({
-    contact_name: z.string().trim().min(2, 'Tell us your name.').max(255),
-    company_name: z.string().trim().min(2, 'Tell us your business name.').max(255),
-    email: z.email('Enter a valid email address.').max(255),
-    country: z.string().trim().min(1, 'Pick your country.').max(120),
+    contact_name: z.string().trim().min(2, t('apply.tell_us_your_name', 'Tell us your name.')).max(255),
+    company_name: z.string().trim().min(2, t('apply.tell_us_your_business_name', 'Tell us your business name.')).max(255),
+    email: z.email(t('setup.emailInvalid', 'Enter a valid email address.')).max(255),
+    country: z.string().trim().min(1, t('apply.pick_your_country', 'Pick your country.')).max(120),
     city: z.string().trim().max(120).optional(),
     dial_code: z.string().trim().min(2),
-    phone: z.string().trim().min(1, 'Enter a phone number we can reach you on.').max(40),
+    phone: z.string().trim().min(1, t('apply.enter_a_phone_number_we_can_reach_you_on', 'Enter a phone number we can reach you on.')).max(40),
     whatsapp_same: z.boolean(),
     whatsapp_dial_code: z.string().trim().min(2),
     whatsapp: z.string().trim().max(40).optional(),
     message: z.string().trim().max(2000).optional(),
-    consent: z.literal(true, { message: 'Please accept so we can contact you.' }),
+    consent: z.literal(true, { message: t('apply.please_accept_so_we_can_contact_you', 'Please accept so we can contact you.') }),
     website: z.string().max(255).optional(),
   })
   .superRefine((values, ctx) => {
@@ -64,7 +65,7 @@ const schema = z
       ctx.addIssue({
         code: 'custom',
         path: ['phone'],
-        message: 'That number does not look right for the selected country.',
+        message: t('apply.that_number_does_not_look_right_for_the', 'That number does not look right for the selected country.'),
       })
     }
     if (values.whatsapp_same) return
@@ -72,13 +73,13 @@ const schema = z
       ctx.addIssue({
         code: 'custom',
         path: ['whatsapp'],
-        message: 'Enter your WhatsApp number, or switch back to "Same as phone".',
+        message: t('apply.enter_your_whatsapp_number_or_switch_back', 'Enter your WhatsApp number, or switch back to "Same as phone".'),
       })
     } else if (!isPossibleNumber(values.whatsapp_dial_code, values.whatsapp)) {
       ctx.addIssue({
         code: 'custom',
         path: ['whatsapp'],
-        message: 'That WhatsApp number does not look right for the selected code.',
+        message: t('apply.that_whatsapp_number_does_not_look_right', 'That WhatsApp number does not look right for the selected code.'),
       })
     }
   })
@@ -133,7 +134,7 @@ function SelectedPlanCard({ plan, canChange }: { plan: Plan | null; canChange: b
               <span className="text-[28px] font-extrabold tracking-[-0.03em] text-white">
                 {formatPlanPrice(plan.price, plan.currency)}
               </span>
-              <span className="text-sm text-[#cbd5e1]"> / {plan.interval}</span>
+              <span className="text-sm text-[#cbd5e1]"> / {formatInterval(plan.interval)}</span>
             </span>
           </div>
           <p className="mt-2 text-[13px] leading-relaxed text-[#cbd5e1]">
@@ -409,7 +410,8 @@ function Apply() {
       </aside>
 
       <main className="flex flex-1 flex-col px-5 py-10 sm:px-10 lg:px-18">
-        <div className="flex items-center justify-end gap-5 text-sm">
+        <div className="flex flex-wrap items-center justify-end gap-5 text-sm">
+          <LanguageSwitcher tone="light" />
           <Link to="/" className="inline-flex items-center gap-1.5 font-semibold text-[#434655] hover:text-[#004ac6]">
             <ChevronLeft className="h-4 w-4" />
             {t('public.backHome', 'Back to home')}
@@ -441,7 +443,7 @@ function Apply() {
               label={t('apply.contactName', 'Full name')}
               required
               autoComplete="name"
-              placeholder="e.g. Javier Moreno"
+              placeholder={t('apply.e_g_javier_moreno', 'e.g. Javier Moreno')}
               error={errors.contact_name?.message}
               {...register('contact_name')}
             />
@@ -449,7 +451,7 @@ function Apply() {
               label={t('apply.companyName', 'Business name')}
               required
               autoComplete="organization"
-              placeholder="e.g. Ferretería Moreno S.L."
+              placeholder={t('apply.e_g_ferreteria_moreno_s_l', 'e.g. Ferretería Moreno S.L.')}
               error={errors.company_name?.message}
               {...register('company_name')}
             />
@@ -470,7 +472,7 @@ function Apply() {
             <PublicInput
               label={t('apply.city', 'City')}
               autoComplete="address-level2"
-              placeholder="e.g. Madrid"
+              placeholder={t('apply.e_g_madrid', 'e.g. Madrid')}
               error={errors.city?.message}
               {...register('city')}
             />
@@ -480,7 +482,7 @@ function Apply() {
               type="email"
               required
               autoComplete="email"
-              placeholder="you@business.es"
+              placeholder={t('apply.you_business_es', 'you@business.es')}
               error={errors.email?.message}
               {...register('email')}
             />
@@ -563,7 +565,7 @@ function Apply() {
                           className="h-[22px] w-[22px] shrink-0 accent-[#004ac6]"
                         />
                         <span className="flex-1">
-                          <span className="block text-[15px] font-bold">{plan.name} plan</span>
+                          <span className="block text-[15px] font-bold">{plan.name} {t('apply.plan', 'plan')}</span>
                           {plan.description ? (
                             <span className="block text-[13px] text-[#434655]">{plan.description}</span>
                           ) : null}
@@ -572,7 +574,7 @@ function Apply() {
                           <span className="text-[22px] font-extrabold tracking-[-0.02em]">
                             {formatPlanPrice(plan.price, plan.currency)}
                           </span>
-                          <span className="text-[13px] text-[#434655]"> / {plan.interval}</span>
+                          <span className="text-[13px] text-[#434655]"> / {formatInterval(plan.interval)}</span>
                         </span>
                       </label>
                     )
@@ -586,7 +588,7 @@ function Apply() {
               label={t('apply.message', 'Anything we should know?')}
               optional
               rows={3}
-              placeholder="e.g. We have around 800 products in an Excel sheet and two shops in Valencia."
+              placeholder={t('apply.e_g_we_have_around_800_products_in_an', 'e.g. We have around 800 products in an Excel sheet and two shops in Valencia.')}
               error={errors.message?.message}
               {...register('message')}
             />
@@ -615,7 +617,7 @@ function Apply() {
 
           {/* Honeypot: hidden from people, irresistible to bots. */}
           <div aria-hidden="true" className="absolute left-[-9999px] h-0 w-0 overflow-hidden">
-            <label htmlFor="website">Website</label>
+            <label htmlFor="website">{t('apply.website', 'Website')}</label>
             <input id="website" type="text" tabIndex={-1} autoComplete="off" {...register('website')} />
           </div>
 

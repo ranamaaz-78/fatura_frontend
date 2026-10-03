@@ -1,4 +1,5 @@
 import axios, { isAxiosError } from 'axios'
+import { getLocale, t } from '../i18n'
 import type { ApiSuccess } from '../types/api'
 
 const TOKEN_KEY = 'token'
@@ -24,6 +25,7 @@ export const api = axios.create({
 api.interceptors.request.use((config) => {
   const token = getAuthToken()
   if (token) config.headers.Authorization = `Bearer ${token}`
+  config.headers['Accept-Language'] = getLocale()
   return config
 })
 
@@ -58,7 +60,7 @@ export async function unwrap<T>(promise: Promise<{ data: ApiSuccess<T> }>): Prom
   return response.data.data
 }
 
-export function getErrorMessage(error: unknown, fallback = 'Something went wrong'): string {
+export function getErrorMessage(error: unknown, fallback = t('common.error', 'Something went wrong')): string {
   if (isAxiosError(error)) {
     const data = error.response?.data as { message?: string } | undefined
     return data?.message || error.message || fallback

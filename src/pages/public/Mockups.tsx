@@ -11,29 +11,31 @@ import {
   Users,
 } from 'lucide-react'
 import markImage from '../../assets/brand/mark.png'
+import { t } from '../../i18n'
+import { formatCurrency } from '../../lib/format'
 
 /**
  * Decorative product shots. Nothing here is real data.
  */
 
 const INVOICES = [
-  { number: 'F-2026/0184', customer: 'Rivas Workshop', total: '$245.60', status: 'Paid' },
-  { number: 'F-2026/0183', customer: 'Luna Fabrics', total: '$318.20', status: 'Pending' },
-  { number: 'F-2026/0182', customer: 'Casa Mora', total: '$92.00', status: 'Paid' },
+  { number: 'F-2026/0184', customer: 'Taller Rivas', total: formatCurrency(245.6, 'EUR'), paid: true },
+  { number: 'F-2026/0183', customer: 'Luna Textiles', total: formatCurrency(318.2, 'EUR'), paid: false },
+  { number: 'F-2026/0182', customer: 'Casa Mora', total: formatCurrency(92, 'EUR'), paid: true },
 ]
 
 const LOW_STOCK = [
-  { name: 'USB-C charger 65 W', left: 2, of: 20 },
-  { name: 'HDMI cable 2 m', left: 5, of: 30 },
-  { name: 'Label sheet A4', left: 7, of: 25 },
+  { name: t('featureBento.usb_c_charger_65_w', 'USB-C charger 65 W'), left: 2, of: 20 },
+  { name: t('mockups.hdmi_cable', 'HDMI cable 2 m'), left: 5, of: 30 },
+  { name: t('mockups.label_sheet', 'Label sheet A4'), left: 7, of: 25 },
 ]
 
 const NAV = [
-  { icon: LayoutDashboard, label: 'Dashboard', active: true },
-  { icon: Receipt, label: 'Invoices', active: false },
-  { icon: Package, label: 'Products', active: false },
-  { icon: Users, label: 'Customers', active: false },
-  { icon: BarChart3, label: 'Reports', active: false },
+  { icon: LayoutDashboard, label: t('nav.dashboard', 'Dashboard'), active: true },
+  { icon: Receipt, label: t('nav.invoices', 'Invoices'), active: false },
+  { icon: Package, label: t('products.kpiProducts', 'Products'), active: false },
+  { icon: Users, label: t('mockups.customers', 'Customers'), active: false },
+  { icon: BarChart3, label: t('nav.reports', 'Reports'), active: false },
 ]
 
 const WEEK = [
@@ -104,7 +106,7 @@ function SalesChart() {
       <g transform={`translate(${peak.x - 34} ${peak.y - 28})`}>
         <rect width="68" height="20" rx="6" fill="#0b1c30" />
         <text x="34" y="13.5" textAnchor="middle" fontSize="10" fontWeight="700" fill="#ffffff">
-          $1,842.50
+          {formatCurrency(1842.5, 'EUR')}
         </text>
       </g>
     </svg>
@@ -122,7 +124,7 @@ export function HeroMockup() {
           <span className="h-2.5 w-2.5 rounded-full bg-emerald-300" />
           <span className="ml-4 flex h-5 max-w-[260px] flex-1 items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2 text-[10px] text-[#64748b]">
             <Lock className="h-2.5 w-2.5" />
-            app.ykdigitalsolutions.com/dashboard
+            {t('mockups.app_ykdigitalsolutions_com_dashboard', 'app.ykdigitalsolutions.com/dashboard')}
           </span>
         </div>
 
@@ -144,32 +146,32 @@ export function HeroMockup() {
             ))}
             <span className="mt-auto hidden items-center gap-2 rounded-lg bg-white/6 px-2 py-2 sm:flex">
               <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-[#004ac6] text-[8px] font-bold text-white">
-                AM
+                {t('mockups.am', 'AM')}
               </span>
-              <span className="text-[10px] font-medium text-slate-300">Ana Mora</span>
+              <span className="text-[10px] font-medium text-slate-300">{t('mockups.ana_mora', 'Ana Mora')}</span>
             </span>
           </div>
 
           <div className="flex min-w-0 flex-1 flex-col gap-3 bg-slate-50 p-3.5 sm:p-4">
             <div className="flex items-center justify-between gap-2">
               <div className="min-w-0">
-                <span className="block truncate text-[13px] font-bold text-slate-900">Good morning, Ana</span>
-                <span className="block text-[10px] text-[#64748b]">Here is how the shop is doing today</span>
+                <span className="block truncate text-[13px] font-bold text-slate-900">{t('mockups.good_morning_ana', 'Good morning, Ana')}</span>
+                <span className="block text-[10px] text-[#64748b]">{t('mockups.here_is_how_the_shop_is_doing_today', 'Here is how the shop is doing today')}</span>
               </div>
               <span className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-[#004ac6] px-2.5 py-1.5 text-[10px] font-semibold text-white">
-                <Plus className="h-3 w-3" /> New invoice
+                <Plus className="h-3 w-3" /> {t('dashboard.newInvoice', 'New invoice')}
               </span>
             </div>
 
             <div className="grid grid-cols-3 gap-2">
-              <Kpi label="Sales today" value="$1,842" delta="12% vs last week" tone="up" />
-              <Kpi label="Invoices" value="38" delta="6 this morning" tone="up" />
-              <Kpi label="Low stock" value="12" delta="Needs a reorder" tone="down" />
+              <Kpi label={t('mockups.sales_today', 'Sales today')} value={formatCurrency(1842, 'EUR', undefined, 0)} delta={t('mockups.12_vs_last_week', '12% vs last week')} tone="up" />
+              <Kpi label={t('nav.invoices', 'Invoices')} value="38" delta={t('mockups.6_this_morning', '6 this morning')} tone="up" />
+              <Kpi label={t('dashboard.lowStock', 'Low stock')} value="12" delta={t('mockups.needs_a_reorder', 'Needs a reorder')} tone="down" />
             </div>
 
             <div className="rounded-xl border border-slate-200 bg-white p-3">
               <div className="mb-1 flex items-center justify-between">
-                <span className="text-[11px] font-bold text-slate-900">Sales this week</span>
+                <span className="text-[11px] font-bold text-slate-900">{t('public.reportWeek', 'Sales this week')}</span>
                 <span className="rounded-full bg-emerald-50 px-2 py-px text-[9px] font-semibold text-emerald-700">+18%</span>
               </div>
               <SalesChart />
@@ -178,7 +180,7 @@ export function HeroMockup() {
             <div className="grid gap-3 sm:grid-cols-[1.35fr_1fr]">
               <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
                 <span className="block border-b border-slate-100 px-3 py-2 text-[11px] font-bold text-slate-900">
-                  Recent invoices
+                  {t('mockups.recent_invoices', 'Recent invoices')}
                 </span>
                 {INVOICES.map((invoice) => (
                   <div
@@ -193,10 +195,10 @@ export function HeroMockup() {
                       <span className="block font-semibold text-slate-900">{invoice.total}</span>
                       <span
                         className={`inline-block rounded-full px-1.5 text-[9px] font-medium ${
-                          invoice.status === 'Paid' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'
+                          invoice.paid ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'
                         }`}
                       >
-                        {invoice.status}
+                        {invoice.paid ? t('status.PAID', 'Paid') : t('status.PENDING', 'Pending')}
                       </span>
                     </span>
                   </div>
@@ -205,14 +207,14 @@ export function HeroMockup() {
 
               <div className="hidden rounded-xl border border-slate-200 bg-white sm:block">
                 <span className="block border-b border-slate-100 px-3 py-2 text-[11px] font-bold text-slate-900">
-                  Running low
+                  {t('mockups.running_low', 'Running low')}
                 </span>
                 <div className="space-y-2.5 px-3 py-2.5">
                   {LOW_STOCK.map((item) => (
                     <div key={item.name}>
                       <div className="flex justify-between text-[10px]">
                         <span className="truncate text-slate-700">{item.name}</span>
-                        <span className="font-semibold text-amber-700">{item.left} left</span>
+                        <span className="font-semibold text-amber-700">{item.left} {t('sales.left', 'left')}</span>
                       </div>
                       <div className="mt-1 h-1 overflow-hidden rounded-full bg-slate-100">
                         <div className="h-full rounded-full bg-amber-400" style={{ width: `${(item.left / item.of) * 100}%` }} />
@@ -232,8 +234,8 @@ export function HeroMockup() {
           <Check className="h-[18px] w-[18px]" strokeWidth={2.2} />
         </span>
         <span>
-          <span className="block text-[13px] font-bold text-[#0b1c30]">Invoice F-2026/0185 issued</span>
-          <span className="block text-xs text-[#434655]">Stock updated automatically</span>
+          <span className="block text-[13px] font-bold text-[#0b1c30]">{t('mockups.invoice_f_2026_0185_issued', 'Invoice F-2026/0185 issued')}</span>
+          <span className="block text-xs text-[#434655]">{t('mockups.stock_updated_automatically', 'Stock updated automatically')}</span>
         </span>
       </div>
 
@@ -242,7 +244,7 @@ export function HeroMockup() {
         <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
           <AlertTriangle className="h-4 w-4" />
         </span>
-        <span className="text-[12px] font-bold text-[#0b1c30]">3 products running low</span>
+        <span className="text-[12px] font-bold text-[#0b1c30]">{t('mockups.3_products_running_low', '3 products running low')}</span>
       </div>
     </div>
   )
@@ -260,7 +262,7 @@ export function MobileShowcase() {
       <div className="absolute top-14 left-6 h-[330px] w-40 -rotate-[7deg] rounded-[32px] bg-slate-950 p-[7px] shadow-[0_24px_48px_rgba(11,28,48,0.25)] sm:top-20 sm:left-[72px] sm:h-[390px] sm:w-[190px]">
         <div className="flex h-full w-full flex-col overflow-hidden rounded-[26px] bg-slate-50">
           <div className="mt-4 flex h-10 items-center justify-center border-b border-slate-200 bg-white text-[11px] font-semibold">
-            Dashboard
+            {t('nav.dashboard', 'Dashboard')}
           </div>
           <div className="grid grid-cols-2 gap-[7px] p-2.5">
             <span className="h-[52px] rounded-[10px] border border-slate-200 bg-white" />
@@ -274,15 +276,15 @@ export function MobileShowcase() {
 
       <div className="absolute top-8 right-5 h-[350px] w-[170px] rotate-[5deg] rounded-[34px] bg-slate-950 p-2 shadow-[0_30px_60px_rgba(11,28,48,0.35)] sm:top-[50px] sm:right-[70px] sm:h-[410px] sm:w-[200px]">
         <div className="flex h-full w-full flex-col items-center overflow-hidden rounded-[27px] bg-slate-900">
-          <span className="mt-7 text-[11px] font-semibold text-[#cbd5e1]">Point at a barcode</span>
+          <span className="mt-7 text-[11px] font-semibold text-[#cbd5e1]">{t('mockups.point_at_a_barcode', 'Point at a barcode')}</span>
           <div className="relative mt-12 h-[90px] w-[140px] rounded-[14px] border-2 border-[#4edea3] sm:mt-[70px]">
             <span className="absolute top-11 right-2.5 left-2.5 h-0.5 bg-[#4edea3]" />
           </div>
           <div className="mt-auto mb-3.5 w-[164px] rounded-[14px] bg-white px-3 py-2.5">
-            <span className="block text-[10px] font-bold text-[#0b1c30]">USB-C charger 65 W</span>
+            <span className="block text-[10px] font-bold text-[#0b1c30]">{t('featureBento.usb_c_charger_65_w', 'USB-C charger 65 W')}</span>
             <span className="mt-0.5 block text-[9px] text-[#64748b]">8412345678905</span>
             <span className="mt-2 flex h-[26px] items-center justify-center rounded-lg bg-[#004ac6] text-[10px] font-semibold text-white">
-              Add to invoice
+              {t('mockups.add_to_invoice', 'Add to invoice')}
             </span>
           </div>
         </div>

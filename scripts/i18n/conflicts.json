@@ -1,0 +1,217 @@
+{
+  "nav.products": {
+    "dictionary": "Products and barcodes",
+    "fallbacks": [
+      "Products and barcodes",
+      "Products"
+    ],
+    "files": [
+      "components/layout/nav.ts",
+      "pages/app/Products.tsx"
+    ]
+  },
+  "apply.contactName": {
+    "dictionary": "Full name",
+    "fallbacks": [
+      "Your name",
+      "Full name"
+    ],
+    "files": [
+      "pages/admin/ApplicationDrawer.tsx",
+      "pages/admin/ConvertWizard.tsx",
+      "pages/public/Apply.tsx"
+    ]
+  },
+  "apply.whatsapp": {
+    "dictionary": "WhatsApp number",
+    "fallbacks": [
+      "WhatsApp",
+      "WhatsApp number"
+    ],
+    "files": [
+      "pages/admin/ApplicationDrawer.tsx",
+      "pages/admin/ConvertWizard.tsx",
+      "pages/public/Apply.tsx"
+    ]
+  },
+  "apply.businessType": {
+    "dictionary": "Type of business",
+    "fallbacks": [
+      "What do you do?"
+    ],
+    "files": [
+      "pages/admin/ApplicationDrawer.tsx"
+    ]
+  },
+  "apply.teamSize": {
+    "dictionary": "How many people will use YK Digital Solutions?",
+    "fallbacks": [
+      "Team size"
+    ],
+    "files": [
+      "pages/admin/ApplicationDrawer.tsx"
+    ]
+  },
+  "admin.applicationsSubtitle": {
+    "dictionary": "Leads from the public site. Convert one to create a live account.",
+    "fallbacks": [
+      "Leads from the public site. Call, message or create an account right from the list."
+    ],
+    "files": [
+      "pages/admin/Applications.tsx"
+    ]
+  },
+  "admin.companiesSubtitle": {
+    "dictionary": "Live accounts, their owners and subscription state.",
+    "fallbacks": [
+      "Live accounts and where each subscription stands. Renew, message or pause a company right from the list."
+    ],
+    "files": [
+      "pages/admin/Companies.tsx"
+    ]
+  },
+  "printables.termsHint": {
+    "dictionary": "Printed on every document of this type. Sale notes still print above this.",
+    "fallbacks": [
+      "Printed on every document of this type, under the notes."
+    ],
+    "files": [
+      "pages/app/Printables.tsx"
+    ]
+  },
+  "labels.sheet": {
+    "dictionary": "Label sheet",
+    "fallbacks": [
+      "Label size"
+    ],
+    "files": [
+      "pages/app/PrintLabelsModal.tsx"
+    ]
+  },
+  "printables.receivedBy": {
+    "dictionary": "Received by",
+    "fallbacks": [
+      "Received by (name and signature)"
+    ],
+    "files": [
+      "pages/app/printSheets.tsx"
+    ]
+  },
+  "products.modalSubtitle": {
+    "dictionary": "Enter the buying and selling price. IVA is added on the invoice.",
+    "fallbacks": [
+      "Selling price follows buying price, margin and IVA."
+    ],
+    "files": [
+      "pages/app/ProductModal.tsx"
+    ]
+  },
+  "whatsapp.sendDocTitle": {
+    "dictionary": "Send Document via WhatsApp",
+    "fallbacks": [
+      "Send on WhatsApp"
+    ],
+    "files": [
+      "pages/app/SendWhatsAppModal.tsx"
+    ]
+  },
+  "whatsapp.renderingPdf": {
+    "dictionary": "Generating PDF...",
+    "fallbacks": [
+      "Preparing the PDF…"
+    ],
+    "files": [
+      "pages/app/SendWhatsAppModal.tsx"
+    ]
+  },
+  "whatsapp.sendNow": {
+    "dictionary": "Send PDF via WhatsApp",
+    "fallbacks": [
+      "Send"
+    ],
+    "files": [
+      "pages/app/SendWhatsAppModal.tsx"
+    ]
+  },
+  "whatsapp.recipientPhone": {
+    "dictionary": "Recipient WhatsApp Number",
+    "fallbacks": [
+      "Customer WhatsApp number"
+    ],
+    "files": [
+      "pages/app/SendWhatsAppModal.tsx"
+    ]
+  },
+  "whatsapp.phoneHint": {
+    "dictionary": "Include country code (e.g. +34 or +92).",
+    "fallbacks": [
+      "With the country code, for example +34 612 345 678."
+    ],
+    "files": [
+      "pages/app/SendWhatsAppModal.tsx"
+    ]
+  },
+  "whatsapp.captionLabel": {
+    "dictionary": "Message Caption",
+    "fallbacks": [
+      "Message"
+    ],
+    "files": [
+      "pages/app/SendWhatsAppModal.tsx"
+    ]
+  },
+  "whatsapp.attachment": {
+    "dictionary": "Attachment:",
+    "fallbacks": [
+      "Attached as a PDF"
+    ],
+    "files": [
+      "pages/app/SendWhatsAppModal.tsx"
+    ]
+  },
+  "whatsapp.connecting": {
+    "dictionary": "Connecting...",
+    "fallbacks": [
+      "Connecting"
+    ],
+    "files": [
+      "pages/app/WhatsAppTab.tsx"
+    ]
+  },
+  "whatsapp.disconnected": {
+    "dictionary": "Disconnected",
+    "fallbacks": [
+      "WhatsApp disconnected."
+    ],
+    "files": [
+      "pages/app/WhatsAppTab.tsx"
+    ]
+  },
+  "apply.willUsePhone": {
+    "dictionary": "We will use your phone number",
+    "fallbacks": [
+      "We will use your phone number for WhatsApp."
+    ],
+    "files": [
+      "pages/public/Apply.tsx"
+    ]
+  },
+  "public.builtFor": {
+    "dictionary": "Built for",
+    "fallbacks": [
+      "Built for the shops and workshops that run on the counter"
+    ],
+    "files": [
+      "pages/public/Home.tsx"
+    ]
+  },
+  "public.mobileBody": {
+    "dictionary": "The Android and iPhone apps are on their way. Soon you will run your shop from the floor, the warehouse or the road.",
+    "fallbacks": [
+      "Install YK Digital Solutions on Android or iPhone and run your shop from the floor, the warehouse or the road."
+    ],
+    "files": [
+      "pages/public/Home.tsx"
+    ]
+  }
+}

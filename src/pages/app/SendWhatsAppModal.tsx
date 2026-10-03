@@ -8,6 +8,7 @@ import { Modal } from '../../components/ui/Modal'
 import { Textarea } from '../../components/ui/Textarea'
 import { useToast } from '../../components/ui/Toast'
 import { t } from '../../i18n'
+import { typeLabel } from './documentTypes'
 import { generateSaleDocumentPdfBase64 } from '../../lib/exportSaleSheet'
 import { formatCents } from '../../lib/money'
 import { getErrorMessage } from '../../services/api'
@@ -26,14 +27,14 @@ export type SendWhatsAppModalProps = {
 
 /** The message as the customer will read it: the saved wording with this document's details filled in. */
 function fillTemplate(template: string, document: SaleDocument, company: Company | null, currency: string): string {
-  const type = document.type.charAt(0).toUpperCase() + document.type.slice(1)
+  const type = typeLabel(document.type)
 
   return template
-    .replace(/\{customer_name\}/g, document.client_name || 'Customer')
+    .replace(/\{customer_name\}/g, document.client_name || t('sales.customer_fallback', 'Customer'))
     .replace(/\{document_type\}/g, type)
     .replace(/\{document_number\}/g, document.number)
     .replace(/\{total_amount\}/g, formatCents(document.total_cents, currency))
-    .replace(/\{company_name\}/g, company?.name || 'YK Digital Solutions')
+    .replace(/\{company_name\}/g, company?.name || t('brand.name', 'YK Digital Solutions'))
 }
 
 export function SendWhatsAppModal({ open, onClose, document, company, currency }: SendWhatsAppModalProps) {

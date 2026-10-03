@@ -53,121 +53,121 @@ const GRID_BACKGROUND = {
   WebkitMaskImage: 'radial-gradient(ellipse 70% 60% at 50% 35%, black 25%, transparent 78%)',
 }
 
-const HERO_PROOF = ['Live on the web, apps coming soon', 'We set it up for you', 'Cancel anytime']
+const HERO_PROOF = [t('home.live_on_the_web_apps_coming_soon', 'Live on the web, apps coming soon'), t('home.we_set_it_up_for_you', 'We set it up for you'), t('home.cancel_anytime', 'Cancel anytime')]
 
 const HIGHLIGHTS = [
-  { value: '4', label: 'Document types', hint: 'Invoice, quote, proforma, delivery note' },
-  { value: 'Web', label: 'Live today', hint: 'Android and iPhone apps coming soon' },
-  { value: '0', label: 'Setup fee', hint: 'Pay period to period' },
-  { value: '1 day', label: 'We call you back', hint: 'After you apply' },
+  { value: '4', label: t('public.docsTabs', 'Document types'), hint: t('home.invoice_quote_proforma_delivery_note', 'Invoice, quote, proforma, delivery note') },
+  { value: 'Web', label: t('home.live_today', 'Live today'), hint: t('home.android_and_iphone_apps_coming_soon', 'Android and iPhone apps coming soon') },
+  { value: '0', label: t('home.setup_fee', 'Setup fee'), hint: t('home.pay_period_to_period', 'Pay period to period') },
+  { value: '1 day', label: t('home.we_call_you_back', 'We call you back'), hint: t('home.after_you_apply', 'After you apply') },
 ]
 
 const BUILT_FOR: { label: string; icon: LucideIcon }[] = [
-  { label: 'Retail shops', icon: Store },
-  { label: 'Wholesalers', icon: Warehouse },
-  { label: 'Electronics stores', icon: Cpu },
-  { label: 'Pharmacies', icon: Pill },
-  { label: 'Workshops', icon: Wrench },
-  { label: 'Restaurants', icon: UtensilsCrossed },
-  { label: 'Market stalls', icon: ShoppingBag },
+  { label: t('home.retail_shops', 'Retail shops'), icon: Store },
+  { label: t('home.wholesalers', 'Wholesalers'), icon: Warehouse },
+  { label: t('home.electronics_stores', 'Electronics stores'), icon: Cpu },
+  { label: t('home.pharmacies', 'Pharmacies'), icon: Pill },
+  { label: t('home.workshops', 'Workshops'), icon: Wrench },
+  { label: t('home.restaurants', 'Restaurants'), icon: UtensilsCrossed },
+  { label: t('home.market_stalls', 'Market stalls'), icon: ShoppingBag },
 ]
 
 const STEPS: { icon: LucideIcon; title: string; body: string }[] = [
   {
     icon: ClipboardList,
-    title: 'Apply in two minutes',
-    body: 'Tell us about your business and pick a plan. No card required to apply.',
+    title: t('home.apply_in_two_minutes', 'Apply in two minutes'),
+    body: t('home.tell_us_about_your_business_and_pick_a', 'Tell us about your business and pick a plan. No card required to apply.'),
   },
   {
     icon: PhoneCall,
-    title: 'We call you',
-    body: 'Our team contacts you on phone or WhatsApp, confirms your details and activates your plan.',
+    title: t('home.we_call_you', 'We call you'),
+    body: t('home.our_team_contacts_you_on_phone_or_whatsapp', 'Our team contacts you on phone or WhatsApp, confirms your details and activates your plan.'),
   },
   {
     icon: Rocket,
-    title: 'You go live',
-    body: 'Your login link arrives by email and WhatsApp. Set a password and your dashboard is ready.',
+    title: t('home.you_go_live', 'You go live'),
+    body: t('home.your_login_link_arrives_by_email_and', 'Your login link arrives by email and WhatsApp. Set a password and your dashboard is ready.'),
   },
 ]
 
 const MOBILE_POINTS: { icon: LucideIcon; title: string; body: string }[] = [
   {
     icon: Camera,
-    title: 'Your camera is the scanner',
-    body: 'Scan products to sell, count stock or check a price. No extra hardware needed.',
+    title: t('home.your_camera_is_the_scanner', 'Your camera is the scanner'),
+    body: t('home.scan_products_to_sell_count_stock_or_check', 'Scan products to sell, count stock or check a price. No extra hardware needed.'),
   },
   {
     icon: Share2,
-    title: 'Share invoices instantly',
-    body: 'Send a PDF to your customer on WhatsApp or email straight from the sale.',
+    title: t('home.share_invoices_instantly', 'Share invoices instantly'),
+    body: t('home.send_a_pdf_to_your_customer_on_whatsapp_or', 'Send a PDF to your customer on WhatsApp or email straight from the sale.'),
   },
   {
     icon: Smartphone,
-    title: 'Same account everywhere',
-    body: 'Start a sale on the counter PC and check today’s total on your phone. Everything stays in sync.',
+    title: t('home.same_account_everywhere', 'Same account everywhere'),
+    body: t('home.start_a_sale_on_the_counter_pc_and_check', 'Start a sale on the counter PC and check today’s total on your phone. Everything stays in sync.'),
   },
 ]
 
 const PRICING_PROMISES: { icon: LucideIcon; label: string }[] = [
-  { icon: ShieldCheck, label: 'Your data is private to your business' },
-  { icon: PhoneCall, label: 'Setup help on phone and WhatsApp' },
-  { icon: RefreshCcw, label: 'Cancel anytime, keep your records' },
+  { icon: ShieldCheck, label: t('home.your_data_is_private_to_your_business', 'Your data is private to your business') },
+  { icon: PhoneCall, label: t('home.setup_help_on_phone_and_whatsapp', 'Setup help on phone and WhatsApp') },
+  { icon: RefreshCcw, label: t('home.cancel_anytime_keep_your_records', 'Cancel anytime, keep your records') },
 ]
 
 const ABOUT_POINTS: { icon: LucideIcon; title: string; body: string }[] = [
   {
     icon: Store,
-    title: 'Made for the counter',
-    body: 'Fast on a busy shop floor: scan, sell, print or send. Your team picks it up in an afternoon.',
+    title: t('home.made_for_the_counter', 'Made for the counter'),
+    body: t('home.fast_on_a_busy_shop_floor_scan_sell_print', 'Fast on a busy shop floor: scan, sell, print or send. Your team picks it up in an afternoon.'),
   },
   {
     icon: PhoneCall,
-    title: 'We set it up with you',
-    body: 'A real person confirms your details, taxes and numbering, and helps you import your products.',
+    title: t('home.we_set_it_up_with_you', 'We set it up with you'),
+    body: t('home.a_real_person_confirms_your_details_taxes', 'A real person confirms your details, taxes and numbering, and helps you import your products.'),
   },
   {
     icon: ShieldCheck,
-    title: 'Your records stay yours',
-    body: 'Each business is kept separate and private. Cancel any time and keep everything you entered.',
+    title: t('home.your_records_stay_yours', 'Your records stay yours'),
+    body: t('home.each_business_is_kept_separate_and_private', 'Each business is kept separate and private. Cancel any time and keep everything you entered.'),
   },
 ]
 
 const FAQS: FaqItem[] = [
   {
-    q: 'How do I get my account?',
-    a: 'Fill in the application form and confirm your email with the code we send. Our team then calls you, activates your plan, and sends your login link by email and WhatsApp.',
+    q: t('home.how_do_i_get_my_account', 'How do I get my account?'),
+    a: t('home.fill_in_the_application_form_and_confirm', 'Fill in the application form and confirm your email with the code we send. Our team then calls you, activates your plan, and sends your login link by email and WhatsApp.'),
   },
   {
-    q: 'What happens during setup?',
-    a: 'We confirm your business details, invoice numbering and taxes, and help you import your products so you can sell on day one.',
+    q: t('home.what_happens_during_setup', 'What happens during setup?'),
+    a: t('home.we_confirm_your_business_details_invoice', 'We confirm your business details, invoice numbering and taxes, and help you import your products so you can sell on day one.'),
   },
   {
-    q: 'Does it handle Spanish IVA and recargo de equivalencia?',
-    a: 'Yes. You set your own IVA rates, add recargo de equivalencia on invoices and quotations, and keep N.I.F / N.I.E on every client.',
+    q: t('home.does_it_handle_spanish_iva_and_recargo_de', 'Does it handle Spanish IVA and recargo de equivalencia?'),
+    a: t('home.yes_you_set_your_own_iva_rates_add_recargo', 'Yes. You set your own IVA rates, add recargo de equivalencia on invoices and quotations, and keep N.I.F / N.I.E on every client.'),
   },
   {
-    q: 'Can I use it on my phone?',
-    a: "Yes, the website works in your phone's browser today. The Android and iPhone apps are coming soon and will use the same account, with barcode scanning through the camera.",
+    q: t('home.can_i_use_it_on_my_phone', 'Can I use it on my phone?'),
+    a: t('home.yes_the_website_works_in_your_phone_s', 'Yes, the website works in your phone\'s browser today. The Android and iPhone apps are coming soon and will use the same account, with barcode scanning through the camera.'),
   },
   {
-    q: 'Can I send invoices on WhatsApp?',
-    a: 'Yes. Connect your WhatsApp once, then send the PDF to your customer straight from the sale. You can also download any document as a PDF or an image.',
+    q: t('home.can_i_send_invoices_on_whatsapp', 'Can I send invoices on WhatsApp?'),
+    a: t('home.yes_connect_your_whatsapp_once_then_send', 'Yes. Connect your WhatsApp once, then send the PDF to your customer straight from the sale. You can also download any document as a PDF or an image.'),
   },
   {
-    q: 'Can a delivery note leave out my company details?',
-    a: 'Yes. A delivery note is a plain slip with no company name, address or logo, just the client, the items and a space to sign.',
+    q: t('home.can_a_delivery_note_leave_out_my_company', 'Can a delivery note leave out my company details?'),
+    a: t('home.yes_a_delivery_note_is_a_plain_slip_with', 'Yes. A delivery note is a plain slip with no company name, address or logo, just the client, the items and a space to sign.'),
   },
   {
-    q: 'How do I pay?',
-    a: 'We agree the payment method with you on the setup call. Your plan runs for one period from the day it is activated.',
+    q: t('home.how_do_i_pay', 'How do I pay?'),
+    a: t('home.we_agree_the_payment_method_with_you_on', 'We agree the payment method with you on the setup call. Your plan runs for one period from the day it is activated.'),
   },
   {
-    q: 'Do I need special hardware?',
-    a: 'No. Any computer or phone works. USB and Bluetooth barcode scanners and normal printers are supported if you have them.',
+    q: t('home.do_i_need_special_hardware', 'Do I need special hardware?'),
+    a: t('home.no_any_computer_or_phone_works_usb_and', 'No. Any computer or phone works. USB and Bluetooth barcode scanners and normal printers are supported if you have them.'),
   },
   {
-    q: 'What if I stop paying?',
-    a: 'Your account pauses at the end of the period. Nothing is deleted, and everything is back as soon as you renew.',
+    q: t('home.what_if_i_stop_paying', 'What if I stop paying?'),
+    a: t('home.your_account_pauses_at_the_end_of_the', 'Your account pauses at the end of the period. Nothing is deleted, and everything is back as soon as you renew.'),
   },
 ]
 
@@ -605,7 +605,7 @@ function ContactSection() {
           key: 'whatsapp',
           icon: MessageCircle,
           title: 'WhatsApp',
-          body: 'Message us any time and we will get back to you.',
+          body: t('home.message_us_any_time_and_we_will_get_back', 'Message us any time and we will get back to you.'),
           action: t('public.chatWhatsapp', 'Chat on WhatsApp'),
           href: whatsappUrl,
           external: true,
@@ -615,7 +615,7 @@ function ContactSection() {
       ? {
           key: 'email',
           icon: Mail,
-          title: 'Email',
+          title: t('admin.emailAction', 'Email'),
           body: supportEmail,
           action: t('public.writeEmail', 'Write to us'),
           href: `mailto:${supportEmail}`,
@@ -759,7 +759,7 @@ function Home() {
     root.classList.add('landing-smooth')
 
     const previousTitle = window.document.title
-    window.document.title = 'YK Digital Solutions · Invoicing, stock and barcodes for small businesses'
+    window.document.title = t('home.meta_title', 'YK Digital Solutions · Invoicing, stock and barcodes for small businesses')
 
     let meta = window.document.querySelector<HTMLMetaElement>('meta[name="description"]')
     const created = meta === null
@@ -769,8 +769,10 @@ function Home() {
       window.document.head.appendChild(meta)
     }
     const previousDescription = meta.content
-    meta.content =
-      'Invoices, quotations, proformas and delivery notes, stock control and barcode scanning for shops and small businesses. Live on the web, with Android and iPhone apps coming soon.'
+    meta.content = t(
+      'home.meta_description',
+      'Invoices, quotations, proformas and delivery notes, stock control and barcode scanning for shops and small businesses. Live on the web, with Android and iPhone apps coming soon.',
+    )
 
     return () => {
       root.classList.remove('landing-smooth')

@@ -1,3 +1,4 @@
+import { t } from '../../i18n'
 /** Every product field the import wizard can fill from a spreadsheet column. */
 export const IMPORT_FIELDS = [
   'sr_number',
@@ -97,7 +98,7 @@ export function autoMapColumns(headers: string[]): ColumnMap {
 export const FIELD_LABELS: Record<ImportField, string> = {
   sr_number: 'Sr number',
   article: 'Article',
-  description: 'Description',
+  description: t('sales.description', 'Description'),
   category: 'Category',
   supplier: 'Supplier',
   brand: 'Brand',

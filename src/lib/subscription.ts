@@ -1,3 +1,4 @@
+import { t, tp } from '../i18n'
 import type { Company, Subscription, SubscriptionState } from '../types/module01'
 
 export type SubscriptionInfo = {
@@ -30,10 +31,10 @@ export const STATE_STYLE: Record<SubscriptionState, { badge: string; bar: string
 }
 
 export const STATE_LABEL: Record<SubscriptionState, string> = {
-  active: 'Active',
-  expiring: 'Expiring soon',
-  expired: 'Expired',
-  none: 'No plan',
+  active: t('subscription.state.active', 'Active'),
+  expiring: t('subscription.state.expiring', 'Expiring soon'),
+  expired: t('subscription.state.expired', 'Expired'),
+  none: t('subscription.state.none', 'No plan'),
 }
 
 const DAY = 86_400_000
@@ -57,8 +58,8 @@ export function daysText(info: SubscriptionInfo): string {
   if (!info.subscription) return ''
   if (info.state === 'expired') {
     const ago = Math.max(1, Math.abs(Math.floor(info.daysLeft)))
-    return `Expired ${ago} day${ago === 1 ? '' : 's'} ago`
+    return tp('subscription.expired_ago', 'Expired {count} day ago|Expired {count} days ago', ago)
   }
-  if (info.daysLeft <= 0) return 'Ends today'
-  return `${info.daysLeft} day${info.daysLeft === 1 ? '' : 's'} left`
+  if (info.daysLeft <= 0) return t('subscription.ends_today', 'Ends today')
+  return tp('subscription.days_left', '{count} day left|{count} days left', info.daysLeft)
 }

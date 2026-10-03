@@ -6,7 +6,7 @@ import { useAuth } from '../../auth/AuthProvider'
 import { useToast } from '../../components/ui/Toast'
 import { Select } from '../../components/ui/Select'
 import { Tooltip } from '../../components/ui/Tooltip'
-import { t } from '../../i18n'
+import { t, intlLocale } from '../../i18n'
 import { cn } from '../../lib/cn'
 import { TONE_AMBER, TONE_GREEN, TONE_ROSE } from '../../lib/status'
 import { allocateDiscount, centsToInput, formatCents, lineTotals, parseAmountToCents, parseNumber } from '../../lib/money'
@@ -388,10 +388,10 @@ function InvoiceNew() {
           try {
             const fileBase64 = await generateSaleDocumentPdfBase64(document, session?.company ?? null, currency)
             const tmpl = whatsAppStatus.data?.message_template
-            const docType = document.type.charAt(0).toUpperCase() + document.type.slice(1)
+            const docType = typeLabel(document.type)
             const totalStr = formatCents(document.total_cents, currency)
-            const compName = session?.company?.name || 'YK Digital Solutions'
-            const custName = document.client_name || 'Customer'
+            const compName = session?.company?.name || t('brand.name', 'YK Digital Solutions')
+            const custName = document.client_name || t('sales.customer_fallback', 'Customer')
             const caption = tmpl
               ? tmpl
                   .replace(/\{customer_name\}/g, custName)
@@ -399,7 +399,7 @@ function InvoiceNew() {
                   .replace(/\{document_number\}/g, document.number)
                   .replace(/\{total_amount\}/g, totalStr)
                   .replace(/\{company_name\}/g, compName)
-              : `Dear ${custName},\n\nPlease find attached your ${docType} *#${document.number}* from *${compName}* for *${totalStr}*.\n\nThank you for choosing us!`
+              : t('whatsapp.default_caption', 'Dear {customer},\n\nPlease find attached your {type} *#{number}* from *{company}* for *{total}*.\n\nThank you for choosing us!', { customer: custName, type: docType, number: document.number, company: compName, total: totalStr })
 
             await sendWhatsAppDocument({
               sale_id: document.id,
@@ -411,12 +411,12 @@ function InvoiceNew() {
 
             push({
               tone: 'success',
-              title: t('whatsapp.autoSentToast', `Document #${document.number} and PDF sent to customer via WhatsApp!`),
+              title: t('whatsapp.autoSentToast', 'Document #{number} and PDF sent to customer via WhatsApp!', { number: document.number }),
             })
           } catch (err) {
             push({
               tone: 'warning',
-              title: t('whatsapp.autoSendFailedToast', `Document created, but WhatsApp delivery failed: ${getErrorMessage(err)}`),
+              title: t('whatsapp.autoSendFailedToast', 'Document created, but WhatsApp delivery failed: {error}', { error: getErrorMessage(err) }),
             })
           }
         })()
@@ -679,7 +679,7 @@ function InvoiceNew() {
                 />
               ) : (
                 <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-brand-600 text-base font-bold text-brand-on">
-                  {initials(company?.name ?? 'YK Digital Solutions')}
+                  {initials(company?.name ?? t('brand.name', 'YK Digital Solutions'))}
                 </span>
               )}
               <span aria-hidden="true" className="h-12 w-px shrink-0 bg-slate-200" />
@@ -749,7 +749,7 @@ function InvoiceNew() {
                 >
                   {quoteEnd.getTime() < Date.now()
                     ? t('sales.quoteWouldExpire', 'This date is more than a week ago, so the quotation would be expired straight away.')
-                    : `${t('sales.validUntil', 'Valid until')} ${quoteEnd.toLocaleDateString()} (${QUOTE_VALID_DAYS} ${t('sales.daysFromDate', 'days from this date')})`}
+                    : `${t('sales.validUntil', 'Valid until')} ${quoteEnd.toLocaleDateString(intlLocale())} (${QUOTE_VALID_DAYS} ${t('sales.daysFromDate', 'days from this date')})`}
                 </span>
               ) : null}
             </div>
