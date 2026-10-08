@@ -37,12 +37,12 @@ export function PublicNavbar() {
           : 'border-b border-transparent',
       )}
     >
-      <div className="mx-auto flex h-20 max-w-[1320px] items-center justify-between gap-4 px-5">
+      <div className="mx-auto flex h-20 max-w-[1440px] items-center justify-between gap-3 px-5">
         <a href="#top" onClick={() => setOpen(false)} className="flex shrink-0 items-center" aria-label={t('app.name', 'YK Digital Solutions')}>
-          <Logo on={solid ? 'light' : 'dark'} className="h-12 sm:h-14" />
+          <Logo on={solid ? 'light' : 'dark'} className="h-11 sm:h-14" />
         </a>
 
-        <nav aria-label={t('nav.main', 'Main')} className="hidden items-center gap-1 xl:flex">
+        <nav aria-label={t('nav.main', 'Main')} className="hidden min-w-0 items-center gap-0 pt-3 2xl:flex">
           {LINKS.map((link) => {
             const on = active === link.id
             return (
@@ -51,7 +51,7 @@ export function PublicNavbar() {
                 href={`#${link.id}`}
                 aria-current={on ? 'true' : undefined}
                 className={cn(
-                  'relative rounded-lg px-2.5 py-2 text-[15px] font-medium whitespace-nowrap transition-colors 2xl:px-3.5',
+                  'relative rounded-lg px-2.5 py-2 text-[15px] font-medium whitespace-nowrap transition-colors',
                   solid
                     ? on
                       ? 'text-[#004ac6]'
@@ -65,7 +65,7 @@ export function PublicNavbar() {
                 <span
                   aria-hidden="true"
                   className={cn(
-                    'absolute right-2.5 -bottom-0.5 left-2.5 h-0.5 2xl:right-3.5 2xl:left-3.5 origin-left rounded-full transition-transform duration-300',
+                    'absolute right-2.5 -bottom-0.5 left-2.5 h-0.5 origin-left rounded-full transition-transform duration-300',
                     solid ? 'bg-[#004ac6]' : 'bg-[#4edea3]',
                     on ? 'scale-x-100' : 'scale-x-0',
                   )}
@@ -75,12 +75,12 @@ export function PublicNavbar() {
           })}
         </nav>
 
-        <div className="hidden shrink-0 items-center gap-2 md:flex">
+        <div className="hidden shrink-0 items-center gap-2 pt-3 md:flex">
           <LanguageSwitcher tone={solid ? 'light' : 'dark'} />
           <Link
             to="/login"
             className={cn(
-              'px-3 py-2.5 text-[15px] font-semibold whitespace-nowrap transition-colors',
+              'px-2.5 py-2.5 text-[15px] font-semibold whitespace-nowrap transition-colors',
               solid ? 'text-[#434655] hover:text-[#004ac6]' : 'text-white hover:text-[#cbd5e1]',
             )}
           >
@@ -97,7 +97,7 @@ export function PublicNavbar() {
         <Tooltip content={open ? t('common.close', 'Close') : t('nav.menu', 'Menu')} align="end">
           <button
             type="button"
-            className={cn('rounded-lg p-2 xl:hidden', solid ? 'text-[#434655]' : 'text-white')}
+            className={cn('mt-3 rounded-lg p-2 2xl:hidden', solid ? 'text-[#434655]' : 'text-white')}
             aria-label={open ? t('common.close', 'Close') : t('nav.menu', 'Menu')}
             aria-expanded={open}
             onClick={() => setOpen((current) => !current)}
@@ -108,7 +108,7 @@ export function PublicNavbar() {
       </div>
 
       {open ? (
-        <div className="landing-rise border-t border-[#e5eeff] bg-white shadow-lg xl:hidden">
+        <div className="landing-rise border-t border-[#e5eeff] bg-white shadow-lg 2xl:hidden">
           <nav aria-label={t('nav.main', 'Main')} className="mx-auto flex max-w-[1200px] flex-col gap-1 px-5 py-4">
             {LINKS.map((link) => (
               <a

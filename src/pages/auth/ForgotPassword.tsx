@@ -72,7 +72,7 @@ function ForgotPassword() {
         <span className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-50 text-[#007d55]">
           <MailCheck className="h-6 w-6" />
         </span>
-        <h1 className="mt-5 text-[26px] font-extrabold tracking-[-0.025em] text-[#0b1c30]">
+        <h1 className="mt-5 text-[22px] font-extrabold tracking-[-0.025em] text-[#0b1c30]">
           {t('auth.forgotCheckTitle', 'Check your email')}
         </h1>
         <p className="mt-2 text-[15px] leading-relaxed text-[#434655]">
@@ -119,10 +119,10 @@ function ForgotPassword() {
 
   return (
     <form noValidate onSubmit={handleSubmit(submit)}>
-      <h1 className="text-[30px] font-extrabold tracking-[-0.025em] text-[#0b1c30]">
+      <h1 className="text-[24px] font-extrabold tracking-[-0.025em] text-[#0b1c30]">
         {t('auth.forgotTitle', 'Reset your password')}
       </h1>
-      <p className="mt-1.5 text-[15px] text-[#434655]">
+      <p className="mt-1.5 text-sm text-[#434655]">
         {t('auth.forgotSubtitle', 'Enter your email and we will send you a reset link.')}
       </p>
 

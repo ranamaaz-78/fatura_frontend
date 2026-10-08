@@ -97,21 +97,21 @@ export function DocumentShowcase() {
   return (
     <section
       id="documents"
-      className="relative scroll-mt-20 overflow-hidden bg-[#0b1c30] px-5 py-20 sm:py-28"
+      className="relative scroll-mt-20 overflow-hidden bg-[#0b1c30] px-5 py-12 sm:py-16"
       style={{
         backgroundImage:
           'radial-gradient(700px 420px at 85% 10%, rgba(37,99,235,0.28), rgba(11,28,48,0) 70%), radial-gradient(520px 360px at 5% 95%, rgba(78,222,163,0.12), rgba(11,28,48,0) 70%)',
       }}
     >
-      <div className="mx-auto max-w-[1200px]">
+      <div className="mx-auto max-w-[1080px]">
         <Reveal className="mx-auto max-w-[720px] text-center">
           <span className="text-[13px] font-bold tracking-[0.1em] text-[#4edea3] uppercase">
             {t('public.docsEyebrow', 'Documents')}
           </span>
-          <h2 className="mt-3 text-[32px] leading-[1.12] font-extrabold tracking-[-0.03em] text-white sm:text-[44px]">
+          <h2 className="mt-3 text-[26px] leading-[1.12] font-extrabold tracking-[-0.03em] text-white sm:text-[34px]">
             {t('public.docsTitle', 'Four documents, each one made to be sent.')}
           </h2>
-          <p className="mt-4 text-base leading-relaxed text-[#cbd5e1] sm:text-lg">
+          <p className="mt-4 text-base leading-relaxed text-[#cbd5e1] sm:text-[17px]">
             {t(
               'public.docsBody',
               'Every document has its own layout, and all of them carry your logo, colour and notes. Download as PDF or image, or send straight to WhatsApp.',
@@ -119,7 +119,7 @@ export function DocumentShowcase() {
           </p>
         </Reveal>
 
-        <div className="mt-14 grid grid-cols-[minmax(0,1fr)] items-start gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,460px)] lg:gap-16">
+        <div className="mt-9 grid grid-cols-[minmax(0,1fr)] items-start gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,460px)] lg:gap-10">
           <Reveal className="hidden lg:sticky lg:top-28 lg:block">
             <div role="tablist" aria-label={t('public.docsTabs', 'Document types')} className="flex flex-col gap-3">
               {TABS.map((tab) => {

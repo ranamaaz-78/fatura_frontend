@@ -253,7 +253,7 @@ export function HeroMockup() {
 export function MobileShowcase() {
   return (
     <div
-      className="relative mx-auto h-[420px] w-full max-w-[520px] shrink-0 overflow-hidden rounded-[32px] border border-[#dbe1ff] bg-[#eff4ff] sm:h-[520px]"
+      className="relative mx-auto h-[380px] w-full max-w-[440px] shrink-0 overflow-hidden rounded-[32px] border border-[#dbe1ff] bg-[#eff4ff] sm:h-[440px]"
       style={{
         backgroundImage:
           'radial-gradient(360px 300px at 50% 55%, rgba(37,99,235,0.18), rgba(248,249,255,0) 72%)',

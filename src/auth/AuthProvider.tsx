@@ -1,4 +1,4 @@
-import { adoptLocale } from '../i18n'
+import { adoptLocale, setDocumentLocale } from '../i18n'
 import { useQueryClient } from '@tanstack/react-query'
 import {
   createContext,
@@ -54,6 +54,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const payload = await getSession()
       if (adoptLocale(payload.locale)) return
+      setDocumentLocale(payload.company?.document_locale)
       setSession(payload)
       setStatus('authenticated')
     } catch {
@@ -77,6 +78,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const payload = await getSession()
     // A different language is waiting for this account: the page reloads into it.
     if (adoptLocale(payload.locale)) return
+    setDocumentLocale(payload.company?.document_locale)
     setSession(payload)
     setStatus('authenticated')
   }, [])

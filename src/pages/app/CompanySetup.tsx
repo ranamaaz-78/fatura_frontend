@@ -42,7 +42,7 @@ const STEPS: { id: string; title: string; hint: string; icon: typeof Store }[] =
   { id: 'language', title: t('setup.stepLanguage', 'Language'), hint: t('setup.stepLanguageHint', 'English or Spanish, for the whole company'), icon: Languages },
   { id: 'business', title: t('setup.stepBusiness', 'Your business'), hint: t('setup.stepBusinessHint', 'Name, tax number and how to reach you'), icon: Store },
   { id: 'place', title: t('setup.stepPlace', 'Where you are'), hint: t('setup.stepPlaceHint', 'Address and currency'), icon: MapPin },
-  { id: 'logo', title: t('setup.stepLogo', 'Your logo'), hint: t('setup.stepLogoHint', 'Then you are ready'), icon: ImagePlus },
+  { id: 'logo', title: t('setup.stepLogo', 'Your logo (optional)'), hint: t('setup.stepLogoHint', 'You can also add it later'), icon: ImagePlus },
 ]
 
 /** Which step each field lives on, so a server error can send the person back to it. */
@@ -135,7 +135,7 @@ function PhoneInput({
   )
 }
 
-function validate(step: number, draft: Draft, hasLogo: boolean): Partial<Record<FieldName, string>> {
+function validate(step: number, draft: Draft): Partial<Record<FieldName, string>> {
   const errors: Partial<Record<FieldName, string>> = {}
   const need = (field: keyof Draft, message = t('setup.required', 'This field is required.')) => {
     if (draft[field].trim() === '') errors[field] = message
@@ -163,8 +163,6 @@ function validate(step: number, draft: Draft, hasLogo: boolean): Partial<Record<
     }
     need('currency')
   }
-
-  if (step === 2 && !hasLogo) errors.logo = t('setup.logoRequired', 'Upload your company logo to finish.')
 
   return errors
 }
@@ -259,7 +257,18 @@ export default function CompanySetup() {
 
   if (!company) return <Navigate to="/login" replace />
   // Nothing left to set up: straight to the workspace.
-  if (company.profile_complete !== false) return <Navigate to="/app/dashboard" replace />
+  if (company.profile_complete !== false) {
+    // The router needs a moment to move on. Show something meanwhile instead of an empty page.
+    return (
+      <>
+        <Navigate to="/app/dashboard" replace />
+        <div role="status" className="flex min-h-screen flex-col items-center justify-center gap-3 bg-[#f8f9ff] text-[#434655]">
+          <Loader2 className="h-7 w-7 animate-spin text-[#004ac6]" aria-hidden="true" />
+          <p className="text-sm font-medium">{t('setup.opening', 'Opening your workspace…')}</p>
+        </div>
+      </>
+    )
+  }
 
   function patch(partial: Partial<Draft>) {
     setDraft((current) => ({ ...current, ...partial }))
@@ -271,13 +280,13 @@ export default function CompanySetup() {
   }
 
   function next() {
-    const found = validate(step - 1, draft, Boolean(logoUrl))
+    const found = validate(step - 1, draft)
     setErrors(found)
     if (Object.keys(found).length === 0) setStep((current) => current + 1)
   }
 
   function submit() {
-    const found = validate(2, draft, Boolean(logoUrl))
+    const found = validate(2, draft)
     setErrors(found)
     if (Object.keys(found).length === 0) finish.mutate()
   }

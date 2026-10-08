@@ -5,7 +5,7 @@ import {
   type CountryCode,
 } from 'libphonenumber-js'
 import type { SearchableSelectOption } from '../components/ui/SearchableSelect'
-import { intlLocale } from '../i18n'
+import { getDocumentLocale, intlLocale } from '../i18n'
 
 export type Country = { code: CountryCode; name: string; dial: string }
 
@@ -59,6 +59,14 @@ export function countryByName(name: string | undefined): Country | undefined {
 }
 
 /** A stored country name shown in the current language ("Spain" becomes "España"); unknown text is left as it is. */
+/** A country's name in the language documents are printed in. */
+export function documentCountry(name: string | null | undefined): string {
+  if (!name) return ''
+  const code = countryByName(name)?.code
+  if (!code) return name
+  return new Intl.DisplayNames([getDocumentLocale()], { type: 'region' }).of(code) ?? name
+}
+
 export function localCountry(name: string | null | undefined): string {
   if (!name) return ''
   return countryByName(name)?.name ?? name

@@ -463,7 +463,7 @@ function AdminDashboard() {
                   <div className="flex items-baseline justify-between gap-2 text-sm">
                     <span className="truncate font-semibold text-ink">{plan.name}</span>
                     <span className="shrink-0 text-xs text-ink-muted">
-                      {plan.count} {plan.count === 1 ? 'company' : 'companies'}
+                      {tp('admin.companies_count', '{count} company|{count} companies', plan.count)}
                     </span>
                   </div>
                   <div className="mt-2 h-2 overflow-hidden rounded-full bg-line">

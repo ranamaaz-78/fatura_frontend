@@ -102,6 +102,8 @@ export type ProductImage = {
 export type ProductImageUploadError = {
   file: string
   message: string
+  /** Set when the name is already in the folder: the uuid of the picture it would replace. */
+  duplicate_of?: string
 }
 
 export type ProductImageUpload = {

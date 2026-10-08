@@ -49,14 +49,14 @@ function Login() {
 
   return (
     <form noValidate onSubmit={handleSubmit((values) => mutation.mutate(values))}>
-      <h1 className="text-[30px] font-extrabold tracking-[-0.025em] text-[#0b1c30]">
+      <h1 className="text-[24px] font-extrabold tracking-[-0.025em] text-[#0b1c30]">
         {t('auth.loginTitle', 'Welcome back')}
       </h1>
-      <p className="mt-1.5 text-[15px] text-[#434655]">
+      <p className="mt-1.5 text-sm text-[#434655]">
         {t('auth.loginSubtitle', 'Sign in to your YK Digital Solutions workspace.')}
       </p>
 
-      <div className="mt-8 flex flex-col gap-4.5">
+      <div className="mt-6 flex flex-col gap-4">
         <PublicInput
           label={t('auth.email', 'Email')}
           type="email"
@@ -77,7 +77,7 @@ function Login() {
         />
       </div>
 
-      <PublicSubmit className="mt-7 w-full" disabled={mutation.isPending}>
+      <PublicSubmit className="mt-6 w-full" disabled={mutation.isPending}>
         {mutation.isPending ? t('auth.signingIn', 'Signing in') : t('auth.login', 'Log in')}
       </PublicSubmit>
 

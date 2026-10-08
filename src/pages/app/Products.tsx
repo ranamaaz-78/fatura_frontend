@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   AlertTriangle,
+  Download,
   Eye,
   FileSpreadsheet,
   Layers,
@@ -24,6 +25,7 @@ import { Tooltip } from '../../components/ui/Tooltip'
 import { useToast } from '../../components/ui/Toast'
 import { t } from '../../i18n'
 import { cn } from '../../lib/cn'
+import { downloadProductDemoSheet } from '../../lib/productDemoSheet'
 import { TONE_AMBER, TONE_GREEN, TONE_PRIMARY, TONE_ROSE } from '../../lib/status'
 import { formatCents } from '../../lib/money'
 import { getErrorMessage } from '../../services/api'
@@ -118,7 +120,7 @@ function Products() {
   const { session } = useAuth()
   const queryClient = useQueryClient()
   const { push } = useToast()
-  const currency = session?.company?.currency ?? 'USD'
+  const currency = session?.company?.currency ?? 'EUR'
 
   const [search, setSearch] = useState('')
   const [debounced, setDebounced] = useState('')
@@ -305,6 +307,14 @@ function Products() {
           >
             <FileSpreadsheet className="h-4 w-4" />
             {t('products.importExcel', 'Import Excel')}
+          </button>
+          <button
+            type="button"
+            className={cn(headerButton, 'bg-slate-100 text-slate-700 hover:bg-slate-200')}
+            onClick={downloadProductDemoSheet}
+          >
+            <Download className="h-4 w-4 text-emerald-600" />
+            {t('products.demoSheet', 'Demo sheet')}
           </button>
           <button
             type="button"

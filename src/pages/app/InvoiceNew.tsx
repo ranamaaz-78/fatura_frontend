@@ -1,5 +1,5 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { Camera, Check, MessageCircle, Minus, Plus, Receipt, ScanLine, Search, ShieldCheck, Trash2, UserRound, X } from 'lucide-react'
+import { Camera, Check, Minus, Plus, Receipt, ScanLine, Search, ShieldCheck, Trash2, UserRound, X } from 'lucide-react'
 import { useEffect, useMemo, useState, type KeyboardEvent } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../auth/AuthProvider'
@@ -10,12 +10,11 @@ import { t, intlLocale } from '../../i18n'
 import { cn } from '../../lib/cn'
 import { TONE_AMBER, TONE_GREEN, TONE_ROSE } from '../../lib/status'
 import { allocateDiscount, centsToInput, formatCents, lineTotals, parseAmountToCents, parseNumber } from '../../lib/money'
-import { generateSaleDocumentPdfBase64 } from '../../lib/exportSaleSheet'
+import { onlyDecimal } from '../../lib/numberInput'
 import { getErrorMessage } from '../../services/api'
 import { listAllProducts, listRecargoRates, listTaxRates } from '../../services/catalog'
 import { createSale, getSale, listActiveCustomers, previewSale, updateSale } from '../../services/sales'
 import { getPrintTemplates, loadLogoBlob } from '../../services/printables'
-import { getWhatsAppStatus, sendWhatsAppDocument } from '../../services/whatsapp'
 import type { Product } from '../../types/catalog'
 import type { Customer, DiscountType, IssuableType, PaymentStatus, SaleDocument, SaleInput } from '../../types/sales'
 import { isSaleConverted, isSaleExpired } from '../../types/sales'
@@ -116,7 +115,7 @@ function InvoiceNew() {
   const { id } = useParams()
   const { push } = useToast()
   const [params] = useSearchParams()
-  const currency = session?.company?.currency ?? 'USD'
+  const currency = session?.company?.currency ?? 'EUR'
   const company = session?.company
   const editingId = Number(id)
   const editing = Number.isFinite(editingId)
@@ -154,7 +153,6 @@ function InvoiceNew() {
   const [dropdown, setDropdown] = useState(false)
   const [camera, setCamera] = useState(false)
   const [lines, setLines] = useState<DraftLine[]>([])
-  const [sendViaWhatsApp, setSendViaWhatsApp] = useState(true)
 
   // The note on a document comes from Printables. A new document is stamped with the one for its
   // type when it is issued; a saved quotation shows the note it was issued with.
@@ -168,11 +166,6 @@ function InvoiceNew() {
     enabled: Boolean(logoUrl),
   })
 
-  const whatsAppStatus = useQuery({
-    queryKey: ['whatsapp-status'],
-    queryFn: getWhatsAppStatus,
-    staleTime: 30000,
-  })
 
   // Each list opens this screen with its own ?type=, and the route is shared,
   // so the screen is not remounted when one list sends us to another.
@@ -377,51 +370,6 @@ function InvoiceNew() {
     onSuccess: (document) => {
       setMethodOpen(false)
 
-      if (
-        !editing &&
-        sendViaWhatsApp &&
-        document.client_phone &&
-        whatsAppStatus.data?.status === 'connected' &&
-        whatsAppStatus.data?.auto_send !== false
-      ) {
-        void (async () => {
-          try {
-            const fileBase64 = await generateSaleDocumentPdfBase64(document, session?.company ?? null, currency)
-            const tmpl = whatsAppStatus.data?.message_template
-            const docType = typeLabel(document.type)
-            const totalStr = formatCents(document.total_cents, currency)
-            const compName = session?.company?.name || t('brand.name', 'YK Digital Solutions')
-            const custName = document.client_name || t('sales.customer_fallback', 'Customer')
-            const caption = tmpl
-              ? tmpl
-                  .replace(/\{customer_name\}/g, custName)
-                  .replace(/\{document_type\}/g, docType)
-                  .replace(/\{document_number\}/g, document.number)
-                  .replace(/\{total_amount\}/g, totalStr)
-                  .replace(/\{company_name\}/g, compName)
-              : t('whatsapp.default_caption', 'Dear {customer},\n\nPlease find attached your {type} *#{number}* from *{company}* for *{total}*.\n\nThank you for choosing us!', { customer: custName, type: docType, number: document.number, company: compName, total: totalStr })
-
-            await sendWhatsAppDocument({
-              sale_id: document.id,
-              number: document.client_phone,
-              fileBase64,
-              filename: `${document.number}.pdf`,
-              caption,
-            })
-
-            push({
-              tone: 'success',
-              title: t('whatsapp.autoSentToast', 'Document #{number} and PDF sent to customer via WhatsApp!', { number: document.number }),
-            })
-          } catch (err) {
-            push({
-              tone: 'warning',
-              title: t('whatsapp.autoSendFailedToast', 'Document created, but WhatsApp delivery failed: {error}', { error: getErrorMessage(err) }),
-            })
-          }
-        })()
-      }
-
       navigate(`${rulesFor(document.type).listPath}/${document.id}`, {
         state:
           !editing && celebratesPayment(document.type) && document.payment_status === 'paid'
@@ -495,8 +443,8 @@ function InvoiceNew() {
               article: product.article,
               description: product.description ?? '',
               quantity: 1,
-              // A proforma is issued at the agreed price, so the box starts empty.
-              unitPrice: rules.manualPrice ? '' : centsToInput(product.selling_price),
+              // A proforma starts at the catalog price too; the agreed price is typed over it when it differs.
+              unitPrice: centsToInput(product.selling_price),
               discount: '0',
               iva: String(product.iva_percent),
               stock: product.quantity,
@@ -928,24 +876,6 @@ function InvoiceNew() {
                   : t('sales.phoneEnter', 'Press Enter to use the highlighted client.')}
             </p>
           ) : null}
-
-          {clientPhone.trim() && whatsAppStatus.data?.status === 'connected' ? (
-            <label
-              className={cn(
-                'flex cursor-pointer select-none items-center gap-2.5 rounded-xl border px-3 py-2.5 text-xs font-medium',
-                'border-emerald-200 bg-emerald-50 text-emerald-700 app-dark:border-emerald-500/30 app-dark:bg-emerald-500/15 app-dark:text-emerald-300',
-              )}
-            >
-              <input
-                type="checkbox"
-                checked={sendViaWhatsApp}
-                onChange={(e) => setSendViaWhatsApp(e.target.checked)}
-                className="h-4 w-4 shrink-0 rounded border-emerald-300 accent-emerald-600"
-              />
-              <MessageCircle className="h-4 w-4 shrink-0" />
-              <span>{t('whatsapp.sendDocToNumber', 'Send printable PDF via WhatsApp on save')}</span>
-            </label>
-          ) : null}
         </div>
 
         <div className="relative flex flex-col gap-2">
@@ -1098,7 +1028,8 @@ function InvoiceNew() {
                       <input
                         aria-label={`${t('sales.price', 'Price')} ${line.article}`}
                         value={line.unitPrice}
-                        onChange={(event) => changeLine(line.key, { unitPrice: event.target.value })}
+                        inputMode="decimal"
+                        onChange={(event) => changeLine(line.key, { unitPrice: onlyDecimal(event.target.value) })}
                         placeholder={rules.manualPrice ? t('sales.typePrice', 'Price') : undefined}
                         className={cn(
                           'w-24 rounded-lg border px-2 py-1 text-right text-xs font-bold outline-none',
@@ -1111,7 +1042,8 @@ function InvoiceNew() {
                         <input
                           aria-label={`${t('sales.dto', 'Dto %')} ${line.article}`}
                           value={line.discount}
-                          onChange={(event) => changeLine(line.key, { discount: event.target.value })}
+                          inputMode="decimal"
+                          onChange={(event) => changeLine(line.key, { discount: onlyDecimal(event.target.value) })}
                           className="ml-2 w-14 rounded-lg border border-line bg-card px-2 py-1 text-right text-xs text-ink outline-none"
                         />
                       ) : null}

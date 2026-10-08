@@ -10,7 +10,7 @@ export type DocumentRules = {
   /** Recargo de equivalencia can be added to an invoice or a quotation, and to nothing else. */
   allowsRecargo: boolean
   carriesDiscount: boolean
-  /** A proforma is issued at the price the user types, not the catalog one. */
+  /** A proforma loads the catalog price like any document, but the price is meant to be edited to the agreed one. */
   manualPrice: boolean
   /** Only the documents that ask for money settle a payment. */
   settlesPayment: boolean

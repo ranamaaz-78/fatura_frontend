@@ -2,6 +2,7 @@ import { ArrowRight, Check } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { t } from '../../i18n'
 import { cn } from '../../lib/cn'
+import { OriginalPrice, SaveBadge } from '../../components/ui/PlanDiscount'
 import { formatPlanPrice, formatInterval } from '../../lib/format'
 import type { Plan } from '../../types/module01'
 
@@ -16,7 +17,7 @@ export function PlanCard({ plan, tone = 'onLight', className }: PlanCardProps) {
   return (
     <div
       className={cn(
-        'relative flex flex-col rounded-[28px] bg-white p-8 text-left sm:p-10',
+        'relative flex flex-col rounded-[28px] bg-white p-6 text-left sm:p-6',
         tone === 'onDark'
           ? 'shadow-[0_40px_80px_rgba(2,6,23,0.45)]'
           : 'border border-[#e5eeff] shadow-[0_18px_40px_rgba(2,6,23,0.08)]',
@@ -38,11 +39,19 @@ export function PlanCard({ plan, tone = 'onLight', className }: PlanCardProps) {
 
       {plan.description ? <p className="mt-1.5 text-[15px] text-[#434655]">{plan.description}</p> : null}
 
-      <div className="mt-7 flex items-baseline gap-1.5">
-        <span className="text-[56px] leading-none font-extrabold tracking-[-0.04em] text-[#0b1c30] sm:text-[64px]">
-          {formatPlanPrice(plan.price, plan.currency)}
-        </span>
-        <span className="text-[17px] font-medium text-[#434655]">/ {formatInterval(plan.interval)}</span>
+      <div className="mt-6">
+        {plan.original_price && plan.original_price > plan.price ? (
+          <div className="mb-1.5 flex items-center gap-2.5">
+            <OriginalPrice plan={plan} className="text-[20px] leading-none text-[#64748b]" />
+            <SaveBadge plan={plan} />
+          </div>
+        ) : null}
+        <div className="flex items-baseline gap-1.5 whitespace-nowrap">
+          <span className="text-[44px] leading-none font-extrabold tracking-[-0.04em] text-[#0b1c30] sm:text-[48px]">
+            {formatPlanPrice(plan.price, plan.currency)}
+          </span>
+          <span className="text-[16px] font-medium text-[#434655]">/ {formatInterval(plan.interval)}</span>
+        </div>
       </div>
       <p className="mt-2 text-[13px] text-[#64748b]">
         {t('public.pricingBilling', 'Billed per period. No setup fee.')}
@@ -51,8 +60,8 @@ export function PlanCard({ plan, tone = 'onLight', className }: PlanCardProps) {
       <div className="my-7 h-px bg-[#e5eeff]" />
 
       <ul className="flex flex-1 flex-col gap-3.5">
-        {plan.features.map((feature) => (
-          <li key={feature} className="flex items-center gap-3 text-[15px] text-[#0b1c30]">
+        {plan.features.map((feature, index) => (
+          <li key={`${index}-${feature}`} className="flex items-center gap-3 text-[15px] text-[#0b1c30]">
             <Check className="h-[18px] w-[18px] shrink-0 text-[#007d55]" strokeWidth={2.4} />
             {feature}
           </li>

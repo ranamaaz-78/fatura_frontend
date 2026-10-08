@@ -2,6 +2,7 @@ import { Percent, Plus, X } from 'lucide-react'
 import { t, intlLocale } from '../../i18n'
 import { cn } from '../../lib/cn'
 import { formatCents } from '../../lib/money'
+import { onlyDecimal } from '../../lib/numberInput'
 import type { DiscountType } from '../../types/sales'
 
 type DiscountEditorProps = {
@@ -89,7 +90,7 @@ export function DiscountEditor({
 
         <input
           value={value}
-          onChange={(event) => onValue(event.target.value)}
+          onChange={(event) => onValue(onlyDecimal(event.target.value))}
           inputMode="decimal"
           autoFocus
           aria-label={t('sales.discountValue', 'Discount value')}

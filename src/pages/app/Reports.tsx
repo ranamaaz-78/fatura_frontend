@@ -83,7 +83,7 @@ type Tile = { label: string; value: string; hint: string; tile: string; icon: Re
 
 type Slice = { name: string; value: number; color: string; money?: boolean }
 
-let currentCurrency = 'USD'
+let currentCurrency = 'EUR'
 
 function localIso(date = new Date()): string {
   const year = date.getFullYear()
@@ -539,7 +539,7 @@ function exportPayload(kind: ReportKind, data: ReportPayload, currency: string, 
 
 function Reports() {
   const { session } = useAuth()
-  const currency = session?.company?.currency ?? 'USD'
+  const currency = session?.company?.currency ?? 'EUR'
   const [kind, setKind] = useState<ReportKind>('sales')
   const [period, setPeriod] = useState<PaymentPeriod>('month')
   const [from, setFrom] = useState(monthStartIso)

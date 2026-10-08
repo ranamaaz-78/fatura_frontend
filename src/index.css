@@ -98,11 +98,22 @@ html[data-app-mode='dark'] .app-sidebar {
   }
 }
 
-/* Thin scrollbars everywhere */
-::-webkit-scrollbar { width: 6px; height: 6px; }
+/* Scrollbars: easy to grab on the page itself, slimmer inside panels and tables */
+::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 6px; }
 ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+html::-webkit-scrollbar { width: 16px; height: 16px; }
+html::-webkit-scrollbar-track { background: rgba(148, 163, 184, 0.14); }
+html::-webkit-scrollbar-thumb {
+  background: #94a3b8;
+  border: 3px solid transparent;
+  background-clip: padding-box;
+  border-radius: 999px;
+  min-height: 56px;
+}
+html::-webkit-scrollbar-thumb:hover { background: #64748b; background-clip: padding-box; }
 
 html[data-app-mode='dark']::-webkit-scrollbar-thumb,
 html[data-app-mode='dark'] *::-webkit-scrollbar-thumb,

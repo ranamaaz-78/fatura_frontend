@@ -9,8 +9,18 @@ export type CompanyCurrency = (typeof CODES)[number]
 
 const names = new Intl.DisplayNames([intlLocale()], { type: 'currency' })
 
+function safeName(code: string): string {
+  try {
+    return names.of(code) ?? code
+  } catch {
+    return code
+  }
+}
+
 /** Each currency named in the current language ("Euro", "Dólar estadounidense"). */
+export const DEFAULT_CURRENCY: CompanyCurrency = 'EUR'
+
 export const COMPANY_CURRENCIES: { code: CompanyCurrency; label: string }[] = CODES.map((code) => ({
   code,
-  label: names.of(code) ?? code,
+  label: safeName(code),
 }))

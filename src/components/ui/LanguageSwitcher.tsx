@@ -103,10 +103,7 @@ export function LanguageSwitcher({ tone = 'light', variant = 'pill', className }
   }
 
   return (
-    <span className={cn('inline-flex items-center gap-2', className)}>
-      <Globe className={cn('h-4 w-4', dark ? 'text-white/70' : 'text-[#64748b]')} aria-hidden="true" />
-      {segmented}
-    </span>
+    <span className={cn('inline-flex items-center', className)}>{segmented}</span>
   )
 }
 
@@ -115,6 +112,8 @@ export type LanguageChoiceProps = {
   onChange: (locale: Locale) => void
   disabled?: boolean
   busy?: Locale | null
+  /** "app" follows the colour palette the user picked; "public" keeps the fixed blue of the setup and login pages. */
+  tone?: 'app' | 'public'
 }
 
 const DESCRIPTIONS: Record<Locale, string> = {
@@ -123,7 +122,9 @@ const DESCRIPTIONS: Record<Locale, string> = {
 }
 
 /** Two big cards, for the places where choosing the language is the point (the setup step, Settings). */
-export function LanguageChoice({ value, onChange, disabled, busy = null }: LanguageChoiceProps) {
+export function LanguageChoice({ value, onChange, disabled, busy = null, tone = 'public' }: LanguageChoiceProps) {
+  const app = tone === 'app'
+
   return (
     <div role="radiogroup" aria-label={t('language.label', 'Language')} className="grid gap-3 sm:grid-cols-2">
       {LOCALES.map((locale) => {
@@ -137,28 +138,88 @@ export function LanguageChoice({ value, onChange, disabled, busy = null }: Langu
             disabled={disabled || busy !== null}
             onClick={() => onChange(locale.code)}
             className={cn(
-              'flex cursor-pointer items-center gap-4 rounded-2xl border-2 p-4 text-left transition-all focus-visible:ring-2 focus-visible:ring-[#004ac6]/40 focus-visible:outline-none disabled:cursor-not-allowed',
-              on ? 'border-[#004ac6] bg-[#eff4ff] shadow-[0_8px_22px_rgba(0,74,198,0.12)]' : 'border-[#dbe1ff] bg-white hover:border-[#9db6ff]',
+              'flex cursor-pointer items-center gap-4 rounded-2xl border-2 p-4 text-left transition-all focus-visible:ring-2 focus-visible:outline-none disabled:cursor-not-allowed',
+              app
+                ? cn(
+                    'focus-visible:ring-brand-500/40',
+                    on ? 'border-brand-600 bg-brand-50' : 'border-line bg-card hover:border-brand-500',
+                  )
+                : cn(
+                    'focus-visible:ring-[#004ac6]/40',
+                    on ? 'border-[#004ac6] bg-[#eff4ff] shadow-[0_8px_22px_rgba(0,74,198,0.12)]' : 'border-[#dbe1ff] bg-white hover:border-[#9db6ff]',
+                  ),
               (disabled || busy !== null) && !on && 'opacity-60',
             )}
           >
             <span
               className={cn(
                 'inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-sm font-extrabold tracking-wide',
-                on ? 'bg-[#004ac6] text-white' : 'bg-[#f1f5ff] text-[#434655]',
+                app
+                  ? on
+                    ? 'bg-brand-600 text-brand-on'
+                    : 'bg-page text-ink-muted'
+                  : on
+                    ? 'bg-[#004ac6] text-white'
+                    : 'bg-[#f1f5ff] text-[#434655]',
               )}
             >
               {locale.short}
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block text-[17px] font-bold text-[#0b1c30]">{locale.label}</span>
-              <span className="block text-[13px] text-[#64748b]">{DESCRIPTIONS[locale.code]}</span>
+              <span className={cn('block text-[17px] font-bold', app ? 'text-ink' : 'text-[#0b1c30]')}>{locale.label}</span>
+              <span className={cn('block text-[13px]', app ? 'text-ink-muted' : 'text-[#64748b]')}>{DESCRIPTIONS[locale.code]}</span>
             </span>
             {on ? (
-              <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#004ac6] text-white">
+              <span
+                className={cn(
+                  'inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full',
+                  app ? 'bg-brand-600 text-brand-on' : 'bg-[#004ac6] text-white',
+                )}
+              >
                 <Check className="h-3.5 w-3.5" strokeWidth={3} />
               </span>
             ) : null}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+type DocumentLanguageChoiceProps = {
+  /** `null` follows the language of the app. */
+  value: Locale | null
+  onChange: (locale: Locale | null) => void
+  disabled?: boolean
+}
+
+/** Which language invoices and other documents print in: the app's own, or a fixed one. */
+export function DocumentLanguageChoice({ value, onChange, disabled }: DocumentLanguageChoiceProps) {
+  const options: { code: Locale | null; label: string }[] = [
+    { code: null, label: t('settings.documentLanguageSame', 'Same as the app') },
+    ...LOCALES.map((locale) => ({ code: locale.code, label: locale.label })),
+  ]
+
+  return (
+    <div role="radiogroup" aria-label={t('settings.documentLanguage', 'Document language')} className="grid gap-3 sm:grid-cols-3">
+      {options.map((option) => {
+        const on = option.code === value
+        return (
+          <button
+            key={option.code ?? 'same'}
+            type="button"
+            role="radio"
+            aria-checked={on}
+            disabled={disabled}
+            onClick={() => !on && onChange(option.code)}
+            className={cn(
+              'flex cursor-pointer items-center justify-between gap-2 rounded-2xl border-2 px-4 py-3 text-left text-[15px] font-semibold transition-all focus-visible:ring-2 focus-visible:ring-brand-500/40 focus-visible:outline-none disabled:cursor-not-allowed',
+              on ? 'border-brand-600 bg-brand-50 text-ink' : 'border-line bg-card text-ink-muted hover:border-brand-500',
+              disabled && !on && 'opacity-60',
+            )}
+          >
+            {option.label}
+            {on ? <Check className="h-4 w-4 shrink-0 text-brand-600" strokeWidth={3} /> : null}
           </button>
         )
       })}

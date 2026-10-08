@@ -60,7 +60,7 @@ function Notice({ title, body, children }: { title: string; body: string; childr
       <span className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
         <AlertTriangle className="h-6 w-6" />
       </span>
-      <h1 className="mt-5 text-[26px] font-extrabold tracking-[-0.025em] text-[#0b1c30]">{title}</h1>
+      <h1 className="mt-5 text-[22px] font-extrabold tracking-[-0.025em] text-[#0b1c30]">{title}</h1>
       <p className="mt-2 text-[15px] leading-relaxed text-[#434655]">{body}</p>
       {children}
       <Link to="/login" className="mt-7 inline-block text-sm font-semibold text-[#004ac6] hover:text-[#2563eb]">
@@ -142,10 +142,10 @@ function SetPassword() {
 
   return (
     <form noValidate onSubmit={handleSubmit((values) => mutation.mutate(values))}>
-      <h1 className="text-[30px] font-extrabold tracking-[-0.025em] text-[#0b1c30]">
+      <h1 className="text-[24px] font-extrabold tracking-[-0.025em] text-[#0b1c30]">
         {t('auth.setPasswordTitle', 'Choose your password')}
       </h1>
-      <p className="mt-1.5 text-[15px] text-[#434655]">
+      <p className="mt-1.5 text-sm text-[#434655]">
         {t('auth.setPasswordSubtitle', 'Pick a password to finish setting up your account.')}
       </p>
       <p className="mt-2 text-[13px] text-[#64748b]">{email}</p>

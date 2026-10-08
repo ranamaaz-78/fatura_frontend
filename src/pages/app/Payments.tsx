@@ -94,7 +94,7 @@ function methodTone(id: number): string {
 
 function Payments() {
   const { session } = useAuth()
-  const currency = session?.company?.currency ?? 'USD'
+  const currency = session?.company?.currency ?? 'EUR'
   const [search, setSearch] = useState('')
   const [debounced, setDebounced] = useState('')
   const [period, setPeriod] = useState<PaymentPeriod>('all')

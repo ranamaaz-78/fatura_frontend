@@ -25,6 +25,8 @@ export type Plan = {
   slug: string
   description: string | null
   price: number
+  /** A higher "was" price shown struck through next to `price`; display only. */
+  original_price?: number | null
   currency: string
   interval: PlanInterval
   features: string[]
@@ -105,6 +107,9 @@ export type Company = {
   postal_code?: string | null
   country: string | null
   currency: string
+  locale?: 'en' | 'es'
+  /** Language printed on documents; null follows the panel's. */
+  document_locale?: 'en' | 'es' | null
   logo_url?: string | null
   /** False until every compulsory detail, and the logo, is filled in. */
   profile_complete?: boolean

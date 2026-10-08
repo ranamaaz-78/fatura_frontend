@@ -33,6 +33,16 @@ function uploadFailures(error: unknown): ProductImageUploadError[] | null {
   return Array.isArray(files) && files.length > 0 ? files : null
 }
 
+/** Puts a new picture in place of an existing one, keeping its name and every product linked to it. */
+export function replaceProductImage(uuid: string, file: File): Promise<ProductImage> {
+  const form = new FormData()
+  form.append('file', file)
+
+  return unwrap<ProductImage>(
+    api.post(`/app/product-images/${uuid}/replace`, form, { headers: { 'Content-Type': undefined }, timeout: 60000 }),
+  )
+}
+
 export function renameProductImage(uuid: string, name: string): Promise<ProductImage> {
   return unwrap<ProductImage>(api.patch(`/app/product-images/${uuid}`, { name }))
 }

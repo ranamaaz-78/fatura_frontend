@@ -1,16 +1,16 @@
 import { useQuery } from '@tanstack/react-query'
 import { Fragment, useEffect, type ReactNode } from 'react'
-import { t } from '../../i18n'
+import { td } from '../../i18n'
 import { cn } from '../../lib/cn'
 import { formatDate } from '../../lib/format'
-import { formatCents } from '../../lib/money'
+import { formatDocumentCents as formatCents } from '../../lib/money'
 import { pickPrintTemplate, printSheetStyle } from '../../lib/printTheme'
 import { ensurePrintFonts } from '../../lib/printFonts'
 import { getPrintTemplates, loadLogoBlob } from '../../services/printables'
 import type { Company } from '../../types/module01'
 import type { PrintTemplate } from '../../types/printables'
 import { saleDisplayStatus, type SaleDisplayStatus, type SaleDocument, type SaleLine } from '../../types/sales'
-import { localCountry } from '../../lib/countries'
+import { documentCountry as localCountry } from '../../lib/countries'
 
 export type PrintSheetProps = {
   document: SaleDocument
@@ -31,7 +31,7 @@ type SheetProps = PrintSheetProps & {
  * Four documents, four looks:
  *   Invoice    classic letterhead, hairline rules, IVA summary.
  *   Quotation  a full-width colour band, tinted cards, total in a colour block.
- *   Proforma   a centred letterhead, a dark table head, a boxed total.
+ *   Proforma   the invoice's letterhead and layout, without IVA, with what was paid and what is left.
  *   Albarán    a plain delivery slip: no company details at all, dashed rules, a signature.
  * Figures are set in tabular numerals so the columns line up.
  */
@@ -49,9 +49,10 @@ function Label({ children, className }: { children: ReactNode; className?: strin
 }
 
 function paymentText(status: SaleDisplayStatus): string {
-  if (status === 'voided') return t('sales.voided', 'Voided')
-  if (status === 'partial') return t('sales.partial', 'Partial')
-  return status === 'paid' ? t('sales.paid', 'Paid') : t('sales.pending', 'Pending')
+  if (status === 'voided') return td('sales.voided', 'Voided')
+  if (status === 'returned') return td('sales.returned', 'Returned')
+  if (status === 'partial') return td('sales.partial', 'Partial')
+  return status === 'paid' ? td('sales.paid', 'Paid') : td('sales.pending', 'Pending')
 }
 
 function StatusBadge({ status, onAccent = false }: { status: SaleDisplayStatus; onAccent?: boolean }) {
@@ -63,6 +64,8 @@ function StatusBadge({ status, onAccent = false }: { status: SaleDisplayStatus; 
           ? 'bg-white/20 text-white'
           : status === 'voided'
             ? 'bg-[#fff1f2] text-[#be123c]'
+            : status === 'returned'
+              ? 'bg-[#f1f5f9] text-[#475569]'
             : status === 'partial'
               ? 'bg-[#f0f9ff] text-[#0369a1]'
               : status === 'paid'
@@ -102,7 +105,7 @@ function companyPlace(company: Company | null): string[] {
   if (company.address) lines.push(company.address)
   const cityCountry = [[company.postal_code, company.city].filter(Boolean).join(' '), localCountry(company.country)].filter(Boolean).join(', ')
   if (cityCountry) lines.push(cityCountry)
-  if (company.tax_id) lines.push(`${t('sales.taxIdLabel', 'NIF/CIF')}: ${company.tax_id}`)
+  if (company.tax_id) lines.push(`${td('sales.taxIdLabel', 'NIF/CIF')}: ${company.tax_id}`)
   return lines
 }
 
@@ -140,11 +143,11 @@ function discountRows(document: SaleDocument, currency: string): TotalRow[] {
   if (!document.discount_cents) return []
   return [
     {
-      label: t('sales.subtotal', 'Subtotal'),
+      label: td('sales.subtotal', 'Subtotal'),
       value: formatCents(document.base_cents + document.discount_cents, currency),
     },
     {
-      label: `${t('sales.discount', 'Discount')}${document.discount_type === 'percent' ? ` (${document.discount_value}%)` : ''}`,
+      label: `${td('sales.discount', 'Discount')}${document.discount_type === 'percent' ? ` (${document.discount_value}%)` : ''}`,
       value: `−${formatCents(document.discount_cents, currency)}`,
     },
   ]
@@ -154,7 +157,7 @@ function recargoRows(document: SaleDocument, currency: string): TotalRow[] {
   if (!document.recargo_cents) return []
   return [
     {
-      label: `${t('sales.recargo', 'Recargo de equivalencia')} (${document.recargo_percent}%)`,
+      label: `${td('sales.recargo', 'Recargo de equivalencia')} (${document.recargo_percent}%)`,
       value: formatCents(document.recargo_cents, currency),
     },
   ]
@@ -165,7 +168,7 @@ function discountColumn(lines: SaleLine[], width: number): Column[] {
   return [
     {
       key: 'dto',
-      label: t('print.dto', 'Disc.'),
+      label: td('print.dto', 'Disc.'),
       width,
       render: (line) => (line.discount_percent ? `${line.discount_percent}%` : '—'),
     },
@@ -208,7 +211,7 @@ function SheetFrame({
           aria-hidden="true"
           className="pointer-events-none absolute top-[46%] left-1/2 z-10 -translate-x-1/2 -translate-y-1/2 -rotate-[24deg] rounded-xl border-[6px] border-[#be123c]/20 px-10 py-1 text-[104px] font-bold tracking-[0.12em] text-[#be123c]/15 uppercase"
         >
-          {t('sales.voidStamp', 'Void')}
+          {td('sales.voidStamp', 'Void')}
         </span>
       ) : null}
       {expired && !voided ? (
@@ -216,7 +219,7 @@ function SheetFrame({
           aria-hidden="true"
           className="pointer-events-none absolute top-[46%] left-1/2 z-10 -translate-x-1/2 -translate-y-1/2 -rotate-[24deg] rounded-xl border-[6px] border-[#b45309]/20 px-10 py-1 text-[96px] font-bold tracking-[0.12em] text-[#b45309]/15 uppercase"
         >
-          {t('sales.expiredStamp', 'Expired')}
+          {td('sales.expiredStamp', 'Expired')}
         </span>
       ) : null}
       <div className={cn('relative box-border flex h-full min-h-0', row ? 'flex-row' : 'flex-col', className)}>{children}</div>
@@ -338,7 +341,7 @@ function ClientBlock({ document, size = 'md' }: { document: SaleDocument; size?:
       <p className="mt-1 mb-0 text-[11px] leading-[1.65] text-[#475569]">
         {attn ? (
           <span className="block">
-            {t('sales.attn', 'Attn.')} {attn}
+            {td('sales.attn', 'Attn.')} {attn}
           </span>
         ) : null}
         {id ? <span className="block">N.I.F / N.I.E {id}</span> : null}
@@ -451,7 +454,7 @@ function ItemsTable({
         </colgroup>
         <thead>
           <tr className={style.head}>
-            {['#', t('sales.description', 'Description')].map((label) => (
+            {['#', td('sales.description', 'Description')].map((label) => (
               <th key={label} className={cn('text-left text-[9.5px] font-semibold tracking-[0.08em] uppercase', style.th, edge)}>
                 {label}
               </th>
@@ -514,12 +517,12 @@ function TaxSummary({ lines, currency }: { lines: SaleLine[]; currency: string }
 
   return (
     <div className="w-[280px]">
-      <Label>{t('sales.taxBreakdown', 'IVA summary')}</Label>
+      <Label>{td('sales.taxBreakdown', 'IVA summary')}</Label>
       <table className="mt-2.5 w-full border-collapse text-[10.5px]">
         <thead>
           <tr className="border-b border-[#e2e8f0] text-[#64748b]">
-            <th className="pb-1.5 text-left font-medium">{t('sales.rate', 'Rate')}</th>
-            <th className="pb-1.5 text-right font-medium">{t('print.base', 'Base')}</th>
+            <th className="pb-1.5 text-left font-medium">{td('sales.rate', 'Rate')}</th>
+            <th className="pb-1.5 text-right font-medium">{td('print.base', 'Base')}</th>
             <th className="pb-1.5 text-right font-medium">IVA</th>
           </tr>
         </thead>
@@ -549,8 +552,8 @@ function NotesAndTerms({
   className?: string
 }) {
   const blocks = [
-    notes?.trim() ? { label: t('sales.notes', 'Notes'), text: notes.trim() } : null,
-    terms.trim() ? { label: termsLabel ?? t('printables.terms', 'Terms'), text: terms.trim() } : null,
+    notes?.trim() ? { label: td('sales.notes', 'Notes'), text: notes.trim() } : null,
+    terms.trim() ? { label: termsLabel ?? td('printables.terms', 'Terms'), text: terms.trim() } : null,
   ].filter((block): block is { label: string; text: string } => block !== null)
 
   if (blocks.length === 0) return null
@@ -573,11 +576,11 @@ function SignatureRow({ dashed = false, className }: { dashed?: boolean; classNa
     <section className={cn('mt-14 grid grid-cols-[1fr_180px] gap-14', `${D}mt-9`, className)}>
       <div>
         <span className={rule} />
-        <p className="mt-2 mb-0 text-[10px] text-[#64748b]">{t('printables.receivedBy', 'Received by (name and signature)')}</p>
+        <p className="mt-2 mb-0 text-[10px] text-[#64748b]">{td('printables.receivedBy', 'Received by (name and signature)')}</p>
       </div>
       <div>
         <span className={rule} />
-        <p className="mt-2 mb-0 text-[10px] text-[#64748b]">{t('printables.signDate', 'Date')}</p>
+        <p className="mt-2 mb-0 text-[10px] text-[#64748b]">{td('printables.signDate', 'Date')}</p>
       </div>
     </section>
   )
@@ -586,7 +589,7 @@ function SignatureRow({ dashed = false, className }: { dashed?: boolean; classNa
 function PageMark({ document }: { document: SaleDocument }) {
   return (
     <span className="shrink-0 tabular-nums">
-      {document.number} · {t('sales.pageOne', 'Page 1 of 1')}
+      {document.number} · {td('sales.pageOne', 'Page 1 of 1')}
     </span>
   )
 }
@@ -599,13 +602,13 @@ function InvoiceSheet({ document, company, currency, lines, issued, theme, logoS
   const contact = companyContact(company)
 
   const columns: Column[] = [
-    { key: 'qty', label: t('print.qty', 'Qty'), width: 48, render: (line) => qtyText(line.quantity) },
-    { key: 'price', label: t('sales.unitPrice', 'Unit price'), width: 88, render: (line) => formatCents(line.unit_price, currency) },
+    { key: 'qty', label: td('print.qty', 'Qty'), width: 48, render: (line) => qtyText(line.quantity) },
+    { key: 'price', label: td('sales.unitPrice', 'Unit price'), width: 88, render: (line) => formatCents(line.unit_price, currency) },
     ...discountColumn(lines, 52),
     { key: 'iva', label: 'IVA', width: 46, render: (line) => `${line.iva_percent}%` },
     {
       key: 'amount',
-      label: t('sales.amount', 'Amount'),
+      label: td('sales.amount', 'Amount'),
       width: 96,
       className: 'font-medium text-[#0f172a]',
       render: (line) => formatCents(grossOf(line).base, currency),
@@ -633,7 +636,7 @@ function InvoiceSheet({ document, company, currency, lines, issued, theme, logoS
         </div>
         <div className="shrink-0 text-right">
           <h1 className="m-0 text-[32px] leading-none font-semibold tracking-[-0.025em] text-[var(--print-accent)]">
-            {t('sales.invoiceTitle', 'Invoice')}
+            {td('sales.invoiceTitle', 'Invoice')}
           </h1>
           <div className="mt-3">
             <StatusBadge status={display} />
@@ -643,16 +646,16 @@ function InvoiceSheet({ document, company, currency, lines, issued, theme, logoS
 
       <section className={cn('mt-12 flex items-start justify-between gap-10', `${D}mt-8`)}>
         <div className="min-w-0 flex-1">
-          <Label>{t('sales.billTo', 'Bill to')}</Label>
+          <Label>{td('sales.billTo', 'Bill to')}</Label>
           <ClientBlock document={document} />
         </div>
         <MetaList
           className="shrink-0"
           rows={[
-            { label: t('sales.invoiceNumber', 'Invoice no.'), value: document.number, strong: true },
-            { label: t('sales.issueDate', 'Issue date'), value: issued },
+            { label: td('sales.invoiceNumber', 'Invoice no.'), value: document.number, strong: true },
+            { label: td('sales.issueDate', 'Issue date'), value: issued },
             ...(display === 'pending'
-              ? [{ label: t('sales.amountDue', 'Amount due'), value: formatCents(document.total_cents, currency), strong: true }]
+              ? [{ label: td('sales.amountDue', 'Amount due'), value: formatCents(document.total_cents, currency), strong: true }]
               : []),
           ]}
         />
@@ -666,13 +669,13 @@ function InvoiceSheet({ document, company, currency, lines, issued, theme, logoS
           <TotalRows
             rows={[
               ...discountRows(document, currency),
-              { label: t('sales.taxableBase', 'Taxable base'), value: formatCents(document.base_cents, currency) },
+              { label: td('sales.taxableBase', 'Taxable base'), value: formatCents(document.base_cents, currency) },
               { label: 'IVA', value: formatCents(document.tax_cents, currency) },
               ...recargoRows(document, currency),
             ]}
           />
           <div className="mt-2 flex items-baseline justify-between gap-4 border-t border-[#0f172a] pt-3">
-            <span className="text-[12px] font-semibold">{t('sales.total', 'Total')}</span>
+            <span className="text-[12px] font-semibold">{td('sales.total', 'Total')}</span>
             <span className="text-[24px] font-semibold tracking-[-0.02em] text-[var(--print-accent)] tabular-nums">
               {formatCents(document.total_cents, currency)}
             </span>
@@ -698,14 +701,14 @@ function QuotationSheet({ document, company, currency, lines, issued, theme, log
   const contact = companyContact(company)
 
   const columns: Column[] = [
-    { key: 'qty', label: t('print.qty', 'Qty'), width: 44, render: (line) => qtyText(line.quantity) },
-    { key: 'price', label: t('sales.unitPrice', 'Unit price'), width: 80, render: (line) => formatCents(line.unit_price, currency) },
+    { key: 'qty', label: td('print.qty', 'Qty'), width: 44, render: (line) => qtyText(line.quantity) },
+    { key: 'price', label: td('sales.unitPrice', 'Unit price'), width: 80, render: (line) => formatCents(line.unit_price, currency) },
     ...discountColumn(lines, 48),
     { key: 'iva', label: 'IVA', width: 44, render: (line) => `${line.iva_percent}%` },
-    { key: 'net', label: t('print.priceNet', 'Net'), width: 84, render: (line) => formatCents(grossOf(line).base, currency) },
+    { key: 'net', label: td('print.priceNet', 'Net'), width: 84, render: (line) => formatCents(grossOf(line).base, currency) },
     {
       key: 'gross',
-      label: t('print.priceGross', 'With IVA'),
+      label: td('print.priceGross', 'With IVA'),
       width: 92,
       className: 'font-semibold text-[#0f172a]',
       render: (line) => formatCents(grossOf(line).total, currency),
@@ -713,11 +716,11 @@ function QuotationSheet({ document, company, currency, lines, issued, theme, log
   ]
 
   const stats: { label: string; value: string; accent?: boolean }[] = [
-    { label: t('sales.date', 'Date'), value: issued },
+    { label: td('sales.date', 'Date'), value: issued },
     document.expires_at
-      ? { label: t('sales.validUntil', 'Valid until'), value: formatDate(document.expires_at) }
-      : { label: t('sales.items', 'Items'), value: String(lines.length) },
-    { label: t('sales.totalWithTax', 'Total with tax'), value: formatCents(document.total_cents, currency), accent: true },
+      ? { label: td('sales.validUntil', 'Valid until'), value: formatDate(document.expires_at) }
+      : { label: td('sales.items', 'Items'), value: String(lines.length) },
+    { label: td('sales.totalWithTax', 'Total with tax'), value: formatCents(document.total_cents, currency), accent: true },
   ]
 
   return (
@@ -742,7 +745,7 @@ function QuotationSheet({ document, company, currency, lines, issued, theme, log
         <div>
           <span aria-hidden="true" className="mb-4 block h-1 w-10 group-data-[dense=true]:hidden rounded-full bg-[var(--print-accent)]" />
           <h1 className="m-0 text-[44px] leading-none font-light group-data-[dense=true]:text-[34px] tracking-[-0.035em] text-[#0f172a]">
-            {t('sales.quotationTitle', 'Quotation')}
+            {td('sales.quotationTitle', 'Quotation')}
           </h1>
           <p className="mt-2.5 mb-0 text-[12px] font-medium text-[#64748b] tabular-nums">{document.number}</p>
         </div>
@@ -765,11 +768,11 @@ function QuotationSheet({ document, company, currency, lines, issued, theme, log
 
       <section className={cn('mt-7 grid grid-cols-2 gap-10', `${D}mt-4`)}>
         <div className="border-l-[3px] border-[var(--print-accent)] pl-4">
-          <Label>{t('sales.quotationFor', 'Prepared for')}</Label>
+          <Label>{td('sales.quotationFor', 'Prepared for')}</Label>
           <ClientBlock document={document} />
         </div>
         <div className="border-l-[3px] border-[#e2e8f0] pl-4">
-          <Label>{t('sales.preparedBy', 'Prepared by')}</Label>
+          <Label>{td('sales.preparedBy', 'Prepared by')}</Label>
           <p className="mt-2.5 mb-0 text-[14px] font-semibold">{company?.name}</p>
           <p className="mt-1 mb-0 text-[11px] leading-[1.65] text-[#475569]">
             {company?.email ? <span className="block">{company.email}</span> : null}
@@ -785,13 +788,13 @@ function QuotationSheet({ document, company, currency, lines, issued, theme, log
           <TotalRows
             rows={[
               ...discountRows(document, currency),
-              { label: t('sales.totalWithoutTax', 'Total without tax'), value: formatCents(document.base_cents, currency) },
+              { label: td('sales.totalWithoutTax', 'Total without tax'), value: formatCents(document.base_cents, currency) },
               { label: 'IVA', value: formatCents(document.tax_cents, currency) },
               ...recargoRows(document, currency),
             ]}
           />
           <div className="mt-2 flex items-baseline justify-between gap-4 border-t-2 border-[var(--print-accent)] pt-3">
-            <span className="text-[12px] font-semibold">{t('sales.totalWithTax', 'Total with tax')}</span>
+            <span className="text-[12px] font-semibold">{td('sales.totalWithTax', 'Total with tax')}</span>
             <span className="text-[24px] font-semibold tracking-[-0.02em] text-[var(--print-accent)] tabular-nums">
               {formatCents(document.total_cents, currency)}
             </span>
@@ -801,15 +804,15 @@ function QuotationSheet({ document, company, currency, lines, issued, theme, log
 
       <NotesAndTerms
         notes={document.notes}
-        terms={theme.footer_notes.trim() || t('sales.scopeNetGross', 'Prices shown both without and with tax, at the rates in force today.')}
-        termsLabel={t('sales.scope', 'Scope and conditions')}
+        terms={theme.footer_notes.trim() || td('sales.scopeNetGross', 'Prices shown both without and with tax, at the rates in force today.')}
+        termsLabel={td('sales.scope', 'Scope and conditions')}
         className={cn('mt-8', `${D}mt-5`)}
       />
       {theme.show_signature ? <SignatureRow /> : null}
 
       <footer className="mt-auto flex items-end justify-between gap-8 border-t border-[#e2e8f0] pt-4 text-[9.5px] text-[#94a3b8]">
         <span className="font-medium text-[#64748b]">
-          {t('sales.quotationFooter', 'This is a quotation, not a tax invoice.')}
+          {td('sales.quotationFooter', 'This is a quotation, not a tax invoice.')}
         </span>
         <PageMark document={document} />
       </footer>
@@ -817,136 +820,102 @@ function QuotationSheet({ document, company, currency, lines, issued, theme, log
   )
 }
 
-/* ------------------------------------------------------------------ Proforma: the quotation's sibling */
+/* ------------------------------------------------------------------ Proforma: the invoice's layout, without tax */
 
 function ProformaSheet({ document, company, currency, lines, issued, theme, logoSrc }: SheetProps) {
   const display = saleDisplayStatus(document)
-  const units = lines.reduce((sum, line) => sum + line.quantity, 0)
-  const settled = Math.min(document.settled_cents ?? 0, document.total_cents)
-  const balance = Math.max(0, document.total_cents - settled)
-  const paidShare = document.total_cents > 0 ? Math.round((settled / document.total_cents) * 100) : 0
+  const returned = document.returned_cents ?? 0
+  const settled = Math.min(document.settled_cents ?? 0, Math.max(0, document.total_cents - returned))
+  // Pieces that came back are neither paid nor owed.
+  const balance = Math.max(0, document.total_cents - returned - settled)
   const place = companyPlace(company)
   const contact = companyContact(company)
-  const attn = clientAttn(document)
-  const id = taxId(document)
 
   const columns: Column[] = [
-    { key: 'qty', label: t('print.qty', 'Qty'), width: 60, render: (line) => qtyText(line.quantity) },
-    { key: 'price', label: t('sales.unitPrice', 'Unit price'), width: 104, render: (line) => formatCents(line.unit_price, currency) },
+    { key: 'qty', label: td('print.qty', 'Qty'), width: 48, render: (line) => qtyText(line.quantity) },
+    { key: 'price', label: td('sales.unitPrice', 'Unit price'), width: 88, render: (line) => formatCents(line.unit_price, currency) },
     {
       key: 'amount',
-      label: t('sales.amount', 'Amount'),
-      width: 116,
-      className: 'font-semibold text-[#0f172a]',
+      label: td('sales.amount', 'Amount'),
+      width: 96,
+      className: 'font-medium text-[#0f172a]',
       render: (line) => formatCents(line.total_cents, currency),
     },
   ]
 
-  const stats: { label: string; value: ReactNode; accent?: boolean }[] = [
-    { label: t('sales.date', 'Date'), value: issued },
-    { label: t('sales.units', 'Units'), value: `${qtyText(units)} · ${lines.length} ${lines.length === 1 ? t('sales.lineOne', 'line') : t('sales.lineMany', 'lines')}` },
-    { label: t('sales.status', 'Status'), value: <StatusBadge status={display} /> },
-    { label: t('sales.total', 'Total'), value: formatCents(document.total_cents, currency), accent: true },
-  ]
-
-  const clientFacts = [
-    { label: 'N.I.F / N.I.E', value: id },
-    { label: t('print.phone', 'Phone'), value: document.client_phone },
-    { label: t('sales.attn', 'Attn.'), value: attn },
-  ].filter((fact) => fact.value)
-
   return (
-    <SheetFrame theme={theme} voided={display === 'voided'} lineCount={lines.length} denseAfter={6} className={cn('px-14 pt-12 pb-10', `${D}pt-9 ${D}pb-8`)}>
+    <SheetFrame theme={theme} voided={display === 'voided'} lineCount={lines.length} className={cn('px-14 pt-14 pb-10', `${D}pt-11 ${D}pb-8`)}>
+      <span aria-hidden="true" className="absolute inset-x-0 top-0 h-[5px] bg-[var(--print-accent)]" />
+
       <header className="flex items-start justify-between gap-10">
-        <div className="min-w-0">
-          {theme.show_logo ? (
-            <div className="mb-2.5">
-              <LogoMark company={company} logoSrc={logoSrc} show size={lines.length > 6 ? 44 : 54} imageSize={lines.length > 6 ? 56 : 72} />
-            </div>
-          ) : null}
-          <p className="m-0 text-[15px] font-semibold tracking-[-0.01em]">{company?.name}</p>
-          <p className="mt-1 mb-0 text-[10.5px] leading-[1.65] text-[#64748b]">
-            {[...place, contact].filter(Boolean).map((line) => (
-              <span key={line} className="block">
-                {line}
-              </span>
-            ))}
-          </p>
+        <div className={cn('flex min-w-0 gap-4', theme.show_logo && logoSrc ? 'flex-col items-start gap-2.5' : 'items-start')}>
+          <LogoMark company={company} logoSrc={logoSrc} show={theme.show_logo} imageSize={lines.length > 8 ? 54 : 68} />
+          <div className="min-w-0">
+            <p className="m-0 text-[16px] font-semibold tracking-[-0.01em]">{company?.name}</p>
+            <p className={cn('mt-1.5 mb-0 text-[11px] leading-[1.65] text-[#64748b]', `${D}leading-[1.5]`)}>
+              {place.map((line) => (
+                <span key={line} className="block">
+                  {line}
+                </span>
+              ))}
+              {contact ? <span className="block">{contact}</span> : null}
+            </p>
+          </div>
         </div>
         <div className="shrink-0 text-right">
-          <h1 className="m-0 text-[44px] leading-none font-light tracking-[-0.035em] text-[#0f172a] group-data-[dense=true]:text-[34px]">
-            {t('sales.proformaTitle', 'Proforma')}
+          <h1 className="m-0 text-[32px] leading-none font-semibold tracking-[-0.025em] text-[var(--print-accent)]">
+            {td('sales.proformaTitle', 'Proforma')}
           </h1>
-          <p className="mt-2.5 mb-0 text-[12px] font-medium text-[#64748b] tabular-nums">{document.number}</p>
-          <span aria-hidden="true" className="mt-3.5 ml-auto block h-1 w-10 rounded-full bg-[var(--print-accent)]" />
+          <div className="mt-3">
+            <StatusBadge status={display} />
+          </div>
+          <p className="mt-2 mb-0 text-[9.5px] font-medium text-[#94a3b8]">{td('sales.proformaTag', 'Not a tax invoice')}</p>
         </div>
       </header>
 
-      <section className={cn('mt-9 grid grid-cols-4 rounded-xl bg-[var(--print-soft)] px-2 py-4', `${D}mt-6 ${D}py-3`)}>
-        {stats.map((stat, index) => (
-          <div key={stat.label} className={cn('px-4', index > 0 && 'border-l border-[var(--print-border)]')}>
-            <Label>{stat.label}</Label>
-            <div
-              className={cn(
-                'mt-1.5 tabular-nums',
-                stat.accent ? 'text-[17px] font-semibold text-[var(--print-accent)]' : 'text-[12.5px] font-medium',
-              )}
-            >
-              {stat.value}
-            </div>
-          </div>
-        ))}
-      </section>
-
-      <section className={cn('mt-8 flex items-start justify-between gap-8 border-l-[3px] border-[var(--print-accent)] pl-4', `${D}mt-5`)}>
-        <div className="min-w-0">
-          <Label>{t('sales.preparedFor', 'Prepared for')}</Label>
-          <p className="mt-2 mb-0 text-[15px] font-semibold text-[#0f172a]">{clientTitle(document)}</p>
-          {document.client_address ? (
-            <p className="mt-1 mb-0 text-[11px] leading-[1.6] text-[#475569]">{document.client_address}</p>
-          ) : null}
+      <section className={cn('mt-12 flex items-start justify-between gap-10', `${D}mt-8`)}>
+        <div className="min-w-0 flex-1">
+          <Label>{td('sales.preparedFor', 'Prepared for')}</Label>
+          <ClientBlock document={document} />
         </div>
-        {clientFacts.length > 0 ? (
-          <dl className="m-0 flex shrink-0 gap-8 text-[11px]">
-            {clientFacts.map((fact) => (
-              <div key={fact.label}>
-                <dt className="text-[9.5px] text-[#64748b]">{fact.label}</dt>
-                <dd className="m-0 mt-1 font-medium text-[#0f172a] tabular-nums">{fact.value}</dd>
-              </div>
-            ))}
-          </dl>
-        ) : null}
+        <MetaList
+          className="shrink-0"
+          rows={[
+            { label: td('sales.proformaNumber', 'Proforma no.'), value: document.number, strong: true },
+            { label: td('sales.issueDate', 'Issue date'), value: issued },
+            ...(display === 'pending' || display === 'partial'
+              ? [{ label: td('sales.balanceDue', 'Balance due'), value: formatCents(balance, currency), strong: true }]
+              : []),
+          ]}
+        />
       </section>
 
-      <ItemsTable lines={lines} columns={columns} variant="light" className={cn('mt-8', `${D}mt-5`)} />
+      <ItemsTable lines={lines} columns={columns} variant="rule" className={cn('mt-10', `${D}mt-7`)} />
 
-      <section className={cn('mt-6 flex items-start justify-between gap-10', `${D}mt-4`)}>
+      <section className={cn('mt-8 flex items-start justify-between gap-10', `${D}mt-5`)}>
         <p className="m-0 max-w-[300px] text-[10px] leading-[1.7] text-[#94a3b8]">
-          {t(
+          {td(
             'sales.proformaCaption',
             'Prices are the amounts agreed with the customer for this shipment. Taxes are not calculated on this document.',
           )}
         </p>
         <div className="w-[280px] shrink-0 text-[11.5px]">
-          <div className="flex items-baseline justify-between gap-4 border-t-2 border-[var(--print-accent)] pt-3">
-            <span className="text-[12px] font-semibold">{t('sales.total', 'Total')}</span>
+          <div className="flex items-baseline justify-between gap-4 border-t border-[#0f172a] pt-3">
+            <span className="text-[12px] font-semibold">{td('sales.total', 'Total')}</span>
             <span className="text-[24px] font-semibold tracking-[-0.02em] text-[var(--print-accent)] tabular-nums">
               {formatCents(document.total_cents, currency)}
             </span>
           </div>
-          {settled > 0 ? (
-            <div className="mt-3.5">
-              <div className="h-1.5 overflow-hidden rounded-full bg-[var(--print-tint)]">
-                <span className="block h-full rounded-full bg-[var(--print-accent)]" style={{ width: `${paidShare}%` }} />
-              </div>
-              <div className="mt-2.5 flex items-baseline justify-between gap-4">
-                <span className="text-[#64748b]">
-                  {t('sales.paidToDate', 'Paid to date')} · {paidShare}%
-                </span>
-                <span className="tabular-nums">{formatCents(settled, currency)}</span>
-              </div>
-              <div className="mt-1.5 flex items-baseline justify-between gap-4">
-                <span className="font-semibold">{t('sales.balanceDue', 'Balance due')}</span>
+          {settled > 0 || returned > 0 ? (
+            <div className="mt-2">
+              <TotalRows
+                rows={[
+                  ...(settled > 0 ? [{ label: td('sales.paidToDate', 'Paid to date'), value: formatCents(settled, currency) }] : []),
+                  ...(returned > 0 ? [{ label: td('sales.returned', 'Returned'), value: `−${formatCents(returned, currency)}` }] : []),
+                ]}
+              />
+              <div className="mt-1 flex items-baseline justify-between gap-4 border-t border-[#e2e8f0] pt-2.5">
+                <span className="font-semibold">{td('sales.balanceDue', 'Balance due')}</span>
                 <span className="font-semibold tabular-nums">{formatCents(balance, currency)}</span>
               </div>
             </div>
@@ -954,11 +923,11 @@ function ProformaSheet({ document, company, currency, lines, issued, theme, logo
         </div>
       </section>
 
-      <NotesAndTerms notes={document.notes} terms={theme.footer_notes} className={cn('mt-9', `${D}mt-5`)} />
+      <NotesAndTerms notes={document.notes} terms={theme.footer_notes} />
       {theme.show_signature ? <SignatureRow /> : null}
 
-      <footer className="mt-auto flex items-end justify-between gap-8 border-t border-[#e2e8f0] pt-4 text-[9.5px] text-[#94a3b8]">
-        <span className="font-medium text-[#64748b]">{t('sales.proformaTag', 'Not a tax invoice')}</span>
+      <footer className="mt-auto flex items-end justify-between gap-8 border-t border-[#e2e8f0] pt-4 text-[9.5px] leading-[1.6] text-[#94a3b8]">
+        <span className="min-w-0">{[company?.name, contact].filter(Boolean).join(' · ')}</span>
         <PageMark document={document} />
       </footer>
     </SheetFrame>
@@ -977,16 +946,16 @@ function AlbaranSheet({ document, currency, lines, issued, theme }: SheetProps) 
   const columns: Column[] = [
     {
       key: 'qty',
-      label: t('print.qty', 'Qty'),
+      label: td('print.qty', 'Qty'),
       width: 60,
       className: 'font-bold text-[#0f172a]',
       render: (line) => qtyText(line.quantity),
     },
-    { key: 'price', label: t('sales.unitPrice', 'Unit price'), width: 92, render: (line) => formatCents(line.unit_price, currency) },
+    { key: 'price', label: td('sales.unitPrice', 'Unit price'), width: 92, render: (line) => formatCents(line.unit_price, currency) },
     ...discountColumn(lines, 56),
     {
       key: 'amount',
-      label: t('sales.amount', 'Amount'),
+      label: td('sales.amount', 'Amount'),
       width: 100,
       className: 'font-medium text-[#0f172a]',
       render: (line) => formatCents(grossOf(line).total, currency),
@@ -1010,26 +979,26 @@ function AlbaranSheet({ document, currency, lines, issued, theme }: SheetProps) 
         </div>
         <div className="grid shrink-0 grid-cols-2 overflow-hidden rounded-md border-2 border-[#0f172a] text-center">
           <div className="border-r-2 border-[#0f172a] px-5 py-2.5">
-            <p className="m-0 text-[9px] font-semibold tracking-[0.1em] text-[#64748b] uppercase">{t('print.number', 'No.')}</p>
+            <p className="m-0 text-[9px] font-semibold tracking-[0.1em] text-[#64748b] uppercase">{td('print.number', 'No.')}</p>
             <p className="mt-1 mb-0 text-[15px] font-bold tabular-nums">{document.number}</p>
           </div>
           <div className="px-5 py-2.5">
-            <p className="m-0 text-[9px] font-semibold tracking-[0.1em] text-[#64748b] uppercase">{t('sales.date', 'Date')}</p>
+            <p className="m-0 text-[9px] font-semibold tracking-[0.1em] text-[#64748b] uppercase">{td('sales.date', 'Date')}</p>
             <p className="mt-1 mb-0 text-[15px] font-bold tabular-nums">{issued}</p>
           </div>
         </div>
       </header>
 
       <section className={cn('mt-10', `${D}mt-6`)}>
-        <Label className="text-[#0f172a]">{t('sales.deliverTo', 'Deliver to')}</Label>
+        <Label className="text-[#0f172a]">{td('sales.deliverTo', 'Deliver to')}</Label>
         <div className="mt-1.5">
-          {field(t('sales.clientName', 'Name'), clientTitle(document))}
-          {attn ? field(t('sales.attn', 'Attn.'), attn) : null}
+          {field(td('sales.clientName', 'Name'), clientTitle(document))}
+          {attn ? field(td('sales.attn', 'Attn.'), attn) : null}
           <div className="grid grid-cols-2 gap-8">
             {field('N.I.F / N.I.E', id)}
-            {field(t('print.phone', 'Phone'), document.client_phone)}
+            {field(td('print.phone', 'Phone'), document.client_phone)}
           </div>
-          {document.client_address ? field(t('sales.clientAddress', 'Address'), document.client_address) : null}
+          {document.client_address ? field(td('sales.clientAddress', 'Address'), document.client_address) : null}
         </div>
       </section>
 
@@ -1038,13 +1007,13 @@ function AlbaranSheet({ document, currency, lines, issued, theme }: SheetProps) 
       <section className={cn('mt-6 flex items-start justify-between gap-10', `${D}mt-4`)}>
         <p className="m-0 text-[11px] text-[#475569]">
           <span className="font-bold text-[#0f172a] tabular-nums">{qtyText(units)}</span>{' '}
-          {t('sales.unitsIn', 'units in')} <span className="font-bold text-[#0f172a] tabular-nums">{lines.length}</span>{' '}
-          {lines.length === 1 ? t('sales.lineOne', 'line') : t('sales.lineMany', 'lines')}
+          {td('sales.unitsIn', 'units in')} <span className="font-bold text-[#0f172a] tabular-nums">{lines.length}</span>{' '}
+          {lines.length === 1 ? td('sales.lineOne', 'line') : td('sales.lineMany', 'lines')}
         </p>
         <div className="w-[260px] shrink-0 text-[11.5px]">
           <TotalRows rows={discountRows(document, currency)} />
           <div className="mt-1.5 flex items-baseline justify-between gap-4 border-t-2 border-[#0f172a] pt-2.5">
-            <span className="text-[12px] font-bold uppercase tracking-[0.06em]">{t('sales.totalNet', 'Total (net)')}</span>
+            <span className="text-[12px] font-bold uppercase tracking-[0.06em]">{td('sales.totalNet', 'Total (net)')}</span>
             <span className="text-[20px] font-bold tabular-nums">{formatCents(document.total_cents, currency)}</span>
           </div>
         </div>
@@ -1054,7 +1023,7 @@ function AlbaranSheet({ document, currency, lines, issued, theme }: SheetProps) 
       {theme.show_signature ? <SignatureRow dashed /> : null}
 
       <footer className="mt-auto flex items-center justify-between gap-6 border-t-2 border-dashed border-[#94a3b8] pt-3 text-[9.5px] text-[#94a3b8]">
-        <span>{t('sales.albaranFooter', 'Keep this slip with the goods.')}</span>
+        <span>{td('sales.albaranFooter', 'Keep this slip with the goods.')}</span>
         <PageMark document={document} />
       </footer>
     </SheetFrame>

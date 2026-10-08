@@ -86,9 +86,36 @@ export function adoptLocale(next: Locale | null | undefined): boolean {
 
 export type Vars = Record<string, string | number>
 
-function lookup(key: string, fallback: string): string {
-  if (current === 'es') return es[key] ?? en[key] ?? fallback
+function lookupIn(locale: Locale, key: string, fallback: string): string {
+  if (locale === 'es') return es[key] ?? en[key] ?? fallback
   return en[key] ?? fallback
+}
+
+function lookup(key: string, fallback: string): string {
+  return lookupIn(current, key, fallback)
+}
+
+/**
+ * The language printed on documents. It can differ from the panel's; `null` means "same as the panel".
+ * Changing it needs no reload: documents are rendered on demand.
+ */
+let documentLocale: Locale | null = null
+
+export function setDocumentLocale(next: Locale | null | undefined): void {
+  documentLocale = isLocale(next) ? next : null
+}
+
+export function getDocumentLocale(): Locale {
+  return documentLocale ?? current
+}
+
+export function documentIntlLocale(): string {
+  return getDocumentLocale() === 'es' ? 'es-ES' : 'en-US'
+}
+
+/** Like `t`, but in the document language. Use it for everything that prints on an invoice, quotation or note. */
+export function td(key: string, fallback: string, vars?: Vars): string {
+  return fill(lookupIn(getDocumentLocale(), key, fallback), vars)
 }
 
 function fill(text: string, vars?: Vars): string {

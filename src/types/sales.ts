@@ -5,7 +5,7 @@ export type IssuableType = Exclude<SaleType, 'abono'>
 
 export type PaymentStatus = 'pending' | 'partial' | 'paid'
 
-export type SaleDisplayStatus = PaymentStatus | 'voided'
+export type SaleDisplayStatus = PaymentStatus | 'voided' | 'returned'
 
 export function isSaleVoided(document: { voided_at?: string | null; is_voided?: boolean }): boolean {
   return Boolean(document.is_voided || document.voided_at)
@@ -39,8 +39,11 @@ export function saleDisplayStatus(document: {
   payment_status: PaymentStatus
   voided_at?: string | null
   is_voided?: boolean
+  is_fully_returned?: boolean
 }): SaleDisplayStatus {
-  return isSaleVoided(document) ? 'voided' : document.payment_status
+  if (isSaleVoided(document)) return 'voided'
+  // A proforma whose pieces all came back never became a sale.
+  return document.is_fully_returned ? 'returned' : document.payment_status
 }
 
 export type CompanyPaymentMethod = {
@@ -93,6 +96,7 @@ export type SaleLine = {
   /** This line's share of the bill discount. base_cents and tax_cents are already net of it. */
   bill_discount_cents?: number
   settled_quantity?: number
+  returned_quantity?: number
   remaining_quantity?: number
 }
 
@@ -108,8 +112,24 @@ export type SaleSettlement = {
   payment_method_id: number
   payment_method: { id: number; name: string } | null
   total_cents: number
+  /** The invoice made for this payment, if any. */
+  invoice?: { id: number; number: string; is_voided: boolean } | null
   created_at: string
   lines?: SaleSettlementLine[]
+}
+
+/** Pieces of a proforma that came back: they went back into stock and are no longer owed. */
+export type SaleReturn = {
+  id: number
+  note: string | null
+  total_cents: number
+  created_at: string
+  lines?: { line_id: number; quantity: number; unit_price: number; total_cents: number }[]
+}
+
+export type SaleReturnInput = {
+  lines: { line_id: number; quantity: number }[]
+  note?: string
 }
 
 export type SaleSettleInput = {
@@ -160,9 +180,16 @@ export type SaleDocument = {
   recargo_cents: number
   total_cents: number
   settled_cents: number
+  /** What the returned pieces were worth on the proforma. */
+  returned_cents?: number
+  is_fully_returned?: boolean
+  /** Set on an invoice made from a proforma payment. */
+  from_settlement_id?: number | null
+  from_proforma?: { id: number; number: string } | null
   is_partial: boolean
   lines?: SaleLine[]
   settlements?: SaleSettlement[]
+  returns?: SaleReturn[]
 }
 
 export type SaleLineInput = {

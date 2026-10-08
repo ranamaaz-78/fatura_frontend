@@ -10,3 +10,8 @@ export function saveCompanyLocale(locale: Locale): Promise<unknown> {
 export function saveAdminLocale(locale: Locale): Promise<unknown> {
   return unwrap(api.patch('/admin/me/locale', { locale }))
 }
+
+/** The language printed on invoices and other documents. `null` follows the panel's language. */
+export function saveDocumentLocale(documentLocale: Locale | null): Promise<unknown> {
+  return unwrap(api.patch('/app/company/document-locale', { document_locale: documentLocale }))
+}

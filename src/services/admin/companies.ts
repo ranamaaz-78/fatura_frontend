@@ -61,21 +61,3 @@ export function whatsappFromError(error: unknown): string | null {
   const data = error.response?.data as { data?: { whatsapp_url?: string | null } } | undefined
   return data?.data?.whatsapp_url ?? null
 }
-
-export type CompanyWhatsApp = {
-  instance_name: string
-  has_instance: boolean
-  status: 'disconnected' | 'connecting' | 'qrcode' | 'connected'
-  connected_phone: string | null
-  connected_name: string | null
-  service_alive: boolean
-}
-
-/** One company's own WhatsApp link, as the service reports it right now. */
-export function getCompanyWhatsApp(companyId: number): Promise<CompanyWhatsApp> {
-  return unwrap<CompanyWhatsApp>(api.get(`/admin/companies/${companyId}/whatsapp`))
-}
-
-export function disconnectCompanyWhatsApp(companyId: number): Promise<CompanyWhatsApp> {
-  return unwrap<CompanyWhatsApp>(api.post(`/admin/companies/${companyId}/whatsapp/disconnect`))
-}

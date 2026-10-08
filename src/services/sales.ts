@@ -8,6 +8,7 @@ import type {
   SaleInput,
   SaleList,
   SaleListParams,
+  SaleReturnInput,
   SaleSettleInput,
   SaleSettlementQtyInput,
   SaleType,
@@ -81,6 +82,22 @@ export function updateSalePayment(
 
 export function settleSale(id: number, input: SaleSettleInput): Promise<SaleDocument> {
   return unwrap<SaleDocument>(api.post(`/app/sales/${id}/settle`, input))
+}
+
+export function invoiceSettlement(
+  id: number,
+  settlementId: number,
+  input: { iva: Record<number, number>; recargo_rate_id: number | null },
+): Promise<SaleDocument> {
+  return unwrap<SaleDocument>(api.post(`/app/sales/${id}/settlements/${settlementId}/invoice`, input))
+}
+
+export function returnSalePieces(id: number, input: SaleReturnInput): Promise<SaleDocument> {
+  return unwrap<SaleDocument>(api.post(`/app/sales/${id}/returns`, input))
+}
+
+export function cancelSaleReturn(id: number, returnId: number): Promise<SaleDocument> {
+  return unwrap<SaleDocument>(api.delete(`/app/sales/${id}/returns/${returnId}`))
 }
 
 export function updateSaleSettlement(

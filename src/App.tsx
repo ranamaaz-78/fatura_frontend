@@ -1,4 +1,6 @@
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+import type { ReactNode } from 'react'
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { ErrorBoundary } from './components/ErrorBoundary'
 import { AuthProvider } from './auth/AuthProvider'
 import { RequireGuest, RequireRole, RequireSetupDone } from './auth/guards'
 import { AdminLayout } from './layouts/AdminLayout'
@@ -42,10 +44,17 @@ import SuppliersPage from './pages/app/Suppliers'
 import ApplyPage from './pages/public/Apply'
 import HomePage from './pages/public/Home'
 
+/** Resets the error screen whenever the page changes, so one crash never traps the app. */
+function RouteGuard({ children }: { children: ReactNode }) {
+  const location = useLocation()
+  return <ErrorBoundary key={location.pathname}>{children}</ErrorBoundary>
+}
+
 function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
+        <RouteGuard>
         <Routes>
           {/* Apply brings its own shell: no site navbar or footer. */}
           <Route path="/apply" element={<ApplyPage />} />
@@ -122,6 +131,7 @@ function App() {
           <Route path="/dev/ui" element={<UiGallery />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        </RouteGuard>
       </AuthProvider>
     </BrowserRouter>
   )

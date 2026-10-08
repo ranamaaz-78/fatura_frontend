@@ -6,12 +6,15 @@ import { Card } from '../../components/ui/Card'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { Input } from '../../components/ui/Input'
 import { Modal } from '../../components/ui/Modal'
+import { parseNumber } from '../../lib/money'
+import { COMPANY_CURRENCIES, DEFAULT_CURRENCY } from '../../lib/currencies'
 import { Select } from '../../components/ui/Select'
 import { Skeleton } from '../../components/ui/Skeleton'
 import { Textarea } from '../../components/ui/Textarea'
 import { Toggle } from '../../components/ui/Toggle'
 import { useToast } from '../../components/ui/Toast'
 import { t } from '../../i18n'
+import { OriginalPrice } from '../../components/ui/PlanDiscount'
 import { formatCurrency, formatInterval } from '../../lib/format'
 import { getErrorMessage, mapValidationErrors } from '../../services/api'
 import { createPlan, listPlans, togglePlan, updatePlan, type PlanInput } from '../../services/admin/plans'
@@ -25,6 +28,7 @@ type Draft = {
   features_es: string
   description: string
   price: string
+  original_price: string
   currency: string
   interval: PlanInterval
   features: string
@@ -41,7 +45,8 @@ const BLANK: Draft = {
   features_es: '',
   description: '',
   price: '0',
-  currency: 'USD',
+  original_price: '',
+  currency: DEFAULT_CURRENCY,
   interval: 'month',
   features: '',
   max_users: '',
@@ -58,6 +63,7 @@ function draftFrom(plan: Plan): Draft {
     features_es: (plan.features_es ?? []).join('\n'),
     description: plan.description ?? '',
     price: String(plan.price),
+    original_price: plan.original_price ? String(plan.original_price) : '',
     currency: plan.currency,
     interval: plan.interval,
     features: plan.features.join('\n'),
@@ -78,7 +84,8 @@ function toInput(draft: Draft): PlanInput {
       .map((line) => line.trim())
       .filter(Boolean),
     description: draft.description || undefined,
-    price: Number(draft.price) || 0,
+    price: parseNumber(draft.price) ?? 0,
+    original_price: parseNumber(draft.original_price),
     currency: draft.currency.toUpperCase(),
     interval: draft.interval,
     features: draft.features
@@ -192,7 +199,7 @@ function AdminPlans() {
                 <div>
                   <p className="text-sm font-bold text-slate-900">{plan.name}</p>
                   <p className="text-xs text-slate-500">
-                    {formatCurrency(plan.price, plan.currency)} / {formatInterval(plan.interval)}
+                    <OriginalPrice plan={plan} className="mr-1.5 text-xs" />{formatCurrency(plan.price, plan.currency)} / {formatInterval(plan.interval)}
                   </p>
                 </div>
                 <Button
@@ -209,8 +216,8 @@ function AdminPlans() {
               </div>
 
               <ul className="mt-4 space-y-1.5">
-                {plan.features.slice(0, 4).map((feature) => (
-                  <li key={feature} className="text-xs text-slate-600">
+                {plan.features.slice(0, 4).map((feature, index) => (
+                  <li key={`${index}-${feature}`} className="text-xs text-slate-600">
                     · {feature}
                   </li>
                 ))}
@@ -277,12 +284,28 @@ function AdminPlans() {
                 onChange={(event) => set('price', event.target.value)}
               />
               <Input
+                label={t('plans.original_price', 'Original price (optional)')}
+                hint={t('plans.original_price_hint', 'Shown struck through next to the price, with a "Save %" badge. Must be higher than the price.')}
+                inputMode="decimal"
+                value={draft.original_price}
+                error={errors.original_price}
+                onChange={(event) => set('original_price', event.target.value)}
+              />
+              <Select
                 label={t('settings.currency', 'Currency')}
-                maxLength={3}
                 value={draft.currency}
                 error={errors.currency}
-                onChange={(event) => set('currency', event.target.value.toUpperCase())}
-              />
+                onChange={(event) => set('currency', event.target.value)}
+              >
+                {(COMPANY_CURRENCIES.some((item) => item.code === draft.currency)
+                  ? COMPANY_CURRENCIES
+                  : [{ code: draft.currency, label: draft.currency }, ...COMPANY_CURRENCIES]
+                ).map((item) => (
+                  <option key={item.code} value={item.code}>
+                    {item.code} · {item.label}
+                  </option>
+                ))}
+              </Select>
               <Select
                 label={t('plans.interval', 'Interval')}
                 value={draft.interval}

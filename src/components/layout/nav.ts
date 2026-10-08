@@ -154,7 +154,7 @@ export const APP_TABS: NavItem[] = [
   },
   {
     to: '/app/products',
-    labelKey: 'nav.products',
+    labelKey: 'nav.productsTab',
     fallback: 'Products',
     icon: Package,
   },

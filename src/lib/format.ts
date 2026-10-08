@@ -1,13 +1,24 @@
-import { intlLocale, t } from '../i18n'
+import { documentIntlLocale, intlLocale, t } from '../i18n'
 
 /** `_locale` is kept so older call sites still compile; the language always comes from the app setting. */
 export function formatCurrency(value: number, currency: string, _locale?: string, decimals = 2): string {
-  return new Intl.NumberFormat(intlLocale(), {
-    style: 'currency',
-    currency,
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals,
-  }).format(value)
+  return formatCurrencyIn(intlLocale(), value, currency, decimals)
+}
+
+/** The same amount as it prints on a document, in the document language. */
+export function formatDocumentCurrency(value: number, currency: string, decimals = 2): string {
+  return formatCurrencyIn(documentIntlLocale(), value, currency, decimals)
+}
+
+function formatCurrencyIn(tag: string, value: number, currency: string, decimals: number): string {
+  const options = { minimumFractionDigits: decimals, maximumFractionDigits: decimals }
+  try {
+    // Spanish writes the dollar as "US$"; show the plain "USD" code instead.
+    return new Intl.NumberFormat(tag, { style: 'currency', currency, ...options }).format(value).replace('US$', 'USD')
+  } catch {
+    // An unknown or half-typed currency code must never take the screen down.
+    return `${new Intl.NumberFormat(tag, options).format(value)} ${currency}`.trim()
+  }
 }
 
 /** Headline prices drop a trailing `.00` so "$20" reads as a price, not a total. */

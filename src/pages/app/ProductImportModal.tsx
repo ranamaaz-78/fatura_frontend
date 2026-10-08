@@ -1,5 +1,5 @@
 import { useMutation } from '@tanstack/react-query'
-import { AlertTriangle, CheckCircle2, FileSpreadsheet, Upload } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, Download, FileSpreadsheet, Upload } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import * as XLSX from 'xlsx'
 import { Button } from '../../components/ui/Button'
@@ -11,6 +11,7 @@ import { useToast } from '../../components/ui/Toast'
 import { t } from '../../i18n'
 import { cn } from '../../lib/cn'
 import { parseAmountToCents, parseNumber } from '../../lib/money'
+import { downloadProductDemoSheet } from '../../lib/productDemoSheet'
 import { getErrorMessage } from '../../services/api'
 import { importProducts } from '../../services/catalog'
 import type { ImportRow, ImportRowError } from '../../types/catalog'
@@ -292,6 +293,14 @@ export function ProductImportModal({ open, onClose, onImported }: ProductImportM
               </div>
             </FileDropzone>
             {readError ? <p className="text-xs text-rose-600">{readError}</p> : null}
+            <button
+              type="button"
+              onClick={downloadProductDemoSheet}
+              className="inline-flex cursor-pointer items-center gap-1.5 text-xs font-semibold text-brand-600 hover:underline"
+            >
+              <Download className="h-3.5 w-3.5" />
+              {t('products.demoSheetHint', 'Not sure how to fill it? Download the demo sheet')}
+            </button>
           </div>
         ) : null}
 

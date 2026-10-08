@@ -1,18 +1,19 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, CalendarClock, CalendarX2, FileDown, ImageDown, MessageCircle, Pencil, Printer } from 'lucide-react'
-import { useCallback, useEffect, useState } from 'react'
+import { ArrowLeft, CalendarClock, CalendarX2, FileDown, ImageDown, FileText, MessageCircle, Pencil, Printer, Undo2 } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../../auth/AuthProvider'
+import { ConfirmDialog } from '../../components/ui/ConfirmDialog'
 import { ConfettiBurst } from '../../components/ui/ConfettiBurst'
 import { IconButton } from '../../components/ui/IconButton'
 import { useToast } from '../../components/ui/Toast'
-import { t, intlLocale } from '../../i18n'
+import { t, tp, intlLocale } from '../../i18n'
 import { cn } from '../../lib/cn'
 import { downloadSaleDocumentSheet } from '../../lib/exportSaleSheet'
 import { formatDate } from '../../lib/format'
 import { formatCents } from '../../lib/money'
 import { getErrorMessage } from '../../services/api'
-import { convertSale, getSale, settleSale, updateSalePayment, updateSaleSettlement, voidSale } from '../../services/sales'
+import { cancelSaleReturn, convertSale, getSale, invoiceSettlement, returnSalePieces, settleSale, updateSalePayment, updateSaleSettlement, voidSale } from '../../services/sales'
 import {
   isSaleConverted,
   isSaleExpired,
@@ -21,6 +22,8 @@ import {
   saleDisplayStatus,
   type PaymentStatus,
   type SaleDisplayStatus,
+  type SaleReturn,
+  type SaleReturnInput,
   type SaleSettlement,
   type SaleType,
 } from '../../types/sales'
@@ -29,12 +32,15 @@ import { ConvertQuoteModal } from './ConvertQuoteModal'
 import { PrintSheet } from './printSheets'
 import { RecordPaymentModal } from './RecordPaymentModal'
 import { EditProformaSettlementModal } from './EditProformaSettlementModal'
+import { InvoiceFromPaymentModal } from './InvoiceFromPaymentModal'
+import { ReturnProformaModal } from './ReturnProformaModal'
 import { SettleProformaModal } from './SettleProformaModal'
 import { VoidSaleModal } from './VoidSaleModal'
 import { SendWhatsAppModal } from './SendWhatsAppModal'
 
 function paymentClass(status: SaleDisplayStatus): string {
   if (status === 'voided') return 'bg-rose-50 text-rose-700 border border-rose-200'
+  if (status === 'returned') return 'bg-slate-100 text-slate-700 border border-slate-200'
   if (status === 'partial') return 'bg-sky-50 text-sky-800 border border-sky-200'
   return status === 'paid'
     ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
@@ -43,6 +49,7 @@ function paymentClass(status: SaleDisplayStatus): string {
 
 function paymentLabel(status: SaleDisplayStatus): string {
   if (status === 'voided') return t('sales.voided', 'Voided')
+  if (status === 'returned') return t('sales.returned', 'Returned')
   if (status === 'partial') return t('sales.partial', 'Partial')
   return status === 'paid' ? t('sales.paid', 'Paid') : t('sales.pending', 'Pending')
 }
@@ -54,12 +61,15 @@ function InvoiceDetail() {
   const { session } = useAuth()
   const { push } = useToast()
   const queryClient = useQueryClient()
-  const currency = session?.company?.currency ?? 'USD'
+  const currency = session?.company?.currency ?? 'EUR'
   const company = session?.company
   const documentId = Number(id)
   const [exporting, setExporting] = useState<'png' | 'pdf' | null>(null)
   const [methodOpen, setMethodOpen] = useState(false)
   const [settleOpen, setSettleOpen] = useState(false)
+  const [returnOpen, setReturnOpen] = useState(false)
+  const [invoicing, setInvoicing] = useState<SaleSettlement | null>(null)
+  const [cancelling, setCancelling] = useState<SaleReturn | null>(null)
   const [editingSettlement, setEditingSettlement] = useState<SaleSettlement | null>(null)
   const [voidOpen, setVoidOpen] = useState(false)
   const [whatsAppOpen, setWhatsAppOpen] = useState(false)
@@ -84,6 +94,19 @@ function InvoiceDetail() {
     startCelebrate()
     navigate(location.pathname, { replace: true, state: {} })
   }, [location.pathname, location.state, navigate, startCelebrate])
+
+  const printAsked = useRef<number | null>(null)
+  useEffect(() => {
+    const state = location.state as { print?: boolean } | null
+    if (!state?.print || !query.data || printAsked.current === documentId) return
+    printAsked.current = documentId
+    const path = location.pathname
+    // Give the sheet a moment to draw before the print dialog freezes the page.
+    window.setTimeout(() => {
+      if (window.location.pathname === path) window.print()
+    }, 700)
+    navigate(path, { replace: true, state: {} })
+  }, [documentId, location.pathname, location.state, navigate, query.data])
 
   useEffect(() => {
     const document = query.data
@@ -117,6 +140,47 @@ function InvoiceDetail() {
       startCelebrate()
     },
     onError: (error) => push({ tone: 'danger', title: getErrorMessage(error) }),
+  })
+
+  const returning = useMutation({
+    mutationFn: (input: SaleReturnInput) => returnSalePieces(documentId, input),
+    onSuccess: (document) => {
+      setReturnOpen(false)
+      queryClient.setQueryData(['app', 'sale', documentId], document)
+      void queryClient.invalidateQueries({ queryKey: ['app', 'sales'] })
+      void queryClient.invalidateQueries({ queryKey: ['app', 'dashboard'] })
+      void queryClient.invalidateQueries({ queryKey: ['app', 'products'] })
+      push({ tone: 'success', title: t('sales.returnDone', 'Return recorded. The pieces are back in stock.') })
+    },
+    onError: (error) => push({ tone: 'danger', title: getErrorMessage(error) }),
+  })
+
+  const makeInvoice = useMutation({
+    mutationFn: (input: { settlementId: number; iva: Record<number, number>; recargoRateId: number | null }) =>
+      invoiceSettlement(documentId, input.settlementId, { iva: input.iva, recargo_rate_id: input.recargoRateId }),
+    onSuccess: (invoice) => {
+      setInvoicing(null)
+      void queryClient.invalidateQueries({ queryKey: ['app', 'sale', documentId] })
+      void queryClient.invalidateQueries({ queryKey: ['app', 'sales'] })
+      push({ tone: 'success', title: t('sales.invoiceFromPaymentDone', 'Invoice {number} created.', { number: invoice.number }) })
+      navigate(`/app/invoices/${invoice.id}`, { state: { print: true } })
+    },
+    onError: (error) => push({ tone: 'danger', title: getErrorMessage(error) }),
+  })
+
+  const cancelReturn = useMutation({
+    mutationFn: (returnId: number) => cancelSaleReturn(documentId, returnId),
+    onSuccess: (document) => {
+      setCancelling(null)
+      queryClient.setQueryData(['app', 'sale', documentId], document)
+      void queryClient.invalidateQueries({ queryKey: ['app', 'sales'] })
+      void queryClient.invalidateQueries({ queryKey: ['app', 'dashboard'] })
+      void queryClient.invalidateQueries({ queryKey: ['app', 'products'] })
+    },
+    onError: (error) => {
+      setCancelling(null)
+      push({ tone: 'danger', title: getErrorMessage(error) })
+    },
   })
 
   const editingQty = useMutation({
@@ -180,6 +244,7 @@ function InvoiceDetail() {
   const quoteDays = openQuote && document.expires_at ? quoteDaysLeft(document.expires_at) : null
   const canSettle = rules.settlesLines && document.payment_status !== 'paid'
   const settlements = document.settlements ?? []
+  const returns = document.returns ?? []
 
   return (
     <div className="flex flex-col gap-6 print:contents">
@@ -309,6 +374,17 @@ function InvoiceDetail() {
                 : t('sales.recordPayment', 'Record payment')}
             </button>
           ) : null}
+          {canSettle && !voided ? (
+            <button
+              type="button"
+              disabled={returning.isPending}
+              onClick={() => setReturnOpen(true)}
+              className="inline-flex h-10 cursor-pointer items-center gap-1.5 rounded-xl border border-line bg-card px-4 text-xs font-semibold text-ink hover:bg-page disabled:opacity-60"
+            >
+              <Undo2 className="h-3.5 w-3.5" />
+              {t('sales.returnPieces', 'Return pieces')}
+            </button>
+          ) : null}
           {rules.settlesPayment && !voided && document.payment_status !== 'paid' ? (
             <button
               type="button"
@@ -383,11 +459,30 @@ function InvoiceDetail() {
                     {new Date(row.created_at).toLocaleString(intlLocale())}
                   </span>
                 </span>
-                <span className="flex shrink-0 items-center gap-1">
+                <span className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
                   <span className="text-sm font-bold text-slate-900">
                     {formatCents(row.total_cents, currency)}
                   </span>
-                  {rules.settlesLines ? (
+                  {rules.settlesLines && row.invoice && !row.invoice.is_voided ? (
+                    <Link
+                      to={`/app/invoices/${row.invoice.id}`}
+                      className="inline-flex h-8 items-center gap-1 rounded-lg bg-emerald-50 px-2.5 text-[11px] font-semibold text-emerald-700 hover:bg-emerald-100"
+                    >
+                      <FileText className="h-3.5 w-3.5" />
+                      {row.invoice.number}
+                    </Link>
+                  ) : rules.settlesLines ? (
+                    <button
+                      type="button"
+                      disabled={makeInvoice.isPending}
+                      onClick={() => setInvoicing(row)}
+                      className="inline-flex h-8 cursor-pointer items-center gap-1 rounded-lg border border-line bg-card px-2.5 text-[11px] font-semibold text-ink hover:bg-page disabled:opacity-60"
+                    >
+                      <FileText className="h-3.5 w-3.5" />
+                      {t('sales.invoiceFromPayment', 'Create invoice')}
+                    </button>
+                  ) : null}
+                  {rules.settlesLines && !(row.invoice && !row.invoice.is_voided) ? (
                     <IconButton
                       label={t('sales.editQuantity', 'Edit quantity')}
                       tooltipAlign="end"
@@ -400,6 +495,54 @@ function InvoiceDetail() {
                 </span>
               </li>
             ))}
+          </ul>
+        </div>
+      ) : null}
+
+      {document.from_proforma ? (
+        <div className="no-print flex flex-wrap items-center gap-2 rounded-2xl border border-line/80 bg-card px-5 py-3 text-sm text-ink-muted shadow-xs">
+          <FileText className="h-4 w-4" />
+          {t('sales.fromProforma', 'Made from a payment on proforma')}
+          <Link to={`/app/proformas/${document.from_proforma.id}`} className="font-semibold text-brand-600">
+            {document.from_proforma.number}
+          </Link>
+          <span className="text-xs">{t('sales.fromProformaNote', '· stock was already taken out by the proforma')}</span>
+        </div>
+      ) : null}
+
+      {returns.length > 0 ? (
+        <div className="no-print rounded-2xl border border-line/80 bg-card px-5 py-4 shadow-xs">
+          <p className="text-[11px] font-semibold tracking-[0.06em] text-slate-500 uppercase">
+            {t('sales.returns', 'Returns')}
+          </p>
+          <ul className="mt-3 divide-y divide-slate-100">
+            {returns.map((row) => {
+              const pieces = (row.lines ?? []).reduce((sum, line) => sum + line.quantity, 0)
+              return (
+                <li key={row.id} className="flex items-center justify-between gap-3 py-2 first:pt-0 last:pb-0">
+                  <span className="min-w-0">
+                    <span className="block text-sm font-semibold text-slate-800">
+                      {tp('sales.returnPieceCount', '{count} piece returned|{count} pieces returned', pieces)}
+                    </span>
+                    <span className="block text-[11px] text-slate-400">
+                      {new Date(row.created_at).toLocaleString(intlLocale())}
+                    </span>
+                    {row.note ? <span className="block truncate text-xs text-slate-500">{row.note}</span> : null}
+                  </span>
+                  <span className="flex shrink-0 items-center gap-1">
+                    <span className="text-sm font-bold text-slate-900">{formatCents(row.total_cents, currency)}</span>
+                    <IconButton
+                      label={t('sales.returnCancel', 'Cancel return')}
+                      tooltipAlign="end"
+                      disabled={cancelReturn.isPending}
+                      onClick={() => setCancelling(row)}
+                    >
+                      <Undo2 className="h-4 w-4" />
+                    </IconButton>
+                  </span>
+                </li>
+              )
+            })}
           </ul>
         </div>
       ) : null}
@@ -430,6 +573,37 @@ function InvoiceDetail() {
         currency={currency}
         onClose={() => setSettleOpen(false)}
         onConfirm={(input) => settling.mutate(input)}
+      />
+      <InvoiceFromPaymentModal
+        open={invoicing !== null}
+        loading={makeInvoice.isPending}
+        settlement={invoicing}
+        lines={document.lines ?? []}
+        currency={currency}
+        onClose={() => setInvoicing(null)}
+        onConfirm={(iva, recargoRateId) => {
+          if (invoicing !== null) makeInvoice.mutate({ settlementId: invoicing.id, iva, recargoRateId })
+        }}
+      />
+      <ReturnProformaModal
+        open={returnOpen}
+        loading={returning.isPending}
+        lines={document.lines ?? []}
+        currency={currency}
+        onClose={() => setReturnOpen(false)}
+        onConfirm={(input) => returning.mutate(input)}
+      />
+      <ConfirmDialog
+        open={cancelling !== null}
+        loading={cancelReturn.isPending}
+        tone="warning"
+        title={t('sales.returnCancelTitle', 'Cancel this return?')}
+        description={t('sales.returnCancelBody', 'The pieces leave stock again and count as owed on this proforma.')}
+        confirmLabel={t('sales.returnCancel', 'Cancel return')}
+        onClose={() => setCancelling(null)}
+        onConfirm={() => {
+          if (cancelling !== null) cancelReturn.mutate(cancelling.id)
+        }}
       />
       <EditProformaSettlementModal
         open={editingSettlement !== null}

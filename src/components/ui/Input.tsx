@@ -1,5 +1,7 @@
-import { useId, type InputHTMLAttributes, type ReactNode } from 'react'
+import { useId, useState, type InputHTMLAttributes, type ReactNode } from 'react'
 import { cn } from '../../lib/cn'
+import { onlyDecimal, onlyDigits } from '../../lib/numberInput'
+import { PasswordToggle } from './PasswordToggle'
 
 export type InputProps = InputHTMLAttributes<HTMLInputElement> & {
   label?: string
@@ -22,6 +24,8 @@ export function Input({
   ...props
 }: InputProps) {
   const fallbackId = useId()
+  const [reveal, setReveal] = useState(false)
+  const isPassword = props.type === 'password'
   const inputId = id ?? props.name ?? fallbackId
   const hintId = hint ? `${inputId}-hint` : undefined
   const errorId = error ? `${inputId}-error` : undefined
@@ -52,13 +56,21 @@ export function Input({
             'placeholder:text-ink-muted',
             'focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500',
             'disabled:bg-page disabled:text-ink-muted transition',
-            suffix && 'pr-12',
+            (suffix || isPassword) && 'pr-12',
             props.inputMode === 'decimal' && 'text-right',
             error && 'border-rose-300 focus:ring-rose-500/30 focus:border-rose-500',
             className,
           )}
           {...props}
+          onChange={(event) => {
+            // Price, percentage and quantity fields never take letters.
+            const clean = props.inputMode === 'decimal' ? onlyDecimal(event.target.value) : props.inputMode === 'numeric' ? onlyDigits(event.target.value) : null
+            if (clean !== null && clean !== event.target.value) event.target.value = clean
+            props.onChange?.(event)
+          }}
+          type={isPassword && reveal ? 'text' : props.type}
         />
+        {isPassword ? <PasswordToggle shown={reveal} onToggle={() => setReveal((value) => !value)} /> : null}
         {suffix ? (
           <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-sm text-ink-muted">{suffix}</span>
         ) : null}

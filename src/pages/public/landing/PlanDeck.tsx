@@ -2,6 +2,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent } from 'react'
 import { t } from '../../../i18n'
 import { cn } from '../../../lib/cn'
+import { OriginalPrice } from '../../../components/ui/PlanDiscount'
 import { formatPlanPrice } from '../../../lib/format'
 import type { Plan } from '../../../types/module01'
 import { PlanCard } from '../PricingCards'
@@ -234,6 +235,7 @@ export function PlanDeck({ plans }: { plans: Plan[] }) {
                 )}
               >
                 {plan.name}
+                <OriginalPrice plan={plan} className="mr-1 text-[11px]" />
                 <span className={cn('text-[13px]', on ? 'text-[#004ac6]' : 'text-[#94a3b8]')}>
                   {formatPlanPrice(plan.price, plan.currency)}
                 </span>

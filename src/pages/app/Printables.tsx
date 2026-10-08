@@ -186,7 +186,7 @@ function Printables() {
   const { push } = useToast()
   const queryClient = useQueryClient()
   const company = session?.company ?? null
-  const currency = company?.currency ?? 'USD'
+  const currency = company?.currency ?? 'EUR'
 
   const [type, setType] = useState<PrintableType>('factura')
   const [drafts, setDrafts] = useState<Record<PrintableType, PrintTemplateInput> | null>(null)

@@ -24,33 +24,33 @@ export function AuthLayout() {
   return (
     <div className="flex min-h-screen flex-col bg-[#f8f9ff] text-[#0b1c30] lg:flex-row">
       <aside
-        className="flex flex-col px-6 py-10 text-white sm:px-14 lg:w-[460px] lg:shrink-0 xl:w-[500px]"
+        className="hidden flex-col px-6 py-8 text-white sm:px-10 lg:flex lg:w-[380px] lg:shrink-0 xl:w-[420px]"
         style={ASIDE_BACKGROUND}
       >
         <Link to="/" className="inline-flex" aria-label={t('app.name', 'YK Digital Solutions')}>
-          <Logo on="dark" className="h-14" />
+          <Logo on="dark" className="h-11" />
         </Link>
 
-        <h2 className="mt-12 text-[32px] leading-[1.12] font-extrabold tracking-[-0.03em] sm:text-[40px] lg:mt-16">
+        <h2 className="mt-8 text-[26px] leading-[1.15] font-extrabold tracking-[-0.03em] sm:text-[28px] lg:mt-10">
           {t('auth.asideTitle', 'Run your shop from one screen.')}
         </h2>
-        <p className="mt-4 text-base leading-relaxed text-[#cbd5e1]">
+        <p className="mt-3 text-[15px] leading-relaxed text-[#cbd5e1]">
           {t(
             'auth.asideBody',
             'Invoices, stock and barcodes in one place, at the counter and in your pocket.',
           )}
         </p>
 
-        <div className="mt-10 flex flex-col gap-3.5">
+        <div className="mt-7 flex flex-col gap-3">
           {PROMISES.map((promise) => (
-            <span key={promise} className="inline-flex items-center gap-3 text-[15px] text-[#e2e8f0]">
+            <span key={promise} className="inline-flex items-center gap-3 text-sm text-[#e2e8f0]">
               <Check className="h-[18px] w-[18px] shrink-0 text-[#4edea3]" strokeWidth={2.4} />
               {promise}
             </span>
           ))}
         </div>
 
-        <div className="mt-auto rounded-[20px] border border-white/12 bg-white/6 p-5.5">
+        <div className="mt-auto rounded-[20px] border border-white/12 bg-white/6 p-4">
           <span className="text-xs font-bold uppercase tracking-[0.08em] text-[#4edea3]">
             {t('auth.needHelp', 'Need a hand?')}
           </span>
@@ -73,16 +73,21 @@ export function AuthLayout() {
         </div>
       </aside>
 
-      <main className="flex flex-1 flex-col px-5 py-10 sm:px-10">
-        <div className="flex items-center justify-end gap-5">
+      <main className="flex flex-1 flex-col px-5 py-6 sm:px-10">
+        <div className="flex flex-wrap items-center justify-between gap-x-5 gap-y-4 lg:justify-end">
+          <Link to="/" className="inline-flex w-full lg:hidden" aria-label={t('app.name', 'YK Digital Solutions')}>
+            <Logo on="light" className="h-9" />
+          </Link>
+          <span className="flex flex-wrap items-center gap-x-5 gap-y-2">
           <LanguageSwitcher tone="light" />
-          <Link to="/" className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#434655] hover:text-[#004ac6]">
+          <Link to="/" className="inline-flex items-center gap-1.5 text-sm font-semibold whitespace-nowrap text-[#434655] hover:text-[#004ac6]">
             <ChevronLeft className="h-4 w-4" />
             {t('public.backHome', 'Back to home')}
           </Link>
+          </span>
         </div>
 
-        <div className="mx-auto flex w-full max-w-[420px] flex-1 flex-col justify-center py-10">
+        <div className="mx-auto flex w-full max-w-[400px] flex-1 flex-col justify-center py-6">
           <Outlet />
         </div>
       </main>

@@ -51,7 +51,7 @@ function Card({
     <Reveal delay={delay} className={span}>
       <article
         className={cn(
-          'group relative flex h-full flex-col overflow-hidden rounded-[28px] p-7 transition-shadow duration-300 sm:p-8',
+          'group relative flex h-full flex-col overflow-hidden rounded-[28px] p-5 transition-shadow duration-300 sm:p-6',
           look.card,
         )}
       >
@@ -229,16 +229,16 @@ function ShareVisual() {
 
 export function FeatureBento() {
   return (
-    <section id="features" className="scroll-mt-20 px-5 py-20 sm:py-28">
-      <div className="mx-auto max-w-[1200px]">
+    <section id="features" className="scroll-mt-20 px-5 py-12 sm:py-16">
+      <div className="mx-auto max-w-[1080px]">
         <Reveal className="mx-auto max-w-[760px] text-center">
           <span className="text-[13px] font-bold tracking-[0.1em] text-[#004ac6] uppercase">
             {t('public.featuresEyebrow', 'Features')}
           </span>
-          <h2 className="mt-3 text-[32px] leading-[1.12] font-extrabold tracking-[-0.03em] text-[#0b1c30] sm:text-[44px]">
+          <h2 className="mt-3 text-[26px] leading-[1.12] font-extrabold tracking-[-0.03em] text-[#0b1c30] sm:text-[34px]">
             {t('public.featuresTitle', 'Everything your counter needs, nothing it does not.')}
           </h2>
-          <p className="mt-4 text-base leading-relaxed text-[#434655] sm:text-lg">
+          <p className="mt-4 text-base leading-relaxed text-[#434655] sm:text-[17px]">
             {t(
               'public.featuresBody',
               'Every sale updates your stock. Every product has a barcode. Every invoice is ready to print or share in one tap.',
@@ -246,7 +246,7 @@ export function FeatureBento() {
           </p>
         </Reveal>
 
-        <div className="mt-14 grid gap-5 md:grid-cols-2 lg:grid-cols-6">
+        <div className="mt-9 grid gap-5 md:grid-cols-2 lg:grid-cols-6">
           <Card
             icon={ScanLine}
             tone="navy"

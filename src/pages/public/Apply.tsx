@@ -24,6 +24,7 @@ import {
   isPossibleNumber,
   localDigits,
 } from '../../lib/countries'
+import { OriginalPrice } from '../../components/ui/PlanDiscount'
 import { formatPlanPrice, formatInterval } from '../../lib/format'
 import { supportWhatsappUrl } from '../../lib/support'
 import { getErrorMessage, mapValidationErrors } from '../../services/api'
@@ -102,7 +103,7 @@ function Stepper() {
             >
               {index + 1}
             </span>
-            {index < STEPS.length - 1 ? <span className="h-11 w-0.5 bg-white/14" /> : null}
+            {index < STEPS.length - 1 ? <span className="h-8 w-0.5 bg-white/14" /> : null}
           </span>
           <span className="pt-1.5">
             <span className={cn('block text-base font-bold', index === 0 ? 'text-white' : 'text-[#e2e8f0]')}>
@@ -118,7 +119,7 @@ function Stepper() {
 
 function SelectedPlanCard({ plan, canChange }: { plan: Plan | null; canChange: boolean }) {
   return (
-    <div className="mt-auto rounded-[20px] border border-white/12 bg-white/6 p-5.5">
+    <div className="mt-auto rounded-[20px] border border-white/12 bg-white/6 p-4">
       <div className="flex items-center justify-between gap-3">
         <span className="text-xs font-bold uppercase tracking-[0.08em] text-[#4edea3]">
           {t('apply.selectedPlan', 'Selected plan')}
@@ -131,7 +132,8 @@ function SelectedPlanCard({ plan, canChange }: { plan: Plan | null; canChange: b
           <div className="mt-2.5 flex items-baseline justify-between gap-3">
             <span className="text-xl font-bold text-white">{plan.name}</span>
             <span>
-              <span className="text-[28px] font-extrabold tracking-[-0.03em] text-white">
+              <OriginalPrice plan={plan} className="mr-2 text-base text-[#cbd5e1]" />
+              <span className="text-[24px] font-extrabold tracking-[-0.03em] text-white">
                 {formatPlanPrice(plan.price, plan.currency)}
               </span>
               <span className="text-sm text-[#cbd5e1]"> / {formatInterval(plan.interval)}</span>
@@ -375,17 +377,17 @@ function Apply() {
   return (
     <div className="flex min-h-screen flex-col bg-[#f8f9ff] text-[#0b1c30] lg:flex-row">
       <aside
-        className="flex flex-col px-6 py-10 text-white sm:px-14 lg:w-[460px] lg:shrink-0 xl:w-[500px]"
+        className="hidden flex-col px-6 py-8 text-white sm:px-10 lg:flex lg:w-[380px] lg:shrink-0 xl:w-[420px]"
         style={ASIDE_BACKGROUND}
       >
         <Link to="/" className="inline-flex" aria-label={t('app.name', 'YK Digital Solutions')}>
-          <Logo on="dark" className="h-14" />
+          <Logo on="dark" className="h-11" />
         </Link>
 
-        <h1 className="mt-12 text-[32px] leading-[1.12] font-extrabold tracking-[-0.03em] sm:text-[40px] lg:mt-16">
+        <h1 className="mt-8 text-[26px] leading-[1.15] font-extrabold tracking-[-0.03em] sm:text-[28px] lg:mt-10">
           {t('apply.title', "Let's get your business set up.")}
         </h1>
-        <p className="mt-4 text-base leading-relaxed text-[#cbd5e1]">
+        <p className="mt-3 text-[15px] leading-relaxed text-[#cbd5e1]">
           {t(
             'apply.subtitle',
             'Tell us a little about you. A real person from our team will call you and switch everything on.',
@@ -409,14 +411,17 @@ function Apply() {
         ) : null}
       </aside>
 
-      <main className="flex flex-1 flex-col px-5 py-10 sm:px-10 lg:px-18">
-        <div className="flex flex-wrap items-center justify-end gap-5 text-sm">
+      <main className="flex flex-1 flex-col px-5 py-6 sm:px-10 lg:px-12">
+        <div className="flex flex-wrap items-center justify-between gap-x-5 gap-y-3 text-sm lg:justify-end">
+          <Link to="/" className="inline-flex w-full lg:hidden" aria-label={t('app.name', 'YK Digital Solutions')}>
+            <Logo on="light" className="h-9" />
+          </Link>
           <LanguageSwitcher tone="light" />
           <Link to="/" className="inline-flex items-center gap-1.5 font-semibold text-[#434655] hover:text-[#004ac6]">
             <ChevronLeft className="h-4 w-4" />
             {t('public.backHome', 'Back to home')}
           </Link>
-          <span className="text-[#c3c6d7]">|</span>
+          <span className="hidden text-[#c3c6d7] sm:inline">|</span>
           <span className="text-[#434655]">
             {t('apply.alreadyCustomer', 'Already a customer?')}{' '}
             <Link to="/login" className="font-semibold text-[#004ac6]">
@@ -430,7 +435,7 @@ function Apply() {
           onSubmit={handleSubmit((values) => requestCode.mutate(buildPayload(values)))}
           className={cn('mx-auto mt-7 w-full max-w-[760px]', step === 'verify' && 'hidden')}
         >
-          <h2 className="text-[26px] font-extrabold tracking-[-0.025em] sm:text-[30px]">
+          <h2 className="text-[22px] font-extrabold tracking-[-0.025em] sm:text-[26px]">
             {t('apply.formTitle', 'Application form')}
           </h2>
           <p className="mt-1.5 text-[15px] text-[#434655]">
@@ -438,7 +443,7 @@ function Apply() {
             {t('apply.requiredNoteEnd', 'are required.')}
           </p>
 
-          <div className="mt-7 grid gap-x-5 gap-y-4.5 sm:grid-cols-2">
+          <div className="mt-5 grid gap-x-4 gap-y-4 sm:grid-cols-2">
             <PublicInput
               label={t('apply.contactName', 'Full name')}
               required
@@ -571,6 +576,7 @@ function Apply() {
                           ) : null}
                         </span>
                         <span className="shrink-0">
+                          <OriginalPrice plan={plan} className="mr-1.5 text-sm text-[#64748b]" />
                           <span className="text-[22px] font-extrabold tracking-[-0.02em]">
                             {formatPlanPrice(plan.price, plan.currency)}
                           </span>
@@ -642,7 +648,7 @@ function Apply() {
             <span className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-[#eff4ff] text-[#004ac6]">
               <MailCheck className="h-7 w-7" />
             </span>
-            <h2 id="verify-title" className="mt-5 text-[26px] font-extrabold tracking-[-0.025em] sm:text-[30px]">
+            <h2 id="verify-title" className="mt-5 text-[22px] font-extrabold tracking-[-0.025em] sm:text-[26px]">
               {t('apply.verifyTitle', 'Check your email')}
             </h2>
             <p className="mt-2 text-[15px] leading-relaxed text-[#434655]">

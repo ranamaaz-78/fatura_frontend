@@ -184,7 +184,7 @@ function Eyebrow({ children, tone = 'brand' }: { children: string; tone?: 'brand
 function SectionTitle({ children, light = false }: { children: ReactNode; light?: boolean }) {
   return (
     <h2
-      className={`mt-3 text-[32px] leading-[1.12] font-extrabold tracking-[-0.03em] sm:text-[44px] ${light ? 'text-white' : 'text-[#0b1c30]'}`}
+      className={`mt-3 text-[26px] leading-[1.12] font-extrabold tracking-[-0.03em] sm:text-[34px] ${light ? 'text-white' : 'text-[#0b1c30]'}`}
     >
       {children}
     </h2>
@@ -206,8 +206,8 @@ function Hero() {
         className="landing-glow pointer-events-none absolute bottom-10 left-[4%] h-[260px] w-[260px] rounded-full bg-[#4edea3]/15 blur-[80px] [animation-delay:3s]"
       />
 
-      <div className="relative mx-auto flex max-w-[1200px] flex-col items-center gap-14 px-5 pt-28 sm:pt-32 xl:flex-row xl:gap-12 xl:pt-[152px]">
-        <div className="w-full xl:w-[540px] xl:shrink-0">
+      <div className="relative mx-auto flex max-w-[1080px] flex-col items-center gap-10 px-5 pt-24 sm:pt-28 xl:flex-row xl:gap-10 xl:pt-[124px]">
+        <div className="w-full xl:w-[480px] xl:shrink-0">
           <span className="landing-rise inline-flex items-center gap-2.5 rounded-full border border-white/12 bg-white/6 py-1.5 pr-4 pl-3 text-[13px] font-semibold text-[#dbe1ff] backdrop-blur">
             <span className="relative flex h-2 w-2">
               <span className="landing-ping absolute inline-flex h-full w-full rounded-full bg-[#4edea3]" />
@@ -216,7 +216,7 @@ function Hero() {
             {t('public.heroEyebrow', 'Invoicing, stock and barcodes in one app')}
           </span>
 
-          <h1 className="landing-rise mt-6 text-[40px] leading-[1.06] font-extrabold tracking-[-0.035em] text-white [animation-delay:80ms] sm:text-5xl xl:text-[54px]">
+          <h1 className="landing-rise mt-6 text-[32px] leading-[1.1] font-extrabold tracking-[-0.035em] text-white [animation-delay:80ms] sm:text-[38px] xl:text-[44px]">
             {t('public.heroTitleA', 'Invoice in seconds.')}
             <br />
             {t('public.heroTitleB', 'Know your stock')}
@@ -226,7 +226,7 @@ function Hero() {
             </span>
           </h1>
 
-          <p className="landing-rise mt-6 max-w-[540px] text-base leading-relaxed text-[#cbd5e1] [animation-delay:160ms] sm:text-lg">
+          <p className="landing-rise mt-6 max-w-[480px] text-base leading-relaxed text-[#cbd5e1] [animation-delay:160ms] sm:text-[17px]">
             {t(
               'public.heroBody',
               'YK Digital Solutions brings products, barcode scanning, invoices, customers, suppliers and reports into one place. Use it at the counter on your computer or in your phone’s browser. Android and iPhone apps are coming soon.',
@@ -236,14 +236,14 @@ function Hero() {
           <div className="landing-rise mt-9 flex flex-wrap items-center gap-3.5 [animation-delay:240ms]">
             <Link
               to="/apply"
-              className="group inline-flex h-[54px] items-center gap-2.5 rounded-xl bg-[#004ac6] px-7 text-base font-semibold text-white shadow-[0_10px_30px_rgba(37,99,235,0.45)] transition-all hover:-translate-y-0.5 hover:bg-[#2563eb] hover:shadow-[0_16px_38px_rgba(37,99,235,0.55)]"
+              className="group inline-flex h-[46px] items-center gap-2.5 rounded-xl bg-[#004ac6] px-7 text-base font-semibold text-white shadow-[0_10px_30px_rgba(37,99,235,0.45)] transition-all hover:-translate-y-0.5 hover:bg-[#2563eb] hover:shadow-[0_16px_38px_rgba(37,99,235,0.55)]"
             >
               {t('public.applyNow', 'Apply now')}
               <ArrowRight className="h-[18px] w-[18px] transition-transform group-hover:translate-x-0.5" />
             </Link>
             <a
               href="#documents"
-              className="inline-flex h-[54px] items-center gap-2 rounded-xl border border-white/22 px-6 text-base font-semibold text-white transition-colors hover:bg-white/10"
+              className="inline-flex h-[46px] items-center gap-2 rounded-xl border border-white/22 px-6 text-base font-semibold text-white transition-colors hover:bg-white/10"
             >
               <FileText className="h-[18px] w-[18px]" />
               {t('public.heroDocs', 'See the documents')}
@@ -271,7 +271,7 @@ function Hero() {
 function HighlightStrip() {
   return (
     <section className="relative z-10 px-5">
-      <Reveal className="mx-auto -mt-[72px] max-w-[1100px] rounded-[28px] border border-[#e5eeff] bg-white p-3 shadow-[0_30px_70px_rgba(2,6,23,0.14)] sm:-mt-20">
+      <Reveal className="mx-auto -mt-[72px] max-w-[1000px] rounded-[28px] border border-[#e5eeff] bg-white p-3 shadow-[0_30px_70px_rgba(2,6,23,0.14)] sm:-mt-20">
         <dl className="m-0 grid grid-cols-2 lg:grid-cols-4">
           {HIGHLIGHTS.map((item, index) => (
             <div
@@ -280,7 +280,7 @@ function HighlightStrip() {
                 index % 2 === 1 ? 'border-l border-[#e5eeff] lg:border-l' : ''
               } ${index > 1 ? 'border-t border-[#e5eeff] lg:border-t-0' : ''}`}
             >
-              <dd className="m-0 text-[34px] leading-none font-extrabold tracking-[-0.03em] text-[#004ac6] sm:text-[40px]">
+              <dd className="m-0 text-[26px] leading-none font-extrabold tracking-[-0.03em] text-[#004ac6] sm:text-[30px]">
                 {item.value}
               </dd>
               <dt className="mt-2 text-[15px] font-bold text-[#0b1c30]">{item.label}</dt>
@@ -332,8 +332,8 @@ function BuiltFor() {
 
 function HowItWorks() {
   return (
-    <section id="how" className="scroll-mt-20 border-y border-[#dbe1ff] bg-[#eff4ff] px-5 py-20 sm:py-28">
-      <div className="mx-auto max-w-[1200px]">
+    <section id="how" className="scroll-mt-20 border-y border-[#dbe1ff] bg-[#eff4ff] px-5 py-12 sm:py-16">
+      <div className="mx-auto max-w-[1080px]">
         <Reveal className="mx-auto max-w-[720px] text-center">
           <Eyebrow>{t('public.howEyebrow', 'How it works')}</Eyebrow>
           <SectionTitle>{t('public.howTitle', 'From application to first invoice, we do the setup.')}</SectionTitle>
@@ -346,9 +346,9 @@ function HowItWorks() {
             const last = index === STEPS.length - 1
             return (
               <Reveal key={step.title} delay={index * 110}>
-                <div className="relative h-full rounded-3xl border border-[#dbe1ff] bg-white p-8 text-center shadow-[0_12px_30px_rgba(2,6,23,0.05)]">
+                <div className="relative h-full rounded-3xl border border-[#dbe1ff] bg-white p-6 text-center shadow-[0_12px_30px_rgba(2,6,23,0.05)]">
                   <span
-                    className={`relative mx-auto flex h-[84px] w-[84px] items-center justify-center rounded-full text-white shadow-[0_0_0_8px_#eff4ff] ${
+                    className={`relative mx-auto flex h-[64px] w-[64px] items-center justify-center rounded-full text-white shadow-[0_0_0_8px_#eff4ff] ${
                       last ? 'bg-[#007d55]' : 'bg-[#004ac6]'
                     }`}
                   >
@@ -368,7 +368,7 @@ function HowItWorks() {
         <Reveal className="mt-12 text-center" delay={200}>
           <Link
             to="/apply"
-            className="group inline-flex h-[54px] items-center gap-2.5 rounded-xl bg-[#004ac6] px-7 text-base font-semibold text-white shadow-[0_10px_30px_rgba(37,99,235,0.3)] transition-all hover:-translate-y-0.5 hover:bg-[#2563eb]"
+            className="group inline-flex h-[46px] items-center gap-2.5 rounded-xl bg-[#004ac6] px-7 text-base font-semibold text-white shadow-[0_10px_30px_rgba(37,99,235,0.3)] transition-all hover:-translate-y-0.5 hover:bg-[#2563eb]"
           >
             {t('public.startApplication', 'Start your application')}
             <ArrowRight className="h-[18px] w-[18px] transition-transform group-hover:translate-x-0.5" />
@@ -381,9 +381,9 @@ function HowItWorks() {
 
 function MobileSection() {
   return (
-    <section id="mobile" className="scroll-mt-20 px-5 py-20 sm:py-28">
-      <div className="mx-auto flex max-w-[1200px] flex-col items-center gap-14 lg:flex-row lg:gap-20">
-        <Reveal className="relative w-full max-w-[520px] shrink-0">
+    <section id="mobile" className="scroll-mt-20 px-5 py-12 sm:py-16">
+      <div className="mx-auto flex max-w-[1080px] flex-col items-center gap-10 lg:flex-row lg:gap-12">
+        <Reveal className="relative w-full max-w-[440px] shrink-0">
           <MobileShowcase />
           <span className="absolute top-4 left-4 inline-flex items-center gap-2 rounded-full bg-[#0b1c30] px-3.5 py-1.5 text-xs font-bold tracking-wide text-white shadow-[0_10px_24px_rgba(11,28,48,0.3)]">
             <Clock className="h-3.5 w-3.5 text-[#4edea3]" />
@@ -400,7 +400,7 @@ function MobileSection() {
             </span>
           </div>
           <SectionTitle>{t('public.mobileTitle', 'A real app on your phone, not a website squeezed small.')}</SectionTitle>
-          <p className="mt-4.5 text-base leading-relaxed text-[#434655] sm:text-lg">
+          <p className="mt-4.5 text-base leading-relaxed text-[#434655] sm:text-[17px]">
             {t(
               'public.mobileBody',
               'Install YK Digital Solutions on Android or iPhone and run your shop from the floor, the warehouse or the road.',
@@ -459,21 +459,21 @@ function PricingSection() {
   return (
     <section
       id="pricing"
-      className="relative scroll-mt-20 overflow-hidden bg-[#0b1c30] px-5 py-20 sm:py-28"
+      className="relative scroll-mt-20 overflow-hidden bg-[#0b1c30] px-5 py-12 sm:py-16"
       style={{
         backgroundImage:
           'radial-gradient(640px 400px at 12% 20%, rgba(37,99,235,0.25), rgba(11,28,48,0) 70%), radial-gradient(480px 340px at 92% 90%, rgba(78,222,163,0.12), rgba(11,28,48,0) 70%)',
       }}
     >
-      <div className="relative mx-auto flex max-w-[1200px] flex-col items-center gap-14 lg:flex-row lg:gap-20">
+      <div className="relative mx-auto flex max-w-[1080px] flex-col items-center gap-10 lg:flex-row lg:gap-12">
         <Reveal className="min-w-0 flex-1">
           <Eyebrow tone="mint">{t('public.pricingEyebrow', 'Pricing')}</Eyebrow>
-          <h2 className="mt-3 text-[34px] leading-[1.1] font-extrabold tracking-[-0.03em] text-white sm:text-5xl">
+          <h2 className="mt-3 text-[26px] leading-[1.15] font-extrabold tracking-[-0.03em] text-white sm:text-[34px]">
             {t('public.pricingTitleA', 'One simple price.')}
             <br />
             {t('public.pricingTitleB', 'Everything included.')}
           </h2>
-          <p className="mt-4.5 max-w-[480px] text-base leading-relaxed text-[#cbd5e1] sm:text-lg">
+          <p className="mt-4.5 max-w-[480px] text-base leading-relaxed text-[#cbd5e1] sm:text-[17px]">
             {t(
               'public.pricingBody',
               'No setup fee and no long contract. Our team activates your account after a short call, and you pay period to period.',
@@ -494,13 +494,13 @@ function PricingSection() {
           </div>
         </Reveal>
 
-        <Reveal delay={120} className="flex w-full justify-center lg:w-[460px] lg:shrink-0">
+        <Reveal delay={120} className="flex w-full justify-center lg:w-[400px] lg:shrink-0">
           {plansQuery.isPending ? (
-            <Skeleton className="h-[520px] w-full max-w-[460px] rounded-[28px]" />
+            <Skeleton className="h-[460px] w-full max-w-[400px] rounded-[28px]" />
           ) : plans.length > 0 ? (
             <PlanDeck plans={plans} />
           ) : (
-            <div className="rounded-[28px] bg-white p-9 text-center shadow-[0_40px_80px_rgba(2,6,23,0.45)]">
+            <div className="rounded-[28px] bg-white p-7 text-center shadow-[0_40px_80px_rgba(2,6,23,0.45)]">
               <h3 className="m-0 text-[22px] font-bold text-[#0b1c30]">
                 {t('public.plansUnavailable', 'Pricing is temporarily unavailable.')}
               </h3>
@@ -526,12 +526,12 @@ function PricingSection() {
 
 function AboutSection() {
   return (
-    <section id="about" className="scroll-mt-20 px-5 py-20 sm:py-28">
-      <div className="mx-auto grid max-w-[1200px] items-center gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:gap-20">
+    <section id="about" className="scroll-mt-20 px-5 py-12 sm:py-16">
+      <div className="mx-auto grid max-w-[1080px] items-center gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:gap-12">
         <Reveal>
           <Eyebrow>{t('public.aboutEyebrow', 'About')}</Eyebrow>
           <SectionTitle>{t('public.aboutTitle', 'Software that gets out of your way.')}</SectionTitle>
-          <p className="mt-4.5 text-base leading-relaxed text-[#434655] sm:text-lg">
+          <p className="mt-4.5 text-base leading-relaxed text-[#434655] sm:text-[17px]">
             {t(
               'public.aboutBody',
               'YK Digital Solutions builds practical business software for shops, workshops and small companies. We would rather give you a short, clear tool your whole team picks up in an afternoon than a long list of features nobody opens.',
@@ -571,12 +571,12 @@ function AboutSection() {
 
 function FaqSection() {
   return (
-    <section id="faq" className="scroll-mt-20 border-y border-[#dbe1ff] bg-[#eff4ff] px-5 py-20 sm:py-28">
-      <div className="mx-auto grid max-w-[1200px] items-start gap-12 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:gap-20">
+    <section id="faq" className="scroll-mt-20 border-y border-[#dbe1ff] bg-[#eff4ff] px-5 py-12 sm:py-16">
+      <div className="mx-auto grid max-w-[1080px] items-start gap-12 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:gap-12">
         <Reveal className="lg:sticky lg:top-28">
           <Eyebrow>{t('public.faqEyebrow', 'FAQ')}</Eyebrow>
           <SectionTitle>{t('public.faqTitle', 'Questions we hear a lot')}</SectionTitle>
-          <p className="mt-4.5 text-base leading-relaxed text-[#434655] sm:text-lg">
+          <p className="mt-4.5 text-base leading-relaxed text-[#434655] sm:text-[17px]">
             {t('public.faqBody', 'Cannot find yours? Ask us before you apply, we are happy to help.')}
           </p>
           <a
@@ -625,17 +625,17 @@ function ContactSection() {
   ].filter((channel): channel is NonNullable<typeof channel> => channel !== null)
 
   return (
-    <section id="contact" className="scroll-mt-20 px-5 py-20 sm:py-28">
-      <div className="mx-auto max-w-[1200px]">
+    <section id="contact" className="scroll-mt-20 px-5 py-12 sm:py-16">
+      <div className="mx-auto max-w-[1080px]">
         <Reveal className="mx-auto max-w-[720px] text-center">
           <Eyebrow>{t('public.contactEyebrow', 'Contact')}</Eyebrow>
           <SectionTitle>{t('public.contactTitle', 'Talk to a real person.')}</SectionTitle>
-          <p className="mt-4 text-base leading-relaxed text-[#434655] sm:text-lg">
+          <p className="mt-4 text-base leading-relaxed text-[#434655] sm:text-[17px]">
             {t('public.contactBody', 'Questions before you apply? Reach out, or start your application and we will call you.')}
           </p>
         </Reveal>
 
-        <div className="mx-auto mt-14 grid max-w-[980px] gap-5 md:grid-cols-[repeat(auto-fit,minmax(260px,1fr))]">
+        <div className="mx-auto mt-9 grid max-w-[980px] gap-5 md:grid-cols-[repeat(auto-fit,minmax(260px,1fr))]">
           {channels.map((channel, index) => {
             const Icon = channel.icon
             return (
@@ -643,7 +643,7 @@ function ContactSection() {
                 <a
                   href={channel.href}
                   {...(channel.external ? { target: '_blank', rel: 'noreferrer' } : {})}
-                  className="group flex h-full flex-col rounded-3xl border border-[#e5eeff] bg-white p-8 transition-all hover:-translate-y-1 hover:shadow-[0_22px_50px_rgba(2,6,23,0.1)]"
+                  className="group flex h-full flex-col rounded-3xl border border-[#e5eeff] bg-white p-6 transition-all hover:-translate-y-1 hover:shadow-[0_22px_50px_rgba(2,6,23,0.1)]"
                 >
                   <span className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-[#e5eeff] text-[#004ac6] transition-colors group-hover:bg-[#004ac6] group-hover:text-white">
                     <Icon className="h-6 w-6" />
@@ -662,7 +662,7 @@ function ContactSection() {
           <Reveal delay={channels.length * 90}>
             <Link
               to="/apply"
-              className="group flex h-full flex-col rounded-3xl bg-[#004ac6] p-8 text-white shadow-[0_22px_50px_rgba(0,74,198,0.28)] transition-all hover:-translate-y-1 hover:bg-[#0a54d6]"
+              className="group flex h-full flex-col rounded-3xl bg-[#004ac6] p-6 text-white shadow-[0_22px_50px_rgba(0,74,198,0.28)] transition-all hover:-translate-y-1 hover:bg-[#0a54d6]"
             >
               <span className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-white/15">
                 <Rocket className="h-6 w-6" />
@@ -690,7 +690,7 @@ function FinalCta() {
     <section className="px-5 pb-20 sm:pb-28">
       <Reveal>
         <div
-          className="relative mx-auto flex max-w-[1200px] flex-col justify-between gap-10 overflow-hidden rounded-[32px] px-8 py-14 sm:px-14 sm:py-18 lg:flex-row lg:items-center"
+          className="relative mx-auto flex max-w-[1080px] flex-col justify-between gap-10 overflow-hidden rounded-[32px] px-8 py-10 sm:px-10 sm:py-12 lg:flex-row lg:items-center"
           style={{
             backgroundImage:
               'radial-gradient(600px 300px at 85% 20%, rgba(78,222,163,0.28), rgba(0,74,198,0) 70%), radial-gradient(420px 260px at 0% 100%, rgba(255,255,255,0.12), rgba(0,74,198,0) 70%)',
@@ -699,10 +699,10 @@ function FinalCta() {
         >
           <div aria-hidden="true" className="pointer-events-none absolute inset-0 opacity-60" style={GRID_BACKGROUND} />
           <div className="relative">
-            <h2 className="text-[30px] leading-[1.12] font-extrabold tracking-[-0.03em] text-white sm:text-[42px]">
+            <h2 className="text-[24px] leading-[1.15] font-extrabold tracking-[-0.03em] text-white sm:text-[32px]">
               {t('public.ctaTitle', 'Ready to stop counting by hand?')}
             </h2>
-            <p className="mt-3.5 text-base text-[#dbe1ff] sm:text-lg">
+            <p className="mt-3.5 text-base text-[#dbe1ff] sm:text-[17px]">
               {t('public.ctaBody', 'Apply today and our team will call you within one working day.')}
             </p>
           </div>

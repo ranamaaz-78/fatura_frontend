@@ -35,9 +35,7 @@ import { daysText, STATE_LABEL, STATE_STYLE, subscriptionInfo } from '../../lib/
 import { getErrorMessage } from '../../services/api'
 import {
   cancelSubscription,
-  disconnectCompanyWhatsApp,
   getCompany,
-  getCompanyWhatsApp,
   resendAccess,
   setCompanyStatus,
   whatsappFromError,
@@ -71,23 +69,6 @@ function CompanyDetail() {
   })
 
   const company = query.data
-
-  const whatsapp = useQuery({
-    queryKey: ['admin', 'company', companyId, 'whatsapp'],
-    queryFn: () => getCompanyWhatsApp(companyId),
-    enabled: Number.isFinite(companyId),
-    refetchInterval: 30000,
-  })
-  const [whatsappOff, setWhatsappOff] = useState(false)
-  const disconnectWhatsApp = useMutation({
-    mutationFn: () => disconnectCompanyWhatsApp(companyId),
-    onSuccess: (data) => {
-      queryClient.setQueryData(['admin', 'company', companyId, 'whatsapp'], data)
-      setWhatsappOff(false)
-      push({ tone: 'success', title: t('admin.whatsappDisconnected', 'WhatsApp disconnected') })
-    },
-    onError: (error) => push({ tone: 'danger', title: getErrorMessage(error) }),
-  })
 
   function invalidate() {
     void queryClient.invalidateQueries({ queryKey: ['admin'] })
@@ -293,8 +274,8 @@ function CompanyDetail() {
 
               {info.subscription.plan_features.length > 0 ? (
                 <ul className="grid gap-2 sm:grid-cols-2">
-                  {info.subscription.plan_features.map((feature) => (
-                    <li key={feature} className="flex items-start gap-2 text-sm text-ink">
+                  {info.subscription.plan_features.map((feature, index) => (
+                    <li key={`${index}-${feature}`} className="flex items-start gap-2 text-sm text-ink">
                       <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
                       {feature}
                     </li>
@@ -362,67 +343,6 @@ function CompanyDetail() {
           </Card>
         </div>
       </div>
-
-      <Card
-        title={t('admin.whatsappTitle', 'WhatsApp')}
-        className="mt-4"
-        actions={
-          whatsapp.data ? (
-            <span
-              className={cn(
-                'rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1',
-                whatsapp.data.status === 'connected'
-                  ? 'bg-emerald-50 text-emerald-700 ring-emerald-200'
-                  : whatsapp.data.status === 'disconnected'
-                    ? 'bg-slate-100 text-slate-600 ring-slate-200'
-                    : 'bg-amber-50 text-amber-700 ring-amber-200',
-              )}
-            >
-              {whatsapp.data.status === 'connected'
-                ? t('admin.waConnected', 'Connected')
-                : whatsapp.data.status === 'disconnected'
-                  ? t('admin.waNotConnected', 'Not connected')
-                  : t('admin.waLinking', 'Linking')}
-            </span>
-          ) : null
-        }
-      >
-        {whatsapp.isPending ? (
-          <p className="text-xs text-ink-muted">{t('common.loading', 'Loading')}</p>
-        ) : whatsapp.data ? (
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="min-w-0 space-y-1 text-sm">
-              <p className="text-ink">
-                {whatsapp.data.status === 'connected' && whatsapp.data.connected_phone
-                  ? `+${whatsapp.data.connected_phone}${whatsapp.data.connected_name ? ` · ${whatsapp.data.connected_name}` : ''}`
-                  : t('admin.waNone', 'This company has not linked a WhatsApp number.')}
-              </p>
-              <p className="text-xs text-ink-muted">
-                {t('admin.waInstance', 'Own session')}: <span className="font-medium text-ink">{whatsapp.data.instance_name}</span>
-                {!whatsapp.data.service_alive ? (
-                  <span className="ml-2 font-semibold text-rose-600">{t('admin.waServiceDown', 'WhatsApp service is not running')}</span>
-                ) : null}
-              </p>
-            </div>
-            {whatsapp.data.has_instance ? (
-              <Button variant="secondary" size="sm" onClick={() => setWhatsappOff(true)}>
-                {t('admin.waDisconnect', 'Disconnect')}
-              </Button>
-            ) : null}
-          </div>
-        ) : null}
-      </Card>
-
-      <ConfirmDialog
-        open={whatsappOff}
-        onClose={() => setWhatsappOff(false)}
-        onConfirm={() => disconnectWhatsApp.mutate()}
-        loading={disconnectWhatsApp.isPending}
-        tone="warning"
-        title={t('admin.waDisconnectTitle', 'Disconnect this company\'s WhatsApp?')}
-        description={t('companyDetail.wa_disconnect_body', '{name} will have to scan a new QR code before it can send documents on WhatsApp again.', { name: company?.name ?? '' })}
-        confirmLabel={t('admin.waDisconnect', 'Disconnect')}
-      />
 
       <Card title={t('admin.subscriptionHistory', 'Subscription history')} className="mt-4">
         {history.length === 0 ? (

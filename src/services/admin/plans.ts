@@ -8,6 +8,7 @@ export type PlanInput = {
   features_es?: string[]
   description?: string
   price: number
+  original_price?: number | null
   currency: string
   interval: PlanInterval
   features: string[]

@@ -1,6 +1,7 @@
 import {
   forwardRef,
   useId,
+  useState,
   type ButtonHTMLAttributes,
   type InputHTMLAttributes,
   type ReactNode,
@@ -11,6 +12,7 @@ import { ArrowRight } from 'lucide-react'
 import { cn } from '../../lib/cn'
 import { optionsFromChildren, SearchableSelect } from './SearchableSelect'
 import { t } from '../../i18n'
+import { PasswordToggle } from './PasswordToggle'
 
 /**
  * Form controls for the marketing and auth shells. They are taller and softer
@@ -25,7 +27,7 @@ const control =
 
 const invalid = 'border-rose-300 focus:border-rose-500 focus:ring-rose-500/15'
 
-const boxed = 'h-12 w-full px-3.5'
+const boxed = 'h-11 w-full px-3.5'
 
 type FieldShellProps = {
   id: string
@@ -93,6 +95,20 @@ export function PublicInput({
 }: InputHTMLAttributes<HTMLInputElement> & Shared) {
   const fallbackId = useId()
   const inputId = id ?? props.name ?? fallbackId
+  const [reveal, setReveal] = useState(false)
+  const isPassword = props.type === 'password'
+
+  const input = (
+    <input
+      id={inputId}
+      required={required}
+      aria-invalid={Boolean(error)}
+      aria-describedby={error ? `${inputId}-error` : hint ? `${inputId}-hint` : undefined}
+      className={cn(control, boxed, isPassword && 'pr-12', error && invalid, className)}
+      {...props}
+      type={isPassword && reveal ? 'text' : props.type}
+    />
+  )
 
   return (
     <PublicFieldShell
@@ -105,14 +121,14 @@ export function PublicInput({
       action={action}
       className={fieldClassName}
     >
-      <input
-        id={inputId}
-        required={required}
-        aria-invalid={Boolean(error)}
-        aria-describedby={error ? `${inputId}-error` : hint ? `${inputId}-hint` : undefined}
-        className={cn(control, boxed, error && invalid, className)}
-        {...props}
-      />
+      {isPassword ? (
+        <div className="relative">
+          {input}
+          <PasswordToggle shown={reveal} onToggle={() => setReveal((value) => !value)} />
+        </div>
+      ) : (
+        input
+      )}
     </PublicFieldShell>
   )
 }
@@ -227,8 +243,8 @@ export function PublicSubmit({
       type="submit"
       disabled={disabled}
       className={cn(
-        'inline-flex h-14 cursor-pointer items-center justify-center gap-2.5 rounded-[14px] bg-[#004ac6]',
-        'px-8 text-base font-semibold text-white shadow-[0_10px_24px_rgba(0,74,198,0.25)] transition-colors',
+        'inline-flex h-12 cursor-pointer items-center justify-center gap-2.5 rounded-[14px] bg-[#004ac6]',
+        'px-7 text-[15px] font-semibold text-white shadow-[0_10px_24px_rgba(0,74,198,0.25)] transition-colors',
         'hover:bg-[#2563eb] disabled:cursor-not-allowed disabled:opacity-60',
         className,
       )}

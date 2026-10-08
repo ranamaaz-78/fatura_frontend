@@ -1,7 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ImagePlus, Upload, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
+import { Button } from '../../components/ui/Button'
+import { Checkbox } from '../../components/ui/Checkbox'
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog'
+import { Modal } from '../../components/ui/Modal'
 import { ProtectedImage } from '../../components/ui/ProtectedImage'
 import { useToast } from '../../components/ui/Toast'
 import { Tooltip } from '../../components/ui/Tooltip'
@@ -13,6 +16,7 @@ import {
   listProductImages,
   releaseImageBlob,
   renameProductImage,
+  replaceProductImage,
   uploadProductImages,
 } from '../../services/productImages'
 import type { ProductImage } from '../../types/catalog'
@@ -78,6 +82,10 @@ function ProductImages() {
   const [draft, setDraft] = useState('')
   const [deleting, setDeleting] = useState<ProductImage | null>(null)
 
+  // Files whose name is already in the folder wait here while the person picks replace or skip for each.
+  const [conflicts, setConflicts] = useState<{ file: File; uuid: string; name: string }[]>([])
+  const [applyToAll, setApplyToAll] = useState(false)
+
   const query = useQuery({ queryKey: productImagesKey, queryFn: listProductImages })
   const images = query.data ?? []
 
@@ -87,10 +95,17 @@ function ProductImages() {
 
   const uploadMutation = useMutation({
     mutationFn: uploadProductImages,
-    onSuccess: (result) => {
+    onSuccess: (result, files) => {
       refresh()
+      const waiting: { file: File; uuid: string; name: string }[] = []
       for (const failure of result.errors) {
-        push({ tone: 'danger', title: `${failure.file}: ${failure.message}` })
+        const file = failure.duplicate_of ? files.find((item) => item.name === failure.file) : undefined
+        if (file && failure.duplicate_of) waiting.push({ file, uuid: failure.duplicate_of, name: failure.file })
+        else push({ tone: 'danger', title: `${failure.file}: ${failure.message}` })
+      }
+      if (waiting.length > 0) {
+        setApplyToAll(false)
+        setConflicts(waiting)
       }
       if (result.images.length > 0) {
         push({
@@ -125,6 +140,33 @@ function ProductImages() {
     },
     onError: (error) => push({ tone: 'danger', title: getErrorMessage(error) }),
   })
+
+  const replaceMutation = useMutation({
+    mutationFn: (item: { file: File; uuid: string }) => replaceProductImage(item.uuid, item.file),
+    // The list comes back with a new file_url version, so the new picture loads under a new cache key.
+    onSuccess: refresh,
+    onError: (error) => push({ tone: 'danger', title: getErrorMessage(error) }),
+  })
+
+  /** Answers the first waiting file: replace it or skip it. "All" gives the same answer to every one left. */
+  async function resolveConflict(replace: boolean) {
+    const batch = applyToAll ? conflicts : conflicts.slice(0, 1)
+    setConflicts((current) => current.slice(batch.length))
+    if (!replace) return
+
+    let done = 0
+    for (const item of batch) {
+      try {
+        await replaceMutation.mutateAsync(item)
+        done += 1
+      } catch {
+        // The mutation already showed the reason for this file; carry on with the rest.
+      }
+    }
+    if (done > 0) {
+      push({ tone: 'success', title: t('images.replaced', ':count replaced.').replace(':count', String(done)) })
+    }
+  }
 
   function upload(files: FileList | null) {
     if (!files || files.length === 0 || uploadMutation.isPending) return
@@ -295,6 +337,39 @@ function ProductImages() {
       </div>
 
       {lightbox ? <Lightbox image={lightbox} onClose={() => setLightbox(null)} /> : null}
+
+      <Modal
+        open={conflicts.length > 0}
+        onClose={() => void resolveConflict(false)}
+        title={t('images.existsTitle', 'This file already exists')}
+        maxWidth="sm"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => void resolveConflict(false)}>
+              {t('images.skip', 'Skip')}
+            </Button>
+            <Button onClick={() => void resolveConflict(true)} loading={replaceMutation.isPending}>
+              {t('images.replace', 'Replace')}
+            </Button>
+          </>
+        }
+      >
+        <p className="text-sm text-ink">
+          {t('images.existsBody', ':name is already in this folder. Replace it with the new file, or skip it?').replace(
+            ':name',
+            conflicts[0]?.name ?? '',
+          )}
+        </p>
+        {conflicts.length > 1 ? (
+          <div className="mt-4">
+            <Checkbox
+              checked={applyToAll}
+              onChange={(event) => setApplyToAll(event.target.checked)}
+              label={t('images.applyToAll', 'Do this for all :count remaining files').replace(':count', String(conflicts.length))}
+            />
+          </div>
+        ) : null}
+      </Modal>
 
       <ConfirmDialog
         open={deleting !== null}

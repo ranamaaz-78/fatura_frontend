@@ -26,7 +26,7 @@ import { formatDate } from '../../lib/format'
 import { formatCents } from '../../lib/money'
 import { getErrorMessage } from '../../services/api'
 import { getSale, listSales } from '../../services/sales'
-import { isSaleExpired, isSaleVoided, quoteDaysLeft, type IssuableType, type SaleDisplayStatus, type SaleDocument } from '../../types/sales'
+import { isSaleExpired, isSaleVoided, quoteDaysLeft, saleDisplayStatus, type IssuableType, type SaleDisplayStatus, type SaleDocument } from '../../types/sales'
 import { rulesFor, typeLabel } from './documentTypes'
 
 type PaymentFilter = SaleDisplayStatus | 'all'
@@ -93,6 +93,7 @@ function initials(name: string): string {
 
 function paymentBadge(status: SaleDisplayStatus): string {
   if (status === 'voided') return 'bg-rose-50 text-rose-700 ring-1 ring-rose-200 app-dark:bg-rose-500/15 app-dark:text-rose-300 app-dark:ring-rose-500/30'
+  if (status === 'returned') return 'bg-slate-100 text-slate-700 ring-1 ring-slate-200 app-dark:bg-white/10 app-dark:text-slate-300 app-dark:ring-white/15'
   if (status === 'partial') return 'bg-sky-50 text-sky-800 ring-1 ring-sky-200 app-dark:bg-sky-500/15 app-dark:text-sky-300 app-dark:ring-sky-500/30'
   return status === 'paid'
     ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 app-dark:bg-emerald-500/15 app-dark:text-emerald-300 app-dark:ring-emerald-500/30'
@@ -101,6 +102,7 @@ function paymentBadge(status: SaleDisplayStatus): string {
 
 function paymentChipLabel(status: SaleDisplayStatus): string {
   if (status === 'voided') return t('sales.voided', 'Voided')
+  if (status === 'returned') return t('sales.returned', 'Returned')
   if (status === 'partial') return t('sales.partial', 'Partial')
   return status === 'paid' ? t('sales.paid', 'Paid') : t('sales.pending', 'Pending')
 }
@@ -152,8 +154,8 @@ function TypeBadges({ document, type }: { document: SaleDocument; type: Issuable
         <Badge className={paymentBadge('voided')}>{t('sales.voided', 'Voided')}</Badge>
       ) : rules.settlesPayment || rules.settlesLines ? (
         <>
-          <Badge className={paymentBadge(document.payment_status)}>
-            {paymentChipLabel(document.payment_status)}
+          <Badge className={paymentBadge(saleDisplayStatus(document))}>
+            {paymentChipLabel(saleDisplayStatus(document))}
           </Badge>
           {document.payment_status === 'paid' && document.payment_method ? (
             <Badge className="bg-brand-50 text-brand-600 ring-1 ring-brand-600/20">
@@ -205,7 +207,7 @@ export function DocumentList({ type }: { type: IssuableType }) {
   const { session } = useAuth()
   const navigate = useNavigate()
   const { push } = useToast()
-  const currency = session?.company?.currency ?? 'USD'
+  const currency = session?.company?.currency ?? 'EUR'
   const company = session?.company ?? null
   const rules = rulesFor(type)
   const theme = THEMES[type]

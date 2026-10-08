@@ -5,15 +5,16 @@ import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../auth/AuthProvider'
 import { Badge } from '../../components/ui/Badge'
 import { FileDropzone } from '../../components/ui/FileDropzone'
-import { LanguageChoice, useChangeLanguage } from '../../components/ui/LanguageSwitcher'
+import { DocumentLanguageChoice, LanguageChoice, useChangeLanguage } from '../../components/ui/LanguageSwitcher'
 import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
 import { Select } from '../../components/ui/Select'
 import { Textarea } from '../../components/ui/Textarea'
 import { useToast } from '../../components/ui/Toast'
-import { getLocale, t } from '../../i18n'
+import { getLocale, t, type Locale } from '../../i18n'
+import { saveDocumentLocale } from '../../services/locale'
 import { cn } from '../../lib/cn'
-import { COMPANY_CURRENCIES } from '../../lib/currencies'
+import { COMPANY_CURRENCIES, DEFAULT_CURRENCY } from '../../lib/currencies'
 import { formatCurrency, formatDate, formatInterval } from '../../lib/format'
 import { getAppSubscription } from '../../services/app'
 import { changePassword } from '../../services/auth'
@@ -76,7 +77,7 @@ function blankDraft(): CompanyDraft {
     city: '',
     postal_code: '',
     country: '',
-    currency: 'USD',
+    currency: DEFAULT_CURRENCY,
   }
 }
 
@@ -145,6 +146,14 @@ function CompanyTab() {
 
   const queryClient = useQueryClient()
   const { change: changeLanguage, pending: languagePending, canChange: canChangeLanguage } = useChangeLanguage()
+  const documentLanguage = useMutation({
+    mutationFn: (next: Locale | null) => saveDocumentLocale(next),
+    onSuccess: async () => {
+      await refresh()
+      push({ tone: 'success', title: t('settings.documentLanguageSaved', 'Document language saved.') })
+    },
+    onError: (error) => push({ tone: 'danger', title: getErrorMessage(error) }),
+  })
   const logoUrl = company?.logo_url ?? null
   const logoBlob = useQuery({
     queryKey: ['app', 'print-logo', logoUrl],
@@ -167,13 +176,11 @@ function CompanyTab() {
   })
 
   // Everything but WhatsApp is compulsory: it prints on every invoice.
-  const missingLogo = !logoUrl
   const canSave =
     [draft.name, draft.email, draft.tax_id, draft.phone, draft.whatsapp, draft.address, draft.city, draft.postal_code, draft.country].every(
       (value) => value.trim() !== '',
     ) &&
-    draft.currency.length === 3 &&
-    !missingLogo
+    draft.currency.length === 3
 
   return (
     <div className="flex flex-col gap-5 p-5">
@@ -192,6 +199,7 @@ function CompanyTab() {
             : t('settings.languageStaff', 'Your company owner chooses the language for everyone.')}
         </p>
         <LanguageChoice
+          tone="app"
           value={getLocale()}
           disabled={!canChangeLanguage}
           busy={languagePending ? getLocale() : null}
@@ -199,14 +207,29 @@ function CompanyTab() {
         />
       </div>
 
+      <div className="rounded-2xl border border-line bg-page/60 p-4">
+        <p className="text-sm font-semibold text-slate-900">{t('settings.documentLanguage', 'Document language')}</p>
+        <p className="mt-0.5 mb-3 text-xs text-slate-500">
+          {t(
+            'settings.documentLanguageHint',
+            'The language printed on invoices, quotations, proformas and delivery notes. It can differ from the language of the app.',
+          )}
+        </p>
+        <DocumentLanguageChoice
+          value={company?.document_locale ?? null}
+          disabled={!canChangeLanguage || documentLanguage.isPending}
+          onChange={(next) => documentLanguage.mutate(next)}
+        />
+      </div>
+
       <div
         className={cn(
           'rounded-2xl border p-4',
-          errors.logo || (missingLogo && !logoUp.isPending) ? 'border-rose-300 bg-rose-50/40' : 'border-line bg-page/60',
+          errors.logo ? 'border-rose-300 bg-rose-50/40' : 'border-line bg-page/60',
         )}
       >
         <p className="text-sm font-semibold text-slate-900">
-          {t('settings.companyLogo', 'Company logo')} <span className="text-rose-600">*</span>
+          {t('settings.companyLogo', 'Company logo')} <span className="font-normal text-slate-400">{t('publicField.optional', '(optional)')}</span>
         </p>
         <p className="mt-0.5 text-xs text-slate-500">
           {t('settings.logoHint', 'Shown at the top of your documents. A square or wide logo on a plain or transparent background looks best.')}
@@ -230,9 +253,7 @@ function CompanyTab() {
             </FileDropzone>
           </div>
         </div>
-        {errors.logo || (missingLogo && !logoUp.isPending) ? (
-          <p className="mt-2 text-xs font-medium text-rose-600">{errors.logo ?? t('settings.logoRequired', 'Upload your company logo.')}</p>
-        ) : null}
+        {errors.logo ? <p className="mt-2 text-xs font-medium text-rose-600">{errors.logo}</p> : null}
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
@@ -553,8 +574,8 @@ function SubscriptionTab() {
       </p>
       {subscription.plan_features.length > 0 ? (
         <ul className="mt-5 grid gap-1.5 sm:grid-cols-2">
-          {subscription.plan_features.map((feature) => (
-            <li key={feature} className="text-sm text-slate-600">
+          {subscription.plan_features.map((feature, index) => (
+            <li key={`${index}-${feature}`} className="text-sm text-slate-600">
               · {feature}
             </li>
           ))}
