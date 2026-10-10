@@ -356,7 +356,7 @@ export const en: Record<string, string> = {
   'admin.stepReview': 'Review',
   'admin.ownerSection': 'Owner login',
   'admin.companySection': 'Company details',
-  'admin.periods': 'Billing periods',
+  'admin.periods': 'Billing periods/month',
   'admin.startsAt': 'Starts on',
   'admin.paymentMethod': 'Payment method',
   'admin.amount': 'Amount',

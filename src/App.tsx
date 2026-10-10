@@ -21,6 +21,8 @@ import LoginPage from './pages/auth/Login'
 import ResetPasswordPage from './pages/auth/ResetPassword'
 import SetPasswordPage from './pages/auth/SetPassword'
 import UiGallery from './pages/dev/UiGallery'
+import PublicInvoicePage from './pages/public/PublicInvoice'
+import VerifyInvoicePage from './pages/public/VerifyInvoice'
 import CompanySetupPage from './pages/app/CompanySetup'
 import CustomersPage from './pages/app/Customers'
 import DashboardPage from './pages/app/Dashboard'
@@ -58,6 +60,8 @@ function App() {
         <Routes>
           {/* Apply brings its own shell: no site navbar or footer. */}
           <Route path="/apply" element={<ApplyPage />} />
+          <Route path="/verify/:code" element={<VerifyInvoicePage />} />
+          <Route path="/verify/:code/invoice" element={<PublicInvoicePage />} />
 
           <Route element={<PublicLayout />}>
             <Route path="/" element={<HomePage />} />

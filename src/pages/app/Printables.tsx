@@ -89,6 +89,8 @@ function sampleDocument(type: PrintableType): SaleDocument {
     id: 0,
     type,
     number: sampleNumber(type),
+    // Only invoices carry a QR; the sample shows where it sits on the page.
+    verify_code: type === 'factura' ? 'sample-verification-code' : null,
     issued_at: new Date().toISOString(),
     expires_at: type === 'quotation' ? new Date(Date.now() + 7 * 86_400_000).toISOString() : null,
     is_expired: false,

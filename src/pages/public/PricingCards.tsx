@@ -21,6 +21,7 @@ export function PlanCard({ plan, tone = 'onLight', className }: PlanCardProps) {
         tone === 'onDark'
           ? 'shadow-[0_40px_80px_rgba(2,6,23,0.45)]'
           : 'border border-[#e5eeff] shadow-[0_18px_40px_rgba(2,6,23,0.08)]',
+        plan.is_featured && 'ring-2 ring-[#4edea3]',
         className,
       )}
     >

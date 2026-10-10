@@ -13,7 +13,7 @@ import { downloadSaleDocumentSheet } from '../../lib/exportSaleSheet'
 import { formatDate } from '../../lib/format'
 import { formatCents } from '../../lib/money'
 import { getErrorMessage } from '../../services/api'
-import { cancelSaleReturn, convertSale, getSale, invoiceSettlement, returnSalePieces, settleSale, updateSalePayment, updateSaleSettlement, voidSale } from '../../services/sales'
+import { cancelSaleReturn, convertSale, getSale, invoiceAlbaran, invoiceSettlement, returnSalePieces, settleSale, updateSalePayment, updateSaleSettlement, voidSale } from '../../services/sales'
 import {
   isSaleConverted,
   isSaleExpired,
@@ -32,6 +32,7 @@ import { ConvertQuoteModal } from './ConvertQuoteModal'
 import { PrintSheet } from './printSheets'
 import { RecordPaymentModal } from './RecordPaymentModal'
 import { EditProformaSettlementModal } from './EditProformaSettlementModal'
+import { InvoiceFromAlbaranModal } from './InvoiceFromAlbaranModal'
 import { InvoiceFromPaymentModal } from './InvoiceFromPaymentModal'
 import { ReturnProformaModal } from './ReturnProformaModal'
 import { SettleProformaModal } from './SettleProformaModal'
@@ -69,6 +70,7 @@ function InvoiceDetail() {
   const [settleOpen, setSettleOpen] = useState(false)
   const [returnOpen, setReturnOpen] = useState(false)
   const [invoicing, setInvoicing] = useState<SaleSettlement | null>(null)
+  const [albaranInvoiceOpen, setAlbaranInvoiceOpen] = useState(false)
   const [cancelling, setCancelling] = useState<SaleReturn | null>(null)
   const [editingSettlement, setEditingSettlement] = useState<SaleSettlement | null>(null)
   const [voidOpen, setVoidOpen] = useState(false)
@@ -110,7 +112,8 @@ function InvoiceDetail() {
 
   useEffect(() => {
     const document = query.data
-    if (!document || !isSaleConverted(document) || !document.converted_to) return
+    // A quotation hands over to the document made from it. A delivery note stays itself, with a link to its invoice.
+    if (!document || document.type !== 'quotation' || !isSaleConverted(document) || !document.converted_to) return
     navigate(`${rulesFor(document.converted_to.type).listPath}/${document.converted_to.id}`, { replace: true })
   }, [navigate, query.data])
 
@@ -163,6 +166,20 @@ function InvoiceDetail() {
       void queryClient.invalidateQueries({ queryKey: ['app', 'sale', documentId] })
       void queryClient.invalidateQueries({ queryKey: ['app', 'sales'] })
       push({ tone: 'success', title: t('sales.invoiceFromPaymentDone', 'Invoice {number} created.', { number: invoice.number }) })
+      navigate(`/app/invoices/${invoice.id}`, { state: { print: true } })
+    },
+    onError: (error) => push({ tone: 'danger', title: getErrorMessage(error) }),
+  })
+
+  const invoiceFromAlbaran = useMutation({
+    mutationFn: (input: { iva: Record<number, number>; recargoRateId: number | null }) =>
+      invoiceAlbaran(documentId, { iva: input.iva, recargo_rate_id: input.recargoRateId }),
+    onSuccess: (invoice) => {
+      setAlbaranInvoiceOpen(false)
+      void queryClient.invalidateQueries({ queryKey: ['app', 'sale', documentId] })
+      void queryClient.invalidateQueries({ queryKey: ['app', 'sales'] })
+      void queryClient.invalidateQueries({ queryKey: ['app', 'dashboard'] })
+      push({ tone: 'success', title: t('sales.invoiceFromAlbaranDone', 'Invoice {number} created.', { number: invoice.number }) })
       navigate(`/app/invoices/${invoice.id}`, { state: { print: true } })
     },
     onError: (error) => push({ tone: 'danger', title: getErrorMessage(error) }),
@@ -352,6 +369,16 @@ function InvoiceDetail() {
               </button>
             </>
           ) : null}
+          {document.can_invoice ? (
+            <button
+              type="button"
+              disabled={invoiceFromAlbaran.isPending}
+              onClick={() => setAlbaranInvoiceOpen(true)}
+              className="inline-flex h-10 cursor-pointer items-center rounded-xl bg-brand-600 px-4 text-xs font-semibold text-brand-on disabled:opacity-60"
+            >
+              {t('sales.convertInvoice', 'Convert to invoice')}
+            </button>
+          ) : null}
           {canVoid ? (
             <button
               type="button"
@@ -499,6 +526,27 @@ function InvoiceDetail() {
         </div>
       ) : null}
 
+      {document.from_document ? (
+        <div className="no-print flex flex-wrap items-center gap-2 rounded-2xl border border-line/80 bg-card px-5 py-3 text-sm text-ink-muted shadow-xs">
+          <FileText className="h-4 w-4" />
+          {t('sales.fromAlbaran', 'Made from delivery note')}
+          <Link to={`/app/delivery-notes/${document.from_document.id}`} className="font-semibold text-brand-600">
+            {document.from_document.number}
+          </Link>
+          <span className="text-xs">{t('sales.fromAlbaranNote', '· stock was already taken out by the delivery note')}</span>
+        </div>
+      ) : null}
+
+      {document.type === 'albaran' && document.converted_to && !document.can_invoice ? (
+        <div className="no-print flex flex-wrap items-center gap-2 rounded-2xl border border-line/80 bg-card px-5 py-3 text-sm text-ink-muted shadow-xs">
+          <FileText className="h-4 w-4" />
+          {t('sales.albaranInvoiced', 'Invoiced as')}
+          <Link to={`/app/invoices/${document.converted_to.id}`} className="font-semibold text-brand-600">
+            {document.converted_to.number}
+          </Link>
+        </div>
+      ) : null}
+
       {document.from_proforma ? (
         <div className="no-print flex flex-wrap items-center gap-2 rounded-2xl border border-line/80 bg-card px-5 py-3 text-sm text-ink-muted shadow-xs">
           <FileText className="h-4 w-4" />
@@ -584,6 +632,14 @@ function InvoiceDetail() {
         onConfirm={(iva, recargoRateId) => {
           if (invoicing !== null) makeInvoice.mutate({ settlementId: invoicing.id, iva, recargoRateId })
         }}
+      />
+      <InvoiceFromAlbaranModal
+        open={albaranInvoiceOpen}
+        loading={invoiceFromAlbaran.isPending}
+        lines={document.lines ?? []}
+        currency={currency}
+        onClose={() => setAlbaranInvoiceOpen(false)}
+        onConfirm={(iva, recargoRateId) => invoiceFromAlbaran.mutate({ iva, recargoRateId })}
       />
       <ReturnProformaModal
         open={returnOpen}

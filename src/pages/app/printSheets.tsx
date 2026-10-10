@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { QRCodeSVG } from 'qrcode.react'
 import { Fragment, useEffect, type ReactNode } from 'react'
 import { td } from '../../i18n'
 import { cn } from '../../lib/cn'
@@ -596,6 +597,25 @@ function PageMark({ document }: { document: SaleDocument }) {
 
 /* ------------------------------------------------------------------ Invoice: classic letterhead */
 
+/** The QR on an invoice: scanning it opens the public page that confirms the invoice is genuine. */
+function VerifyBlock({ document }: { document: SaleDocument }) {
+  if (!document.verify_code) return null
+
+  const url = `${window.location.origin}/verify/${document.verify_code}`
+
+  return (
+    <div className="flex items-center justify-end gap-3">
+      <div className="min-w-0 text-right text-[9.5px] leading-[1.5] text-[#64748b]">
+        <p className="m-0 text-[10.5px] font-semibold text-[#0f172a]">{td('print.verifyTitle', 'Verify this invoice')}</p>
+        <p className="m-0">{td('print.verifyBody', 'Scan the code to confirm it is genuine.')}</p>
+      </div>
+      <span className="shrink-0 rounded-md border border-[#e2e8f0] bg-white p-1">
+        <QRCodeSVG value={url} size={60} level="M" marginSize={0} fgColor="#0f172a" bgColor="#ffffff" />
+      </span>
+    </div>
+  )
+}
+
 function InvoiceSheet({ document, company, currency, lines, issued, theme, logoSrc }: SheetProps) {
   const display = saleDisplayStatus(document)
   const place = companyPlace(company)
@@ -686,9 +706,11 @@ function InvoiceSheet({ document, company, currency, lines, issued, theme, logoS
       <NotesAndTerms notes={document.notes} terms={theme.footer_notes} />
       {theme.show_signature ? <SignatureRow /> : null}
 
-      <footer className="mt-auto flex items-end justify-between gap-8 border-t border-[#e2e8f0] pt-4 text-[9.5px] leading-[1.6] text-[#94a3b8]">
+      <footer className="mt-auto flex items-end justify-between gap-8 pt-4 text-[9.5px] leading-[1.6] text-[#94a3b8]">
         <span className="min-w-0">{[company?.name, contact].filter(Boolean).join(' · ')}</span>
-        <PageMark document={document} />
+        <div className="flex shrink-0 flex-col items-end gap-2">
+          <VerifyBlock document={document} />
+        </div>
       </footer>
     </SheetFrame>
   )

@@ -145,6 +145,8 @@ export type SaleDocument = {
   id: number
   type: SaleType
   number: string
+  /** Invoices only: the secret in the QR code that lets anyone confirm the invoice is genuine. */
+  verify_code?: string | null
   issued_at: string
   /** Quotations only: the last moment they can still be edited or converted. */
   expires_at?: string | null
@@ -185,6 +187,11 @@ export type SaleDocument = {
   is_fully_returned?: boolean
   /** Set on an invoice made from a proforma payment. */
   from_settlement_id?: number | null
+  /** The delivery note this invoice was made from. */
+  from_document_id?: number | null
+  from_document?: { id: number; number: string } | null
+  /** Delivery notes only: can be turned into an invoice (not voided, no live invoice yet). */
+  can_invoice?: boolean
   from_proforma?: { id: number; number: string } | null
   is_partial: boolean
   lines?: SaleLine[]

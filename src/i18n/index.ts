@@ -19,9 +19,9 @@ export function isLocale(value: unknown): value is Locale {
 function readStored(): Locale {
   try {
     const stored = window.localStorage.getItem(STORAGE_KEY)
-    return isLocale(stored) ? stored : 'en'
+    return isLocale(stored) ? stored : 'es'
   } catch {
-    return 'en'
+    return 'es'
   }
 }
 

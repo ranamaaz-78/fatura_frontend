@@ -94,7 +94,12 @@ export function RenewSubscriptionModal({ company, onClose }: RenewSubscriptionMo
           ))}
         </Select>
         <Input
-          label={t('admin.periods', 'Billing periods')}
+          label={t('admin.periods', 'Billing periods/month')}
+          hint={
+            plan
+              ? t('admin.periodsHint', 'Each period is one {interval}, billed per {interval}.', { interval: formatInterval(plan.interval) })
+              : t('admin.periodsHintNone', 'Each period is one month, quarter or year, depending on the plan. Pick a plan first.')
+          }
           type="number"
           min={1}
           max={36}

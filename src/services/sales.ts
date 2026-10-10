@@ -92,6 +92,14 @@ export function invoiceSettlement(
   return unwrap<SaleDocument>(api.post(`/app/sales/${id}/settlements/${settlementId}/invoice`, input))
 }
 
+/** A delivery note turned into an invoice: IVA (and recargo) added on top, no stock moved. */
+export function invoiceAlbaran(
+  id: number,
+  input: { iva: Record<number, number>; recargo_rate_id: number | null },
+): Promise<SaleDocument> {
+  return unwrap<SaleDocument>(api.post(`/app/sales/${id}/invoice`, input))
+}
+
 export function returnSalePieces(id: number, input: SaleReturnInput): Promise<SaleDocument> {
   return unwrap<SaleDocument>(api.post(`/app/sales/${id}/returns`, input))
 }

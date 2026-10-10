@@ -36,7 +36,7 @@ import { Reveal } from './landing/hooks'
 import { LegalDialog } from './landing/LegalDialog'
 import { LANDING_SECTIONS } from './landing/sections'
 import { HeroMockup, MobileShowcase } from './Mockups'
-import { PlanDeck } from './landing/PlanDeck'
+import { PlanCard } from './PricingCards'
 
 const HERO_BACKGROUND = {
   backgroundImage:
@@ -465,42 +465,38 @@ function PricingSection() {
           'radial-gradient(640px 400px at 12% 20%, rgba(37,99,235,0.25), rgba(11,28,48,0) 70%), radial-gradient(480px 340px at 92% 90%, rgba(78,222,163,0.12), rgba(11,28,48,0) 70%)',
       }}
     >
-      <div className="relative mx-auto flex max-w-[1080px] flex-col items-center gap-10 lg:flex-row lg:gap-12">
-        <Reveal className="min-w-0 flex-1">
+      <div className="relative mx-auto max-w-[1080px]">
+        <Reveal className="mx-auto max-w-[680px] text-center">
           <Eyebrow tone="mint">{t('public.pricingEyebrow', 'Pricing')}</Eyebrow>
           <h2 className="mt-3 text-[26px] leading-[1.15] font-extrabold tracking-[-0.03em] text-white sm:text-[34px]">
-            {t('public.pricingTitleA', 'One simple price.')}
-            <br />
-            {t('public.pricingTitleB', 'Everything included.')}
+            {t('public.pricingTitleA', 'One simple price.')} {t('public.pricingTitleB', 'Everything included.')}
           </h2>
-          <p className="mt-4.5 max-w-[480px] text-base leading-relaxed text-[#cbd5e1] sm:text-[17px]">
+          <p className="mt-4 text-base leading-relaxed text-[#cbd5e1] sm:text-[17px]">
             {t(
               'public.pricingBody',
               'No setup fee and no long contract. Our team activates your account after a short call, and you pay period to period.',
             )}
           </p>
-          <div className="mt-9 flex flex-col gap-3.5">
-            {PRICING_PROMISES.map((promise) => {
-              const Icon = promise.icon
-              return (
-                <span key={promise.label} className="inline-flex items-center gap-3 text-base text-[#e2e8f0]">
-                  <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#4edea3]/12">
-                    <Icon className="h-[18px] w-[18px] text-[#4edea3]" />
-                  </span>
-                  {promise.label}
-                </span>
-              )
-            })}
-          </div>
         </Reveal>
 
-        <Reveal delay={120} className="flex w-full justify-center lg:w-[400px] lg:shrink-0">
+        <Reveal delay={120} className="mt-12">
           {plansQuery.isPending ? (
-            <Skeleton className="h-[460px] w-full max-w-[400px] rounded-[28px]" />
+            <Skeleton className="mx-auto h-[460px] w-full max-w-[400px] rounded-[28px]" />
           ) : plans.length > 0 ? (
-            <PlanDeck plans={plans} />
+            // Every plan side by side, so nobody has to flip through them: one column on a phone, up to three across.
+            <div
+              className="mx-auto grid items-stretch gap-5"
+              style={{
+                maxWidth: `${Math.min(plans.length, 3) * 350}px`,
+                gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 290px), 1fr))',
+              }}
+            >
+              {plans.map((plan) => (
+                <PlanCard key={plan.id} plan={plan} tone="onDark" />
+              ))}
+            </div>
           ) : (
-            <div className="rounded-[28px] bg-white p-7 text-center shadow-[0_40px_80px_rgba(2,6,23,0.45)]">
+            <div className="mx-auto max-w-[420px] rounded-[28px] bg-white p-7 text-center shadow-[0_40px_80px_rgba(2,6,23,0.45)]">
               <h3 className="m-0 text-[22px] font-bold text-[#0b1c30]">
                 {t('public.plansUnavailable', 'Pricing is temporarily unavailable.')}
               </h3>
@@ -516,6 +512,22 @@ function PricingSection() {
               </Link>
             </div>
           )}
+        </Reveal>
+
+        <Reveal delay={200}>
+          <div className="mt-10 flex flex-wrap items-center justify-center gap-x-8 gap-y-3">
+            {PRICING_PROMISES.map((promise) => {
+              const Icon = promise.icon
+              return (
+                <span key={promise.label} className="inline-flex items-center gap-2.5 text-[15px] text-[#e2e8f0]">
+                  <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#4edea3]/12">
+                    <Icon className="h-4 w-4 text-[#4edea3]" />
+                  </span>
+                  {promise.label}
+                </span>
+              )
+            })}
+          </div>
         </Reveal>
       </div>
     </section>
