@@ -9,6 +9,7 @@ import { Modal } from '../../components/ui/Modal'
 import { useToast } from '../../components/ui/Toast'
 import { Toggle } from '../../components/ui/Toggle'
 import { Tooltip } from '../../components/ui/Tooltip'
+import { usePermissions } from '../../auth/permissions'
 import { t } from '../../i18n'
 import { cn } from '../../lib/cn'
 import { AVATAR_TONES, TONE_AMBER, TONE_GREEN } from '../../lib/status'
@@ -59,6 +60,7 @@ function initials(name: string): string {
 }
 
 function Customers() {
+  const { can } = usePermissions()
   const queryClient = useQueryClient()
   const { push } = useToast()
   const [search, setSearch] = useState('')
@@ -183,6 +185,7 @@ function Customers() {
             </p>
           </div>
         </div>
+        {can('customers.create') ? (
         <button
           type="button"
           onClick={startCreate}
@@ -191,6 +194,7 @@ function Customers() {
           <Plus className="h-4 w-4" />
           {t('clients.new', 'New client')}
         </button>
+        ) : null}
       </div>
 
       <div className="grid grid-cols-2 gap-4">
@@ -276,7 +280,7 @@ function Customers() {
                 : t('clients.emptyBody', 'Add one here, or save a client from a sale.')
             }
             primaryAction={
-              debounced ? undefined : (
+              debounced || !can('customers.create') ? undefined : (
                 <Button icon={<Plus className="h-4 w-4" />} onClick={startCreate}>
                   {t('clients.new', 'New client')}
                 </Button>
@@ -317,7 +321,7 @@ function Customers() {
                   <span className="w-36">
                     <ActiveSwitch
                       customer={customer}
-                      disabled={togglingId === customer.id}
+                      disabled={togglingId === customer.id || !can('customers.update')}
                       onChange={(isActive) => toggle.mutate({ id: customer.id, isActive })}
                     />
                   </span>
@@ -342,7 +346,7 @@ function Customers() {
                   {customer.address ? <p className="-mt-2 truncate text-[11px] text-slate-500">{customer.address}</p> : null}
                   <ActiveSwitch
                     customer={customer}
-                    disabled={togglingId === customer.id}
+                    disabled={togglingId === customer.id || !can('customers.update')}
                     onChange={(isActive) => toggle.mutate({ id: customer.id, isActive })}
                   />
                 </div>
@@ -476,21 +480,26 @@ function RowActions({
   onEdit: (customer: Customer) => void
   onDelete: (customer: Customer) => void
 }) {
+  const { can } = usePermissions()
   const button = 'flex h-[30px] w-[30px] cursor-pointer items-center justify-center rounded-lg text-slate-400'
   const editLabel = t('common.edit', 'Edit')
   const deleteLabel = t('common.delete', 'Delete')
   return (
     <>
+      {can('customers.update') ? (
       <Tooltip content={editLabel} align="end">
         <button type="button" aria-label={`${editLabel} ${customer.name}`} className={`${button} hover:bg-slate-100 hover:text-slate-600`} onClick={() => onEdit(customer)}>
           <Pencil className="h-4 w-4" />
         </button>
       </Tooltip>
+      ) : null}
+      {can('customers.delete') ? (
       <Tooltip content={deleteLabel} align="end">
         <button type="button" aria-label={`${deleteLabel} ${customer.name}`} className={`${button} hover:bg-rose-50 hover:text-rose-600`} onClick={() => onDelete(customer)}>
           <Trash2 className="h-4 w-4" />
         </button>
       </Tooltip>
+      ) : null}
     </>
   )
 }

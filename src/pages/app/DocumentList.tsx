@@ -18,6 +18,7 @@ import { useAuth } from '../../auth/AuthProvider'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { Tooltip } from '../../components/ui/Tooltip'
 import { useToast } from '../../components/ui/Toast'
+import { docPermission, usePermissions } from '../../auth/permissions'
 import { t } from '../../i18n'
 import { cn } from '../../lib/cn'
 import { AVATAR_TONES, TONE_AMBER, TONE_GREEN, TONE_VIOLET } from '../../lib/status'
@@ -205,6 +206,7 @@ const emptyStats = {
 
 export function DocumentList({ type }: { type: IssuableType }) {
   const { session } = useAuth()
+  const { can } = usePermissions()
   const navigate = useNavigate()
   const { push } = useToast()
   const currency = session?.company?.currency ?? 'EUR'
@@ -348,13 +350,15 @@ export function DocumentList({ type }: { type: IssuableType }) {
               <p className="mt-1 max-w-xl text-xs text-slate-500">{listHint(type)}</p>
             </div>
           </div>
-          <Link
-            to={`/app/invoices/new?type=${type}`}
-            className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 text-xs font-semibold text-brand-on shadow-xs hover:bg-brand-500 sm:w-auto"
-          >
-            <Plus className="h-4 w-4" />
-            {t('sales.newOf', 'New :type').replace(':type', typeLabel(type))}
-          </Link>
+          {can(docPermission(type, 'create')) ? (
+            <Link
+              to={`/app/invoices/new?type=${type}`}
+              className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 text-xs font-semibold text-brand-on shadow-xs hover:bg-brand-500 sm:w-auto"
+            >
+              <Plus className="h-4 w-4" />
+              {t('sales.newOf', 'New :type').replace(':type', typeLabel(type))}
+            </Link>
+          ) : null}
         </div>
       </div>
 
@@ -496,13 +500,15 @@ export function DocumentList({ type }: { type: IssuableType }) {
             title={t('sales.emptyTitle', 'No documents yet')}
             description={t('sales.emptyOf', 'Issue a :type from New sale.').replace(':type', typeLabel(type))}
             primaryAction={
-              <Link
-                to={`/app/invoices/new?type=${type}`}
-                className="inline-flex h-10 items-center gap-2 rounded-xl bg-brand-600 px-4 text-xs font-semibold text-brand-on"
-              >
-                <Plus className="h-4 w-4" />
-                {t('sales.newOf', 'New :type').replace(':type', typeLabel(type))}
-              </Link>
+              can(docPermission(type, 'create')) ? (
+                <Link
+                  to={`/app/invoices/new?type=${type}`}
+                  className="inline-flex h-10 items-center gap-2 rounded-xl bg-brand-600 px-4 text-xs font-semibold text-brand-on"
+                >
+                  <Plus className="h-4 w-4" />
+                  {t('sales.newOf', 'New :type').replace(':type', typeLabel(type))}
+                </Link>
+              ) : undefined
             }
           />
         ) : rows.length === 0 ? (

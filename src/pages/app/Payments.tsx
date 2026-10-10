@@ -6,6 +6,7 @@ import { useAuth } from '../../auth/AuthProvider'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { Select } from '../../components/ui/Select'
 import { Tooltip } from '../../components/ui/Tooltip'
+import { usePermissions } from '../../auth/permissions'
 import { t } from '../../i18n'
 import { cn } from '../../lib/cn'
 import { AVATAR_TONES, TONE_AMBER, TONE_GREEN, TONE_ORANGE, TONE_ROSE, TONE_SKY, TONE_VIOLET } from '../../lib/status'
@@ -93,6 +94,7 @@ function methodTone(id: number): string {
 }
 
 function Payments() {
+  const { can } = usePermissions()
   const { session } = useAuth()
   const currency = session?.company?.currency ?? 'EUR'
   const [search, setSearch] = useState('')
@@ -170,6 +172,7 @@ function Payments() {
             {t('payments.subtitle', 'See which invoices and proformas are received, and which are still pending.')}
           </p>
         </div>
+        {can('settings.update') ? (
         <button
           type="button"
           className={cn(headerButton, 'bg-slate-100 text-slate-700 hover:bg-slate-200')}
@@ -178,6 +181,7 @@ function Payments() {
           <CreditCard className="h-4 w-4 text-brand-600" />
           {t('payments.manageMethods', 'Manage methods')}
         </button>
+        ) : null}
       </div>
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">

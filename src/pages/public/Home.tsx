@@ -34,6 +34,7 @@ import { Faq, type FaqItem } from './landing/Faq'
 import { FeatureBento } from './landing/FeatureBento'
 import { Reveal } from './landing/hooks'
 import { LegalDialog } from './landing/LegalDialog'
+import { useSiteContent } from './landing/useSiteContent'
 import { LANDING_SECTIONS } from './landing/sections'
 import { HeroMockup, MobileShowcase } from './Mockups'
 import { PlanCard } from './PricingCards'
@@ -582,6 +583,12 @@ function AboutSection() {
 }
 
 function FaqSection() {
+  const content = useSiteContent()
+  // What the admin keeps; the questions written into the page are only shown until it loads, or if it cannot be reached.
+  const items: FaqItem[] = content.data ? content.data.faqs.map((faq) => ({ q: faq.question, a: faq.answer })) : FAQS
+
+  if (content.data && items.length === 0) return null
+
   return (
     <section id="faq" className="scroll-mt-20 border-y border-[#dbe1ff] bg-[#eff4ff] px-5 py-12 sm:py-16">
       <div className="mx-auto grid max-w-[1080px] items-start gap-12 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:gap-12">
@@ -601,7 +608,7 @@ function FaqSection() {
         </Reveal>
 
         <Reveal delay={100}>
-          <Faq items={FAQS} />
+          <Faq items={items} />
         </Reveal>
       </div>
     </section>

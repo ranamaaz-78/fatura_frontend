@@ -18,6 +18,7 @@ import { getPrintTemplates, loadLogoBlob } from '../../services/printables'
 import type { Product } from '../../types/catalog'
 import type { Customer, DiscountType, IssuableType, PaymentStatus, SaleDocument, SaleInput } from '../../types/sales'
 import { isSaleConverted, isSaleExpired } from '../../types/sales'
+import { docPermission, usePermissions } from '../../auth/permissions'
 import { ISSUABLE_TYPES, celebratesPayment, isIssuable, rulesFor, typeLabel } from './documentTypes'
 import { DiscountEditor } from './DiscountEditor'
 import { RecargoPicker } from './RecargoPicker'
@@ -120,6 +121,7 @@ function InvoiceNew() {
   const editingId = Number(id)
   const editing = Number.isFinite(editingId)
 
+  const { can } = usePermissions()
   const requested = params.get('type')
   const [type, setType] = useState<IssuableType>(editing ? 'quotation' : isIssuable(requested) ? requested : 'factura')
   const [hydrated, setHydrated] = useState(false)
@@ -174,8 +176,14 @@ function InvoiceNew() {
       setType('quotation')
       return
     }
-    if (isIssuable(requested)) setType(requested)
-  }, [editing, requested])
+    if (isIssuable(requested) && can(docPermission(requested, 'create'))) {
+      setType(requested)
+      return
+    }
+    // The first kind of document this person may issue, when the one asked for is not allowed.
+    const allowed = ISSUABLE_TYPES.find((option) => can(docPermission(option, 'create')))
+    if (allowed) setType(allowed)
+  }, [editing, requested, can])
 
   const existing = useQuery({
     queryKey: ['app', 'sale', editingId],
@@ -658,7 +666,7 @@ function InvoiceNew() {
                 </span>
               ) : (
                 <div className="grid grid-cols-2 gap-1.5">
-                  {ISSUABLE_TYPES.map((option) => (
+                  {ISSUABLE_TYPES.filter((option) => can(docPermission(option, 'create'))).map((option) => (
                     <button
                       key={option}
                       type="button"

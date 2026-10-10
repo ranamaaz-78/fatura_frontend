@@ -1,5 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation } from '@tanstack/react-query'
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { z } from 'zod'
@@ -7,6 +8,7 @@ import { PublicInput, PublicSubmit } from '../../components/ui/PublicField'
 import { useToast } from '../../components/ui/Toast'
 import { homeFor, useAuth } from '../../auth/AuthProvider'
 import { t } from '../../i18n'
+import { takeLoginNotice } from '../../lib/loginNotice'
 import { getErrorMessage, mapValidationErrors } from '../../services/api'
 
 const schema = z.object({
@@ -18,6 +20,8 @@ type LoginForm = z.infer<typeof schema>
 
 function Login() {
   const { login } = useAuth()
+  // Why they were signed out (suspended, subscription ended, switched off), shown once.
+  const [notice] = useState(() => takeLoginNotice())
   const navigate = useNavigate()
   const location = useLocation()
   const { push } = useToast()
@@ -55,6 +59,12 @@ function Login() {
       <p className="mt-1.5 text-sm text-[#434655]">
         {t('auth.loginSubtitle', 'Sign in to your YK Digital Solutions workspace.')}
       </p>
+
+      {notice ? (
+        <p role="alert" className="mt-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-relaxed text-amber-900">
+          {notice}
+        </p>
+      ) : null}
 
       <div className="mt-6 flex flex-col gap-4">
         <PublicInput

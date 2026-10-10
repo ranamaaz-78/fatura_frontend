@@ -3,8 +3,10 @@ import {
   CreditCard,
   FileCheck2,
   FileText,
+  Newspaper,
   Images,
   Inbox,
+  KeyRound,
   LayoutDashboard,
   Package,
   Printer,
@@ -13,6 +15,7 @@ import {
   Settings,
   TrendingUp,
   Truck,
+  UserCog,
   Users,
   Wallet,
   type LucideIcon,
@@ -27,6 +30,8 @@ export type NavItem = {
   icon: LucideIcon
   end?: boolean
   highlight?: boolean
+  /** Only the company owner sees it. */
+  ownerOnly?: boolean
 }
 
 export type NavGroup = {
@@ -100,6 +105,7 @@ export const APP_NAV: NavGroup[] = [
     items: [
       { to: '/app/reports', labelKey: 'nav.reports', fallback: 'Reports', icon: TrendingUp },
       { to: '/app/printables', labelKey: 'nav.printables', fallback: 'Printables', icon: Printer },
+      { to: '/app/team', labelKey: 'nav.team', fallback: 'Team and roles', icon: UserCog, ownerOnly: true },
       { to: '/app/settings', labelKey: 'nav.settings', fallback: 'Settings', icon: Settings },
     ],
   },
@@ -127,6 +133,8 @@ export const ADMIN_NAV: NavGroup[] = [
       { to: '/admin/companies', labelKey: 'nav.companies', fallback: 'Companies', icon: Building2 },
       { to: '/admin/plans', labelKey: 'nav.plans', fallback: 'Plans', icon: CreditCard },
       { to: '/admin/payment-methods', labelKey: 'nav.paymentMethods', fallback: 'Payment methods', icon: Wallet },
+      { to: '/admin/site-content', labelKey: 'nav.siteContent', fallback: 'Website content', icon: Newspaper },
+      { to: '/admin/account', labelKey: 'nav.account', fallback: 'My account', icon: KeyRound },
     ],
   },
 ]
@@ -161,3 +169,36 @@ export const APP_TABS: NavItem[] = [
 ]
 
 export const TAB_ROOTS = APP_TABS.map((item) => item.to)
+
+/** What a team member needs to see each screen ("|" = any one of them). Screens not listed are open to everyone. */
+const NAV_PERMISSION: Record<string, string> = {
+  '/app/dashboard': 'dashboard.view',
+  '/app/invoices/new': 'invoices.create|delivery_notes.create|quotes.create|proformas.create',
+  '/app/invoices': 'invoices.view',
+  '/app/delivery-notes': 'delivery_notes.view',
+  '/app/quotes': 'quotes.view',
+  '/app/proformas': 'proformas.view',
+  '/app/payments': 'payments.view',
+  '/app/customers': 'customers.view',
+  '/app/products': 'products.view|stock.view',
+  '/app/product-images': 'product_images.view',
+  '/app/suppliers': 'suppliers.view',
+  '/app/reports': 'reports.view',
+  '/app/printables': 'printables.view',
+}
+
+export function navAllowed(item: NavItem, can: (needed: string) => boolean, isOwner: boolean): boolean {
+  if (item.ownerOnly) return isOwner
+  const needed = NAV_PERMISSION[item.to]
+  return needed === undefined || can(needed)
+}
+
+/** Where a person lands: the first screen in the menu they may open (Settings is always open: it holds their password). */
+export function firstAllowedPath(can: (needed: string) => boolean, isOwner: boolean): string {
+  for (const group of APP_NAV) {
+    for (const item of group.items) {
+      if (item.to !== '/app/invoices/new' && navAllowed(item, can, isOwner)) return item.to
+    }
+  }
+  return '/app/settings'
+}

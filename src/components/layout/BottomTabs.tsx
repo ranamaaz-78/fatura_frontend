@@ -1,7 +1,8 @@
 import { NavLink } from 'react-router-dom'
 import { t } from '../../i18n'
 import { cn } from '../../lib/cn'
-import { APP_TABS, type Accent } from './nav'
+import { usePermissions } from '../../auth/permissions'
+import { APP_TABS, navAllowed, type Accent } from './nav'
 
 export type BottomTabsProps = {
   accent?: Accent
@@ -9,10 +10,15 @@ export type BottomTabsProps = {
 
 export function BottomTabs({ accent = 'blue' }: BottomTabsProps) {
   const active = accent === 'indigo' ? 'text-indigo-600' : 'text-brand-600'
+  const { can, isOwner } = usePermissions()
+  const tabs = accent === 'indigo' ? APP_TABS : APP_TABS.filter((item) => navAllowed(item, can, isOwner))
 
   return (
-    <nav className="lg:hidden shrink-0 bg-card border-t border-line grid grid-cols-4 pb-[env(safe-area-inset-bottom)]">
-      {APP_TABS.map((item) => {
+    <nav
+      className="lg:hidden shrink-0 bg-card border-t border-line grid pb-[env(safe-area-inset-bottom)]"
+      style={{ gridTemplateColumns: `repeat(${Math.max(tabs.length, 1)}, minmax(0, 1fr))` }}
+    >
+      {tabs.map((item) => {
         const Icon = item.icon
         return (
           <NavLink

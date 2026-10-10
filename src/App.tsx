@@ -2,11 +2,12 @@ import type { ReactNode } from 'react'
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { AuthProvider } from './auth/AuthProvider'
-import { RequireGuest, RequireRole, RequireSetupDone } from './auth/guards'
+import { RequireGuest, RequirePermission, RequireRole, RequireSetupDone } from './auth/guards'
 import { AdminLayout } from './layouts/AdminLayout'
 import { AppLayout } from './layouts/AppLayout'
 import { AuthLayout } from './layouts/AuthLayout'
 import { PublicLayout } from './layouts/PublicLayout'
+import AdminAccountPage from './pages/admin/Account'
 import AdminApplicationsPage from './pages/admin/Applications'
 import AuditLogsPage from './pages/admin/AuditLogs'
 import AdminCompaniesPage from './pages/admin/Companies'
@@ -15,6 +16,7 @@ import AdminDashboardPage from './pages/admin/Dashboard'
 import AdminPaymentMethodsPage from './pages/admin/PaymentMethods'
 import AdminPlansPage from './pages/admin/Plans'
 import AdminReportsPage from './pages/admin/Reports'
+import AdminSiteContentPage from './pages/admin/SiteContent'
 import AdminUsersPage from './pages/admin/Users'
 import ForgotPasswordPage from './pages/auth/ForgotPassword'
 import LoginPage from './pages/auth/Login'
@@ -25,6 +27,7 @@ import PublicInvoicePage from './pages/public/PublicInvoice'
 import VerifyInvoicePage from './pages/public/VerifyInvoice'
 import CompanySetupPage from './pages/app/CompanySetup'
 import CustomersPage from './pages/app/Customers'
+import TeamPage from './pages/app/Team'
 import DashboardPage from './pages/app/Dashboard'
 import ImportPage from './pages/app/Import'
 import DeliveryNotesPage from './pages/app/DeliveryNotes'
@@ -89,29 +92,64 @@ function App() {
             <Route element={<RequireSetupDone />}>
             <Route path="/app" element={<AppLayout />}>
               <Route index element={<Navigate to="dashboard" replace />} />
-              <Route path="dashboard" element={<DashboardPage />} />
+              <Route element={<RequirePermission permission="dashboard.view" />}>
+                <Route path="dashboard" element={<DashboardPage />} />
+              </Route>
               <Route path="subscription" element={<Navigate to="/app/settings?tab=subscription" replace />} />
-              <Route path="invoices/new" element={<InvoiceNewPage />} />
-              <Route path="invoices" element={<InvoicesPage />} />
-              <Route path="invoices/:id" element={<InvoiceDetailPage />} />
-              <Route path="delivery-notes" element={<DeliveryNotesPage />} />
-              <Route path="delivery-notes/:id" element={<InvoiceDetailPage />} />
-              <Route path="quotes" element={<QuotesPage />} />
-              <Route path="quotes/:id/edit" element={<InvoiceNewPage />} />
-              <Route path="quotes/:id" element={<InvoiceDetailPage />} />
-              <Route path="proformas" element={<ProformasPage />} />
-              <Route path="proformas/:id" element={<InvoiceDetailPage />} />
-              <Route path="payments" element={<PaymentsPage />} />
-              <Route path="products" element={<ProductsPage />} />
-              <Route path="product-images" element={<ProductImagesPage />} />
-              <Route path="stock" element={<StockPage />} />
-              <Route path="stock/movements" element={<StockMovementsPage />} />
-              <Route path="import" element={<ImportPage />} />
-              <Route path="purchases" element={<PurchasesPage />} />
-              <Route path="customers" element={<CustomersPage />} />
-              <Route path="suppliers" element={<SuppliersPage />} />
-              <Route path="reports" element={<ReportsPage />} />
-              <Route path="printables" element={<PrintablesPage />} />
+              <Route element={<RequirePermission permission="invoices.create|delivery_notes.create|quotes.create|proformas.create" />}>
+                <Route path="invoices/new" element={<InvoiceNewPage />} />
+              </Route>
+              <Route element={<RequirePermission permission="invoices.view" />}>
+                <Route path="invoices" element={<InvoicesPage />} />
+                <Route path="invoices/:id" element={<InvoiceDetailPage />} />
+              </Route>
+              <Route element={<RequirePermission permission="delivery_notes.view" />}>
+                <Route path="delivery-notes" element={<DeliveryNotesPage />} />
+                <Route path="delivery-notes/:id" element={<InvoiceDetailPage />} />
+              </Route>
+              <Route element={<RequirePermission permission="quotes.update" />}>
+                <Route path="quotes/:id/edit" element={<InvoiceNewPage />} />
+              </Route>
+              <Route element={<RequirePermission permission="quotes.view" />}>
+                <Route path="quotes" element={<QuotesPage />} />
+                <Route path="quotes/:id" element={<InvoiceDetailPage />} />
+              </Route>
+              <Route element={<RequirePermission permission="proformas.view" />}>
+                <Route path="proformas" element={<ProformasPage />} />
+                <Route path="proformas/:id" element={<InvoiceDetailPage />} />
+              </Route>
+              <Route element={<RequirePermission permission="payments.view" />}>
+                <Route path="payments" element={<PaymentsPage />} />
+              </Route>
+              <Route element={<RequirePermission permission="products.view|stock.view" />}>
+                <Route path="products" element={<ProductsPage />} />
+              </Route>
+              <Route element={<RequirePermission permission="product_images.view" />}>
+                <Route path="product-images" element={<ProductImagesPage />} />
+              </Route>
+              <Route element={<RequirePermission permission="stock.view" />}>
+                <Route path="stock" element={<StockPage />} />
+                <Route path="stock/movements" element={<StockMovementsPage />} />
+                <Route path="purchases" element={<PurchasesPage />} />
+              </Route>
+              <Route element={<RequirePermission permission="products.create" />}>
+                <Route path="import" element={<ImportPage />} />
+              </Route>
+              <Route element={<RequirePermission permission="customers.view" />}>
+                <Route path="customers" element={<CustomersPage />} />
+              </Route>
+              <Route element={<RequirePermission permission="suppliers.view" />}>
+                <Route path="suppliers" element={<SuppliersPage />} />
+              </Route>
+              <Route element={<RequirePermission permission="reports.view" />}>
+                <Route path="reports" element={<ReportsPage />} />
+              </Route>
+              <Route element={<RequirePermission permission="printables.view" />}>
+                <Route path="printables" element={<PrintablesPage />} />
+              </Route>
+              <Route element={<RequirePermission ownerOnly />}>
+                <Route path="team" element={<TeamPage />} />
+              </Route>
               <Route path="settings" element={<SettingsPage />} />
             </Route>
             </Route>
@@ -126,6 +164,8 @@ function App() {
               <Route path="companies/:id" element={<AdminCompanyDetailPage />} />
               <Route path="plans" element={<AdminPlansPage />} />
               <Route path="payment-methods" element={<AdminPaymentMethodsPage />} />
+              <Route path="site-content" element={<AdminSiteContentPage />} />
+              <Route path="account" element={<AdminAccountPage />} />
               <Route path="users" element={<AdminUsersPage />} />
               <Route path="reports" element={<AdminReportsPage />} />
               <Route path="audit-logs" element={<AuditLogsPage />} />

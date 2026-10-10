@@ -1,4 +1,5 @@
-import { adoptLocale, setDocumentLocale } from '../i18n'
+import { adoptLocale, setDocumentLocale, t } from '../i18n'
+import { setLoginNotice } from '../lib/loginNotice'
 import { useQueryClient } from '@tanstack/react-query'
 import {
   createContext,
@@ -6,6 +7,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react'
@@ -38,6 +40,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     getAuthToken() ? 'loading' : 'guest',
   )
 
+  const roleRef = useRef<string | undefined>(undefined)
+
   const clear = useCallback(() => {
     setAuthToken(null)
     setSession(null)
@@ -69,7 +73,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     setSessionHandlers({
       onUnauthenticated: () => clear(),
-      onSubscriptionExpired: () => navigate('/app/settings?tab=subscription', { replace: true }),
+      onSubscriptionExpired: () => {
+        // The owner goes to the Subscription page to renew; the team cannot, so they are signed out with the reason.
+        if (roleRef.current === 'staff') {
+          setLoginNotice(t('auth.teamExpired', 'Your company subscription has expired. Please contact your administrator.'))
+          clear()
+          navigate('/login', { replace: true })
+          return
+        }
+        navigate('/app/settings?tab=subscription', { replace: true })
+      },
+      onBlocked: (message) => {
+        if (message) setLoginNotice(message)
+        clear()
+        navigate('/login', { replace: true })
+      },
     })
   }, [clear, navigate])
 
@@ -101,6 +119,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     clear()
     navigate('/login', { replace: true })
   }, [clear, navigate])
+
+  roleRef.current = session?.role
 
   const value = useMemo(
     () => ({ session, status, login, adoptSession, logout, refresh }),

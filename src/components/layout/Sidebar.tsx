@@ -6,7 +6,8 @@ import { cn } from '../../lib/cn'
 import { Logo } from '../brand/Logo'
 import { Avatar } from '../ui/Avatar'
 import { LanguageSwitcher } from '../ui/LanguageSwitcher'
-import { ADMIN_NAV, APP_NAV, type Accent } from './nav'
+import { usePermissions } from '../../auth/permissions'
+import { ADMIN_NAV, APP_NAV, navAllowed, type Accent } from './nav'
 
 export type SidebarProps = {
   accent?: Accent
@@ -16,7 +17,10 @@ export type SidebarProps = {
 export function Sidebar({ accent = 'blue', onNavigate }: SidebarProps) {
   const { session, logout } = useAuth()
   const isAdmin = accent === 'indigo'
-  const groups = isAdmin ? ADMIN_NAV : APP_NAV
+  const { can, isOwner } = usePermissions()
+  const groups = (isAdmin ? ADMIN_NAV : APP_NAV)
+    .map((group) => ({ ...group, items: isAdmin ? group.items : group.items.filter((item) => navAllowed(item, can, isOwner)) }))
+    .filter((group) => group.items.length > 0)
   const company = session?.company ?? null
   const userName = session?.user.name ?? t('nav.userName', 'Demo User')
   const roleLabel =

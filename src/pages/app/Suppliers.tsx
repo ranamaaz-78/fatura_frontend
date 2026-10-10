@@ -9,6 +9,7 @@ import { Modal } from '../../components/ui/Modal'
 import { useToast } from '../../components/ui/Toast'
 import { Toggle } from '../../components/ui/Toggle'
 import { Tooltip } from '../../components/ui/Tooltip'
+import { usePermissions } from '../../auth/permissions'
 import { t } from '../../i18n'
 import { cn } from '../../lib/cn'
 import { AVATAR_TONES, TONE_AMBER, TONE_GREEN } from '../../lib/status'
@@ -57,6 +58,7 @@ function initials(name: string): string {
 }
 
 function Suppliers() {
+  const { can } = usePermissions()
   const queryClient = useQueryClient()
   const { push } = useToast()
   const [search, setSearch] = useState('')
@@ -181,6 +183,7 @@ function Suppliers() {
             </p>
           </div>
         </div>
+        {can('suppliers.create') ? (
         <button
           type="button"
           onClick={startCreate}
@@ -189,6 +192,7 @@ function Suppliers() {
           <Plus className="h-4 w-4" />
           {t('suppliers.new', 'New supplier')}
         </button>
+        ) : null}
       </div>
 
       <div className="grid grid-cols-2 gap-4">
@@ -274,7 +278,7 @@ function Suppliers() {
                 : t('suppliers.emptyBody', 'Add a supplier, then attach it when you save a product.')
             }
             primaryAction={
-              debounced ? undefined : (
+              debounced || !can('suppliers.create') ? undefined : (
                 <Button icon={<Plus className="h-4 w-4" />} onClick={startCreate}>
                   {t('suppliers.new', 'New supplier')}
                 </Button>
@@ -311,7 +315,7 @@ function Suppliers() {
                   <span className="w-36">
                     <ActiveSwitch
                       supplier={supplier}
-                      disabled={togglingId === supplier.id}
+                      disabled={togglingId === supplier.id || !can('suppliers.update')}
                       onChange={(isActive) => toggle.mutate({ id: supplier.id, isActive })}
                     />
                   </span>
@@ -335,7 +339,7 @@ function Suppliers() {
                   </p>
                   <ActiveSwitch
                     supplier={supplier}
-                    disabled={togglingId === supplier.id}
+                    disabled={togglingId === supplier.id || !can('suppliers.update')}
                     onChange={(isActive) => toggle.mutate({ id: supplier.id, isActive })}
                   />
                 </div>
@@ -468,21 +472,26 @@ function RowActions({
   onEdit: (supplier: Supplier) => void
   onDelete: (supplier: Supplier) => void
 }) {
+  const { can } = usePermissions()
   const button = 'flex h-[30px] w-[30px] cursor-pointer items-center justify-center rounded-lg text-slate-400'
   const editLabel = t('common.edit', 'Edit')
   const deleteLabel = t('common.delete', 'Delete')
   return (
     <>
+      {can('suppliers.update') ? (
       <Tooltip content={editLabel} align="end">
         <button type="button" aria-label={`${editLabel} ${supplier.name}`} className={`${button} hover:bg-slate-100 hover:text-slate-600`} onClick={() => onEdit(supplier)}>
           <Pencil className="h-4 w-4" />
         </button>
       </Tooltip>
+      ) : null}
+      {can('suppliers.delete') ? (
       <Tooltip content={deleteLabel} align="end">
         <button type="button" aria-label={`${deleteLabel} ${supplier.name}`} className={`${button} hover:bg-rose-50 hover:text-rose-600`} onClick={() => onDelete(supplier)}>
           <Trash2 className="h-4 w-4" />
         </button>
       </Tooltip>
+      ) : null}
     </>
   )
 }

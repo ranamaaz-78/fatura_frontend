@@ -290,3 +290,8 @@ html.landing-smooth { scroll-behavior: smooth; }
   .landing-reveal { opacity: 1; transform: none; transition: none; }
   html.landing-smooth { scroll-behavior: auto; }
 }
+
+/* A screen the person may only look at: no action buttons (save, add, edit, delete). Switches stay to show a state. */
+.read-only-actions button:not([role="switch"]) {
+  display: none;
+}

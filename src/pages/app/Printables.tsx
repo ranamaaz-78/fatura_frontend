@@ -10,6 +10,7 @@ import { Tabs } from '../../components/ui/Tabs'
 import { Textarea } from '../../components/ui/Textarea'
 import { Toggle } from '../../components/ui/Toggle'
 import { useToast } from '../../components/ui/Toast'
+import { usePermissions } from '../../auth/permissions'
 import { t } from '../../i18n'
 import { cn } from '../../lib/cn'
 import { ensurePrintFonts } from '../../lib/printFonts'
@@ -184,6 +185,8 @@ function SheetPreview({
 }
 
 function Printables() {
+  const { can } = usePermissions()
+  const canEdit = can('printables.update')
   const { session, refresh } = useAuth()
   const { push } = useToast()
   const queryClient = useQueryClient()
@@ -439,14 +442,14 @@ function Printables() {
                 label={t('printables.showSignature', 'Show signature line')}
               />
 
-              <div className="flex flex-wrap gap-2 pt-1">
-                <Button disabled={!canSave || save.isPending} loading={save.isPending} onClick={() => save.mutate()}>
+              <div className={cn('flex flex-wrap gap-2 pt-1', !canEdit && 'hidden')}>
+                <Button disabled={!canSave || !canEdit || save.isPending} loading={save.isPending} onClick={() => save.mutate()}>
                   {t('common.save', 'Save')}
                 </Button>
-                <Button variant="secondary" onClick={() => setConfirm('copy')}>
+                <Button variant="secondary" disabled={!canEdit} onClick={() => setConfirm('copy')}>
                   {t('printables.copyOthers', 'Copy to other types')}
                 </Button>
-                <Button variant="ghost" onClick={() => setConfirm('reset')}>
+                <Button variant="ghost" disabled={!canEdit} onClick={() => setConfirm('reset')}>
                   {t('printables.reset', 'Reset')}
                 </Button>
               </div>

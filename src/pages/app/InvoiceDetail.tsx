@@ -27,6 +27,7 @@ import {
   type SaleSettlement,
   type SaleType,
 } from '../../types/sales'
+import { docPermission, usePermissions } from '../../auth/permissions'
 import { canVoidType, celebratesPayment, rulesFor, typeLabel } from './documentTypes'
 import { ConvertQuoteModal } from './ConvertQuoteModal'
 import { PrintSheet } from './printSheets'
@@ -62,6 +63,7 @@ function InvoiceDetail() {
   const { session } = useAuth()
   const { push } = useToast()
   const queryClient = useQueryClient()
+  const { can } = usePermissions()
   const currency = session?.company?.currency ?? 'EUR'
   const company = session?.company
   const documentId = Number(id)
@@ -255,11 +257,14 @@ function InvoiceDetail() {
   const rules = rulesFor(document.type)
   const display = saleDisplayStatus(document)
   const voided = isSaleVoided(document)
-  const canVoid = canVoidType(document.type) && document.payment_status === 'paid' && !voided
+  const canVoid = canVoidType(document.type) && document.payment_status === 'paid' && !voided && can(docPermission(document.type, 'void'))
+  // Only a quotation can still be edited; every other document is paid, returned or voided, not changed.
+  const canUpdate = can(docPermission(document.type, 'update'))
+  const canPay = can(docPermission(document.type, 'pay'))
   const quoteExpired = document.type === 'quotation' && !isSaleConverted(document) && isSaleExpired(document)
   const openQuote = document.type === 'quotation' && !isSaleConverted(document) && !quoteExpired
   const quoteDays = openQuote && document.expires_at ? quoteDaysLeft(document.expires_at) : null
-  const canSettle = rules.settlesLines && document.payment_status !== 'paid'
+  const canSettle = rules.settlesLines && document.payment_status !== 'paid' && canPay
   const settlements = document.settlements ?? []
   const returns = document.returns ?? []
 
@@ -345,12 +350,15 @@ function InvoiceDetail() {
           </button>
           {openQuote ? (
             <>
+              {canUpdate ? (
               <Link
                 to={`/app/quotes/${document.id}/edit`}
                 className="inline-flex h-10 items-center rounded-xl bg-slate-100 px-4 text-xs font-semibold text-slate-700"
               >
                 {t('common.edit', 'Edit')}
               </Link>
+              ) : null}
+              {can('invoices.create') ? (
               <button
                 type="button"
                 disabled={converting.isPending}
@@ -359,6 +367,8 @@ function InvoiceDetail() {
               >
                 {t('sales.convertInvoice', 'Convert to invoice')}
               </button>
+              ) : null}
+              {can('delivery_notes.create') ? (
               <button
                 type="button"
                 disabled={converting.isPending}
@@ -367,9 +377,10 @@ function InvoiceDetail() {
               >
                 {t('sales.convertAlbaran', 'Convert to delivery note')}
               </button>
+              ) : null}
             </>
           ) : null}
-          {document.can_invoice ? (
+          {document.can_invoice && can('invoices.create') ? (
             <button
               type="button"
               disabled={invoiceFromAlbaran.isPending}
@@ -412,7 +423,7 @@ function InvoiceDetail() {
               {t('sales.returnPieces', 'Return pieces')}
             </button>
           ) : null}
-          {rules.settlesPayment && !voided && document.payment_status !== 'paid' ? (
+          {rules.settlesPayment && !voided && document.payment_status !== 'paid' && canPay ? (
             <button
               type="button"
               disabled={payment.isPending}
@@ -498,7 +509,7 @@ function InvoiceDetail() {
                       <FileText className="h-3.5 w-3.5" />
                       {row.invoice.number}
                     </Link>
-                  ) : rules.settlesLines ? (
+                  ) : rules.settlesLines && can('invoices.create') ? (
                     <button
                       type="button"
                       disabled={makeInvoice.isPending}
@@ -509,7 +520,7 @@ function InvoiceDetail() {
                       {t('sales.invoiceFromPayment', 'Create invoice')}
                     </button>
                   ) : null}
-                  {rules.settlesLines && !(row.invoice && !row.invoice.is_voided) ? (
+                  {rules.settlesLines && canPay && !(row.invoice && !row.invoice.is_voided) ? (
                     <IconButton
                       label={t('sales.editQuantity', 'Edit quantity')}
                       tooltipAlign="end"
@@ -579,6 +590,7 @@ function InvoiceDetail() {
                   </span>
                   <span className="flex shrink-0 items-center gap-1">
                     <span className="text-sm font-bold text-slate-900">{formatCents(row.total_cents, currency)}</span>
+                    {canPay ? (
                     <IconButton
                       label={t('sales.returnCancel', 'Cancel return')}
                       tooltipAlign="end"
@@ -587,6 +599,7 @@ function InvoiceDetail() {
                     >
                       <Undo2 className="h-4 w-4" />
                     </IconButton>
+                    ) : null}
                   </span>
                 </li>
               )

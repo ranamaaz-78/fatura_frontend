@@ -6,6 +6,7 @@ import { Drawer } from '../../components/ui/Drawer'
 import { IconButton } from '../../components/ui/IconButton'
 import { ProtectedImage } from '../../components/ui/ProtectedImage'
 import { Skeleton } from '../../components/ui/Skeleton'
+import { usePermissions } from '../../auth/permissions'
 import { t } from '../../i18n'
 import { cn } from '../../lib/cn'
 import { TONE_AMBER, TONE_GREEN, TONE_ROSE } from '../../lib/status'
@@ -55,6 +56,7 @@ export type ProductDrawerProps = {
 }
 
 export function ProductDrawer({ product, currency, onClose, onEdit, onPrint, onDelete }: ProductDrawerProps) {
+  const { can } = usePermissions()
   // The row already has a copy, but refetching keeps the panel right after an edit.
   const query = useQuery({
     queryKey: ['app', 'product', product?.id],
@@ -143,10 +145,12 @@ export function ProductDrawer({ product, currency, onClose, onEdit, onPrint, onD
           </div>
 
           <div className="grid grid-cols-2 gap-2">
+            {can('products.update') ? (
             <button type="button" className={drawerAction} onClick={() => onEdit(current)}>
               <Pencil className="h-4 w-4 text-slate-500" />
               {t('common.edit', 'Edit')}
             </button>
+            ) : null}
             <button type="button" className={drawerAction} onClick={() => onPrint(current)}>
               <Printer className="h-4 w-4 text-brand-600" />
               {t('labels.printOne', 'Print label')}
@@ -211,6 +215,7 @@ export function ProductDrawer({ product, currency, onClose, onEdit, onPrint, onD
             </div>
           ) : null}
 
+          {can('products.delete') ? (
           <button
             type="button"
             className={cn(drawerAction, 'w-full border-rose-200 text-rose-600 hover:bg-rose-50')}
@@ -219,6 +224,7 @@ export function ProductDrawer({ product, currency, onClose, onEdit, onPrint, onD
             <Trash2 className="h-4 w-4" />
             {t('products.deleteAction', 'Delete product')}
           </button>
+          ) : null}
         </div>
       )}
     </Drawer>

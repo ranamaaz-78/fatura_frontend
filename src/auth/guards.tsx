@@ -1,7 +1,9 @@
 import { Hourglass, Loader2, LogOut } from 'lucide-react'
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { t } from '../i18n'
+import { firstAllowedPath } from '../components/layout/nav'
 import { homeFor, useAuth } from './AuthProvider'
+import { usePermissions } from './permissions'
 import type { UserRole } from '../types/module01'
 
 function Booting() {
@@ -78,4 +80,16 @@ export function RequireSetupDone() {
   }
 
   return <Outlet />
+}
+
+/**
+ * A screen a team member may only open with the right permission (`"a.view|b.create"` = any one of them), or an
+ * owner-only one. Anyone without it goes to the first screen they may open instead.
+ */
+export function RequirePermission({ permission, ownerOnly = false }: { permission?: string; ownerOnly?: boolean }) {
+  const { can, isOwner } = usePermissions()
+  const allowed = ownerOnly ? isOwner : permission ? can(permission) : true
+
+  if (allowed) return <Outlet />
+  return <Navigate to={firstAllowedPath(can, isOwner)} replace />
 }

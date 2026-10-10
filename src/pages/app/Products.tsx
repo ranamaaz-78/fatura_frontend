@@ -23,6 +23,7 @@ import { Select } from '../../components/ui/Select'
 import { SkeletonTable } from '../../components/ui/Skeleton'
 import { Tooltip } from '../../components/ui/Tooltip'
 import { useToast } from '../../components/ui/Toast'
+import { usePermissions } from '../../auth/permissions'
 import { t } from '../../i18n'
 import { cn } from '../../lib/cn'
 import { downloadProductDemoSheet } from '../../lib/productDemoSheet'
@@ -117,6 +118,7 @@ function KpiCard({
 }
 
 function Products() {
+  const { can } = usePermissions()
   const { session } = useAuth()
   const queryClient = useQueryClient()
   const { push } = useToast()
@@ -240,6 +242,7 @@ function Products() {
             <Eye className="h-4 w-4" />
           </button>
         </Tooltip>
+        {can('products.update') ? (
         <Tooltip content={editLabel} align="end">
           <button
             type="button"
@@ -253,6 +256,7 @@ function Products() {
             <Pencil className="h-4 w-4" />
           </button>
         </Tooltip>
+        ) : null}
         <Tooltip content={printLabel} align="end">
           <button
             type="button"
@@ -263,6 +267,7 @@ function Products() {
             <Printer className="h-4 w-4" />
           </button>
         </Tooltip>
+        {can('products.delete') ? (
         <Tooltip content={deleteLabel} align="end">
           <button
             type="button"
@@ -273,6 +278,7 @@ function Products() {
             <Trash2 className="h-4 w-4" />
           </button>
         </Tooltip>
+        ) : null}
       </>
     )
   }
@@ -292,6 +298,7 @@ function Products() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2.5">
+          {can('products.update') ? (
           <button
             type="button"
             className={cn(headerButton, 'bg-slate-100 text-slate-700 hover:bg-slate-200')}
@@ -300,6 +307,8 @@ function Products() {
             <Tags className="h-4 w-4 text-brand-600" />
             {t('products.manageCategories', 'Manage categories')}
           </button>
+          ) : null}
+          {can('products.create') ? (
           <button
             type="button"
             className={cn(headerButton, 'bg-emerald-600 text-white hover:bg-emerald-700')}
@@ -308,6 +317,7 @@ function Products() {
             <FileSpreadsheet className="h-4 w-4" />
             {t('products.importExcel', 'Import Excel')}
           </button>
+          ) : null}
           <button
             type="button"
             className={cn(headerButton, 'bg-slate-100 text-slate-700 hover:bg-slate-200')}
@@ -324,6 +334,7 @@ function Products() {
             <Printer className="h-4 w-4 text-brand-600" />
             {t('labels.printLabels', 'Print labels')}
           </button>
+          {can('products.create') ? (
           <button
             type="button"
             className={cn(
@@ -335,6 +346,7 @@ function Products() {
             <Plus className="h-4 w-4" />
             {t('products.new', 'New product')}
           </button>
+          ) : null}
         </div>
       </div>
 

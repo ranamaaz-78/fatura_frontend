@@ -56,6 +56,8 @@ export type AuthUser = {
   role: UserRole
   status: UserStatus
   company_id: number | null
+  /** The role the owner gave a team member: manager, cashier, accountant or custom. */
+  team_role?: string | null
   last_login_at: string | null
   has_password: boolean
 }
@@ -183,6 +185,8 @@ export type SessionPayload = {
   role: UserRole
   /** The language this person sees: their own, else their company's. */
   locale?: 'en' | 'es'
+  /** Every "area.action" this person may use. The owner has them all. */
+  permissions?: string[]
   company: Company | null
   subscription: Subscription | null
   support: SupportContact

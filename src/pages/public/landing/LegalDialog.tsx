@@ -1,8 +1,11 @@
 import { X } from 'lucide-react'
 import { useEffect, useRef } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
+import { LegalBody } from '../../../components/ui/LegalBody'
 import { t } from '../../../i18n'
+import { formatLongDate } from '../../../lib/format'
 import { supportEmail, supportWhatsappUrl } from '../../../lib/support'
+import { useSiteContent } from './useSiteContent'
 
 type Section = { heading: string; body: string[] }
 
@@ -99,7 +102,11 @@ export function LegalDialog() {
   const navigate = useNavigate()
   const panel = useRef<HTMLDivElement>(null)
 
+  const content = useSiteContent()
+
   const key = hash === '#terms' ? 'terms' : hash === '#privacy' ? 'privacy' : null
+  // The page the admin keeps, in the visitor's language; the text written into this file only if it cannot be reached.
+  const page = key ? content.data?.pages[key] : undefined
   const doc = key ? DOCS[key] : null
   const whatsapp = supportWhatsappUrl()
 
@@ -129,6 +136,9 @@ export function LegalDialog() {
 
   if (!doc) return null
 
+  const title = page?.title ?? doc.title
+  const updated = page?.updated_at ? formatLongDate(page.updated_at) : doc.updated
+
   return (
     <div className="fixed inset-0 z-[60] flex items-end justify-center sm:items-center sm:p-6">
       <button
@@ -149,10 +159,10 @@ export function LegalDialog() {
         <div className="flex items-start justify-between gap-6 border-b border-[#e5eeff] px-7 pt-7 pb-5 sm:px-9">
           <div>
             <h2 id="legal-title" className="m-0 text-[26px] font-extrabold tracking-[-0.02em] text-[#0b1c30]">
-              {doc.title}
+              {title}
             </h2>
             <p className="mt-1.5 mb-0 text-[13px] text-[#64748b]">
-              {t('public.legalUpdated', 'Last updated')} {doc.updated}
+              {t('public.legalUpdated', 'Last updated')} {updated}
             </p>
           </div>
           <button
@@ -166,17 +176,23 @@ export function LegalDialog() {
         </div>
 
         <div className="overflow-y-auto px-7 py-6 sm:px-9">
-          <p className="m-0 text-[15.5px] leading-relaxed text-[#434655]">{doc.intro}</p>
-          {doc.sections.map((section) => (
-            <section key={section.heading} className="mt-7">
-              <h3 className="m-0 text-[16px] font-bold text-[#0b1c30]">{section.heading}</h3>
-              {section.body.map((paragraph) => (
-                <p key={paragraph} className="mt-2 mb-0 text-[15px] leading-relaxed text-[#434655]">
-                  {paragraph}
-                </p>
+          {page ? (
+            <LegalBody text={page.body} />
+          ) : (
+            <>
+              <p className="m-0 text-[15.5px] leading-relaxed text-[#434655]">{doc.intro}</p>
+              {doc.sections.map((section) => (
+                <section key={section.heading} className="mt-7">
+                  <h3 className="m-0 text-[16px] font-bold text-[#0b1c30]">{section.heading}</h3>
+                  {section.body.map((paragraph) => (
+                    <p key={paragraph} className="mt-2 mb-0 text-[15px] leading-relaxed text-[#434655]">
+                      {paragraph}
+                    </p>
+                  ))}
+                </section>
               ))}
-            </section>
-          ))}
+            </>
+          )}
 
           <div className="mt-8 rounded-2xl bg-[#eff4ff] px-5 py-4 text-[14.5px] text-[#0b1c30]">
             {t('public.legalContact', 'Questions? Write to us')}

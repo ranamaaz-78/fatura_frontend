@@ -24,6 +24,7 @@ import { Button } from '../../components/ui/Button'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { Skeleton, SkeletonCard } from '../../components/ui/Skeleton'
+import { usePermissions } from '../../auth/permissions'
 import { t } from '../../i18n'
 import { cn } from '../../lib/cn'
 import { formatDate } from '../../lib/format'
@@ -82,6 +83,7 @@ function statusColor(status: string): string {
 }
 
 function Dashboard() {
+  const { can } = usePermissions()
   const { session } = useAuth()
   const query = useQuery({ queryKey: ['app', 'dashboard'], queryFn: getAppDashboard })
   const greeting = `${t('dashboard.greeting', 'Welcome back')}, ${session?.user.name ?? ''}`.trim()
@@ -176,13 +178,17 @@ function Dashboard() {
         subtitle={data.company.name ?? t('dashboard.subtitle', 'This month at a glance — sales, unpaid documents and stock.')}
         actions={
           <span className="flex flex-wrap items-center gap-2">
-            <Link to="/app/reports" className={cn(headerButton, 'bg-page text-ink hover:bg-line')}>
-              {t('dashboard.viewReports', 'View reports')}
-            </Link>
-            <Link to="/app/invoices/new" className={cn(headerButton, 'bg-brand-600 text-brand-on hover:bg-brand-500')}>
-              <Plus className="h-4 w-4" />
-              {t('dashboard.newInvoice', 'New invoice')}
-            </Link>
+            {can('reports.view') ? (
+              <Link to="/app/reports" className={cn(headerButton, 'bg-page text-ink hover:bg-line')}>
+                {t('dashboard.viewReports', 'View reports')}
+              </Link>
+            ) : null}
+            {can('invoices.create|delivery_notes.create|quotes.create|proformas.create') ? (
+              <Link to="/app/invoices/new" className={cn(headerButton, 'bg-brand-600 text-brand-on hover:bg-brand-500')}>
+                <Plus className="h-4 w-4" />
+                {t('dashboard.newInvoice', 'New invoice')}
+              </Link>
+            ) : null}
           </span>
         }
       />

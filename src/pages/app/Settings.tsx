@@ -3,6 +3,7 @@ import { AlertTriangle, Building2, Coins, CreditCard, ImagePlus, KeyRound, Mail,
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../auth/AuthProvider'
+import { ChangePasswordForm } from '../../components/account/ChangePasswordForm'
 import { Badge } from '../../components/ui/Badge'
 import { FileDropzone } from '../../components/ui/FileDropzone'
 import { DocumentLanguageChoice, LanguageChoice, useChangeLanguage } from '../../components/ui/LanguageSwitcher'
@@ -11,13 +12,13 @@ import { Input } from '../../components/ui/Input'
 import { Select } from '../../components/ui/Select'
 import { Textarea } from '../../components/ui/Textarea'
 import { useToast } from '../../components/ui/Toast'
+import { usePermissions } from '../../auth/permissions'
 import { getLocale, t, type Locale } from '../../i18n'
 import { saveDocumentLocale } from '../../services/locale'
 import { cn } from '../../lib/cn'
 import { COMPANY_CURRENCIES, DEFAULT_CURRENCY } from '../../lib/currencies'
 import { formatCurrency, formatDate, formatInterval } from '../../lib/format'
 import { getAppSubscription } from '../../services/app'
-import { changePassword } from '../../services/auth'
 import { getErrorMessage, mapValidationErrors } from '../../services/api'
 import {
   createRecargoRate,
@@ -358,79 +359,9 @@ function CompanyTab() {
 }
 
 function PasswordTab() {
-  const { session } = useAuth()
-  const { push } = useToast()
-  const [currentPassword, setCurrentPassword] = useState('')
-  const [password, setPassword] = useState('')
-  const [confirmation, setConfirmation] = useState('')
-  const [errors, setErrors] = useState<Record<string, string>>({})
-
-  const save = useMutation({
-    mutationFn: () =>
-      changePassword({
-        current_password: currentPassword,
-        password,
-        password_confirmation: confirmation,
-      }),
-    onSuccess: () => {
-      setCurrentPassword('')
-      setPassword('')
-      setConfirmation('')
-      setErrors({})
-      push({ tone: 'success', title: t('settings.passwordSaved', 'Password updated.') })
-    },
-    onError: (error) => {
-      setErrors(mapValidationErrors(error))
-      push({ tone: 'danger', title: getErrorMessage(error) })
-    },
-  })
-
-  const canSave = currentPassword !== '' && password.length >= 8 && confirmation !== ''
-
   return (
-    <div className="flex max-w-lg flex-col gap-5 p-5">
-      <p className="text-xs text-slate-500">
-        {t('settings.passwordHint', 'Changes the password for the account you are signed in with.')}
-      </p>
-      {session?.user.email ? (
-        <p className="text-xs text-slate-600">
-          {t('settings.accountEmail', 'Signed in as')}{' '}
-          <span className="font-semibold text-slate-800">{session.user.email}</span>
-        </p>
-      ) : null}
-      <Input
-        type="password"
-        autoComplete="current-password"
-        label={t('settings.currentPassword', 'Current password')}
-        value={currentPassword}
-        error={errors.current_password}
-        required
-        onChange={(event) => setCurrentPassword(event.target.value)}
-      />
-      <Input
-        type="password"
-        autoComplete="new-password"
-        label={t('settings.newPassword', 'New password')}
-        hint={t('settings.passwordRule', 'Use at least 8 characters.')}
-        value={password}
-        error={errors.password}
-        required
-        onChange={(event) => setPassword(event.target.value)}
-      />
-      <Input
-        type="password"
-        autoComplete="new-password"
-        label={t('settings.confirmPassword', 'Confirm new password')}
-        value={confirmation}
-        error={errors.password_confirmation}
-        required
-        onChange={(event) => setConfirmation(event.target.value)}
-      />
-      <div>
-        <Button type="button" disabled={!canSave} loading={save.isPending} onClick={() => save.mutate()}>
-          {t('common.save', 'Save')}
-        </Button>
-      </div>
+    <div className="p-5">
+      <ChangePasswordForm scope="app" />
     </div>
   )
 }
@@ -586,12 +517,24 @@ function SubscriptionTab() {
 }
 
 function Page() {
+  const { can, isOwner } = usePermissions()
   const [params, setParams] = useSearchParams()
   const [tab, setTab] = useState<TabId>(() => parseTab(params.get('tab')))
 
   useEffect(() => {
     setTab(parseTab(params.get('tab')))
   }, [params])
+
+  // The subscription is the owner's; the company, rates and WhatsApp wording need Settings; a password is everyone's own.
+  const tabs = TABS.filter((item) => {
+    if (item.id === 'subscription') return isOwner
+    if (item.id === 'password') return true
+    return can('settings.view')
+  })
+  const canEdit = can('settings.update')
+  // The page opens on the company tab; someone who may not see it lands on the first tab they can.
+  const activeTab: TabId = tabs.some((item) => item.id === tab) ? tab : (tabs[0]?.id ?? 'password')
+  const readOnly = activeTab !== 'password' && activeTab !== 'subscription' && !canEdit
 
   function selectTab(id: string) {
     const next = parseTab(id)
@@ -618,9 +561,9 @@ function Page() {
           aria-label={t('nav.settings', 'Settings')}
           className="grid grid-cols-2 gap-1 border-b border-line bg-page/80 p-2 sm:flex sm:w-56 sm:shrink-0 sm:flex-col sm:border-r sm:border-b-0 sm:p-3"
         >
-          {TABS.map((item) => {
+          {tabs.map((item) => {
             const Icon = item.icon
-            const active = tab === item.id
+            const active = activeTab === item.id
             return (
               <button
                 key={item.id}
@@ -641,12 +584,23 @@ function Page() {
           })}
         </nav>
         <div className="min-w-0 flex-1">
-          {tab === 'company' ? <CompanyTab /> : null}
-          {tab === 'subscription' ? <SubscriptionTab /> : null}
-          {tab === 'password' ? <PasswordTab /> : null}
-          {tab === 'iva' ? <IvaTab /> : null}
-          {tab === 'recargo' ? <RecargoTab /> : null}
-          {tab === 'whatsapp' ? <WhatsAppTab /> : null}
+          {readOnly ? (
+            <p className="m-5 mb-0 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-xs text-amber-900">
+              {t('settings.readOnly', 'You can look at these settings, but only the owner can change them.')}
+            </p>
+          ) : null}
+          {/* A disabled fieldset switches off every field and button inside it. */}
+          <fieldset
+            disabled={readOnly}
+            className={cn('contents', readOnly && 'read-only-actions')}
+          >
+            {activeTab === 'company' && tabs.some((item) => item.id === 'company') ? <CompanyTab /> : null}
+            {activeTab === 'subscription' && isOwner ? <SubscriptionTab /> : null}
+            {activeTab === 'password' ? <PasswordTab /> : null}
+            {activeTab === 'iva' && tabs.some((item) => item.id === 'iva') ? <IvaTab /> : null}
+            {activeTab === 'recargo' && tabs.some((item) => item.id === 'recargo') ? <RecargoTab /> : null}
+            {activeTab === 'whatsapp' && tabs.some((item) => item.id === 'whatsapp') ? <WhatsAppTab /> : null}
+          </fieldset>
         </div>
       </div>
     </div>

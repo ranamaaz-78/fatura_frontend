@@ -32,6 +32,8 @@ api.interceptors.request.use((config) => {
 type SessionHandlers = {
   onUnauthenticated?: () => void
   onSubscriptionExpired?: () => void
+  /** The company was suspended or this person was switched off: they are signed out with the reason. */
+  onBlocked?: (message: string) => void
 }
 
 let handlers: SessionHandlers = {}
@@ -49,6 +51,11 @@ api.interceptors.response.use(
 
       if (status === 401) handlers.onUnauthenticated?.()
       if (status === 402 && code === 'SUBSCRIPTION_EXPIRED') handlers.onSubscriptionExpired?.()
+      // A failed sign-in has its own message on the form; this is for someone already inside.
+      const signingIn = String(error.config?.url ?? '').includes('/auth/login')
+      if (status === 403 && (code === 'COMPANY_SUSPENDED' || code === 'USER_DISABLED') && !signingIn) {
+        handlers.onBlocked?.((error.response?.data as { message?: string } | undefined)?.message ?? '')
+      }
     }
     return Promise.reject(error)
   },

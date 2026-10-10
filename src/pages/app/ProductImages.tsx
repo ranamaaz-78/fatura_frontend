@@ -8,6 +8,7 @@ import { Modal } from '../../components/ui/Modal'
 import { ProtectedImage } from '../../components/ui/ProtectedImage'
 import { useToast } from '../../components/ui/Toast'
 import { Tooltip } from '../../components/ui/Tooltip'
+import { usePermissions } from '../../auth/permissions'
 import { t } from '../../i18n'
 import { cn } from '../../lib/cn'
 import { getErrorMessage } from '../../services/api'
@@ -68,6 +69,7 @@ function Lightbox({ image, onClose }: { image: ProductImage; onClose: () => void
 }
 
 function ProductImages() {
+  const { can } = usePermissions()
   const queryClient = useQueryClient()
   const { push } = useToast()
 
@@ -169,7 +171,7 @@ function ProductImages() {
   }
 
   function upload(files: FileList | null) {
-    if (!files || files.length === 0 || uploadMutation.isPending) return
+    if (!files || files.length === 0 || uploadMutation.isPending || !can('product_images.create')) return
     uploadMutation.mutate(Array.from(files))
   }
 
@@ -209,6 +211,7 @@ function ProductImages() {
             {images.length} {t('images.countLabel', 'files in this folder')}
           </p>
         </div>
+        {can('product_images.create') ? (
         <button
           type="button"
           disabled={uploadMutation.isPending}
@@ -220,6 +223,7 @@ function ProductImages() {
             ? t('images.uploading', 'Uploading...')
             : t('images.upload', 'Upload files')}
         </button>
+        ) : null}
         <input
           ref={inputRef}
           type="file"
@@ -292,6 +296,7 @@ function ProductImages() {
                       className="h-[100px] w-[100px] object-cover"
                     />
                   </button>
+                  {can('product_images.delete') ? (
                   <span className="absolute -top-2 -right-2 z-10">
                     <Tooltip content={t('common.delete', 'Delete')} align="end">
                       <button
@@ -304,6 +309,7 @@ function ProductImages() {
                       </button>
                     </Tooltip>
                   </span>
+                  ) : null}
                 </div>
 
                 {renaming === image.uuid ? (
@@ -324,7 +330,7 @@ function ProductImages() {
                   <button
                     type="button"
                     title={image.name}
-                    onClick={() => startRename(image)}
+                    onClick={() => can('product_images.update') && startRename(image)}
                     className="mt-2 block w-full cursor-text truncate rounded-md px-1.5 py-1 text-center text-[11px] text-slate-700 transition-colors hover:bg-slate-100"
                   >
                     {image.name}

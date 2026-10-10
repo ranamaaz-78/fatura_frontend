@@ -53,6 +53,7 @@ export type ChangePasswordInput = {
   password_confirmation: string
 }
 
-export function changePassword(input: ChangePasswordInput): Promise<unknown> {
-  return unwrap(api.patch('/app/password', input))
+/** `scope` is the part of the app the person is in: the platform admin has its own route. */
+export function changePassword(input: ChangePasswordInput, scope: 'app' | 'admin' = 'app'): Promise<unknown> {
+  return unwrap(api.patch(`/${scope}/password`, input))
 }
