@@ -4,6 +4,7 @@ import { t } from '../i18n'
 import { supportEmail, supportWhatsappUrl } from '../lib/support'
 import { Logo } from '../components/brand/Logo'
 import { LanguageSwitcher } from '../components/ui/LanguageSwitcher'
+import { isDesktop } from '../lib/desktop'
 
 const ASIDE_BACKGROUND = {
   backgroundImage:
@@ -80,10 +81,12 @@ export function AuthLayout() {
           </Link>
           <span className="flex flex-wrap items-center gap-x-5 gap-y-2">
           <LanguageSwitcher tone="light" />
-          <Link to="/" className="inline-flex items-center gap-1.5 text-sm font-semibold whitespace-nowrap text-[#434655] hover:text-[#004ac6]">
-            <ChevronLeft className="h-4 w-4" />
-            {t('public.backHome', 'Back to home')}
-          </Link>
+          {isDesktop ? null : (
+            <Link to="/" className="inline-flex items-center gap-1.5 text-sm font-semibold whitespace-nowrap text-[#434655] hover:text-[#004ac6]">
+              <ChevronLeft className="h-4 w-4" />
+              {t('public.backHome', 'Back to home')}
+            </Link>
+          )}
           </span>
         </div>
 

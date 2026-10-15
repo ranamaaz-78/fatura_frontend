@@ -1,6 +1,7 @@
-import type { ReactNode } from 'react'
-import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { useEffect, type ReactNode } from 'react'
+import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { ErrorBoundary } from './components/ErrorBoundary'
+import { isDesktop, openExternal, PUBLIC_SITE_URL } from './lib/desktop'
 import { AuthProvider } from './auth/AuthProvider'
 import { RequireGuest, RequirePermission, RequireRole, RequireSetupDone } from './auth/guards'
 import { AdminLayout } from './layouts/AdminLayout'
@@ -55,6 +56,19 @@ function RouteGuard({ children }: { children: ReactNode }) {
   return <ErrorBoundary key={location.pathname}>{children}</ErrorBoundary>
 }
 
+/** In the Windows app the application form is not part of the app: it opens on the website, in the browser. */
+function ApplyInBrowser() {
+  const location = useLocation()
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    openExternal(`${PUBLIC_SITE_URL}/apply${location.search}`)
+    navigate('/login', { replace: true })
+  }, [location.search, navigate])
+
+  return null
+}
+
 function App() {
   return (
     <BrowserRouter>
@@ -62,12 +76,12 @@ function App() {
         <RouteGuard>
         <Routes>
           {/* Apply brings its own shell: no site navbar or footer. */}
-          <Route path="/apply" element={<ApplyPage />} />
+          <Route path="/apply" element={isDesktop ? <ApplyInBrowser /> : <ApplyPage />} />
           <Route path="/verify/:code" element={<VerifyInvoicePage />} />
           <Route path="/verify/:code/invoice" element={<PublicInvoicePage />} />
 
           <Route element={<PublicLayout />}>
-            <Route path="/" element={<HomePage />} />
+            <Route path="/" element={isDesktop ? <Navigate to="/login" replace /> : <HomePage />} />
             {/* The site is one landing page now. Old links land on the matching section. */}
             <Route path="/features" element={<Navigate to="/#features" replace />} />
             <Route path="/pricing" element={<Navigate to="/#pricing" replace />} />

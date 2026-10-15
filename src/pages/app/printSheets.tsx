@@ -12,6 +12,7 @@ import type { Company } from '../../types/module01'
 import type { PrintTemplate } from '../../types/printables'
 import { saleDisplayStatus, type SaleDisplayStatus, type SaleDocument, type SaleLine } from '../../types/sales'
 import { documentCountry as localCountry } from '../../lib/countries'
+import { PUBLIC_SITE_URL } from '../../lib/desktop'
 
 export type PrintSheetProps = {
   document: SaleDocument
@@ -601,7 +602,7 @@ function PageMark({ document }: { document: SaleDocument }) {
 function VerifyBlock({ document }: { document: SaleDocument }) {
   if (!document.verify_code) return null
 
-  const url = `${window.location.origin}/verify/${document.verify_code}`
+  const url = `${PUBLIC_SITE_URL}/verify/${document.verify_code}`
 
   return (
     <div className="flex items-center justify-end gap-3">
