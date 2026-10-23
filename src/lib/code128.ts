@@ -19,6 +19,8 @@ const PATTERNS = [
 ]
 
 const START_B = 104
+const START_C = 105
+const CODE_B = 100
 const STOP = 106
 const QUIET = 10
 
@@ -27,25 +29,14 @@ const QUIET = 10
  * anything outside that range, so the caller can fall back to plain text.
  */
 export function code128Geometry(value: string): BarcodeGeometry | null {
-  const values: number[] = []
+  const encoded = encodeCode128(value)
+  if (!encoded) return null
 
-  for (const character of value) {
-    const symbol = character.charCodeAt(0) - 32
-    if (symbol < 0 || symbol > 94) return null
-    values.push(symbol)
-  }
-
-  if (values.length === 0) return null
-
-  let checksum = START_B
-  values.forEach((symbol, index) => {
-    checksum += symbol * (index + 1)
-  })
-
+  const { symbols } = encoded
   const bars: BarcodeRect[] = []
   let x = QUIET
 
-  for (const symbol of [START_B, ...values, checksum % 103, STOP]) {
+  for (const symbol of symbols) {
     let bar = true
     for (const digit of PATTERNS[symbol]!) {
       const width = Number(digit)
@@ -66,4 +57,41 @@ export function code128Geometry(value: string): BarcodeGeometry | null {
     bars,
     digits: [{ x: width / 2, y: TEXT_BASELINE, anchor: 'middle', text: value }],
   }
+}
+
+/**
+ * The symbol values for a code, checksum and stop included. A code made only of digits is packed two to a symbol
+ * (subset C), which takes about half the bars of one symbol per digit, so every bar can be drawn wider on the same
+ * label. An odd digit at the end switches to subset B for itself. Anything else is subset B. Null for characters
+ * Code 128 cannot hold.
+ */
+export function encodeCode128(value: string): { symbols: number[] } | null {
+  if (value.length === 0) return null
+
+  const body: number[] = []
+  let start = START_B
+
+  if (/^\d{4,}$/.test(value)) {
+    start = START_C
+    const pairs = value.length - (value.length % 2)
+    for (let index = 0; index < pairs; index += 2) {
+      body.push(Number(value.slice(index, index + 2)))
+    }
+    if (value.length % 2 === 1) {
+      body.push(CODE_B, value.charCodeAt(value.length - 1) - 32)
+    }
+  } else {
+    for (const character of value) {
+      const symbol = character.charCodeAt(0) - 32
+      if (symbol < 0 || symbol > 94) return null
+      body.push(symbol)
+    }
+  }
+
+  let checksum = start
+  body.forEach((symbol, index) => {
+    checksum += symbol * (index + 1)
+  })
+
+  return { symbols: [start, ...body, checksum % 103, STOP] }
 }

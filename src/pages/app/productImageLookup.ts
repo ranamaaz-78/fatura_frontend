@@ -13,10 +13,10 @@ function normalise(value: string): string {
 }
 
 /**
- * Looks a product's image code up in the image folder, the same way the folder
+ * Looks a product's short code up in the image folder, the same way the folder
  * itself treats names: case-insensitive and without an extension.
  */
-export function useProductImageLookup(): (imageCode: string | null) => ProductImage | null {
+export function useProductImageLookup(): (shortCode: string | null) => ProductImage | null {
   const query = useQuery({
     queryKey: productImagesKey,
     queryFn: listProductImages,
@@ -26,9 +26,9 @@ export function useProductImageLookup(): (imageCode: string | null) => ProductIm
   const images = query.data
 
   return useCallback(
-    (imageCode: string | null) => {
-      if (!imageCode || !images) return null
-      const wanted = normalise(imageCode)
+    (shortCode: string | null) => {
+      if (!shortCode || !images) return null
+      const wanted = normalise(shortCode)
       if (wanted === '') return null
 
       return images.find((image) => normalise(image.name) === wanted) ?? null

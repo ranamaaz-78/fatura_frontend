@@ -42,7 +42,7 @@ const RULES: Record<SaleType, DocumentRules> = {
     listPath: '/app/invoices',
   },
   albaran: {
-    title: 'Albarán',
+    title: t('sales.typeAlbaran', 'Delivery note'),
     allowsRecargo: false,
     movesStock: true,
     carriesTax: false,

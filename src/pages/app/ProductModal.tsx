@@ -16,14 +16,13 @@ import type { Product, ProductInput } from '../../types/catalog'
 import { categoriesKey, useCategories } from './CategoryManagerModal'
 
 type Draft = {
-  sr_number: string
   article: string
   description: string
   quantity: string
   category_id: string
   supplier_id: string
   brand: string
-  image_code: string
+  short_code: string
   barcode: string
   buying_price: string
   selling_price: string
@@ -32,14 +31,13 @@ type Draft = {
 }
 
 const BLANK: Draft = {
-  sr_number: '',
   article: '',
   description: '',
   quantity: '0',
   category_id: '',
   supplier_id: '',
   brand: '',
-  image_code: '',
+  short_code: '',
   barcode: '',
   buying_price: '0.00',
   selling_price: '0.00',
@@ -49,14 +47,13 @@ const BLANK: Draft = {
 
 function toDraft(product: Product): Draft {
   return {
-    sr_number: product.sr_number ?? '',
     article: product.article,
     description: product.description ?? '',
     quantity: String(product.quantity),
     category_id: product.category_id === null ? '' : String(product.category_id),
     supplier_id: product.supplier_id === null ? '' : String(product.supplier_id),
     brand: product.brand ?? '',
-    image_code: product.image_code ?? '',
+    short_code: product.short_code ?? '',
     barcode: product.barcode,
     buying_price: centsToInput(product.buying_price),
     selling_price: centsToInput(product.selling_price),
@@ -115,8 +112,7 @@ export function ProductModal({ open, product, onClose }: ProductModalProps) {
       article: draft.article.trim(),
       description: draft.description.trim() || null,
       brand: draft.brand.trim() || null,
-      image_code: draft.image_code.trim() || null,
-      sr_number: draft.sr_number.trim() || null,
+      short_code: draft.short_code.trim() || null,
       barcode: draft.barcode.trim() || null,
       category_id: draft.category_id === '' ? null : Number(draft.category_id),
       supplier_id: draft.supplier_id === '' ? null : Number(draft.supplier_id),
@@ -196,22 +192,47 @@ export function ProductModal({ open, product, onClose }: ProductModalProps) {
       }
     >
       <div className="space-y-3">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        {/* Barcode, short code, article, description: the same order as the Excel sheet. */}
+        <div>
+          <div className="flex items-end gap-1.5">
+            <Input
+              compact
+              label={t('products.barcode', 'Bar code')}
+              value={draft.barcode}
+              error={errors.barcode}
+              className=""
+              onChange={(event) => set('barcode', event.target.value)}
+            />
+            <button
+              type="button"
+              className={fieldButton}
+              disabled={barcodeMutation.isPending}
+              onClick={() => barcodeMutation.mutate()}
+            >
+              <RefreshCw className="h-3 w-3" />
+              {t('products.generate', 'Generate')}
+            </button>
+          </div>
+          <p className="mt-1 text-[10px] text-slate-500">
+            {t('products.barcodeHint', 'Leave it empty and we generate one on save.')}
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Input
             compact
-            className="sm:col-span-2"
+            label={t('products.shortCode', 'Short code')}
+            value={draft.short_code}
+            error={errors.short_code}
+            onChange={(event) => set('short_code', event.target.value)}
+          />
+          <Input
+            compact
             label={t('products.article', 'Article')}
             required
             value={draft.article}
             error={errors.article}
             onChange={(event) => set('article', event.target.value)}
-          />
-          <Input
-            compact
-            label={t('products.srNumber', 'Sr number')}
-            value={draft.sr_number}
-            error={errors.sr_number}
-            onChange={(event) => set('sr_number', event.target.value)}
           />
         </div>
 
@@ -292,40 +313,6 @@ export function ProductModal({ open, product, onClose }: ProductModalProps) {
               </option>
             ))}
         </Select>
-
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <Input
-            compact
-            label={t('products.imageCode', 'Image code')}
-            value={draft.image_code}
-            error={errors.image_code}
-            onChange={(event) => set('image_code', event.target.value)}
-          />
-          <div>
-            <div className="flex items-end gap-1.5">
-              <Input
-                compact
-                label={t('products.barcode', 'Bar code')}
-                value={draft.barcode}
-                error={errors.barcode}
-                className=""
-                onChange={(event) => set('barcode', event.target.value)}
-              />
-              <button
-                type="button"
-                className={fieldButton}
-                disabled={barcodeMutation.isPending}
-                onClick={() => barcodeMutation.mutate()}
-              >
-                <RefreshCw className="h-3 w-3" />
-                {t('products.generate', 'Generate')}
-              </button>
-            </div>
-            <p className="mt-1 text-[10px] text-slate-500">
-              {t('products.barcodeHint', 'Leave it empty and we generate one on save.')}
-            </p>
-          </div>
-        </div>
 
         <div className="rounded-xl border border-line bg-page p-3">
           <span className="text-[10px] font-bold tracking-[0.08em] text-slate-500 uppercase">

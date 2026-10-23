@@ -79,7 +79,7 @@ function sheetNode(node?: HTMLElement | null): HTMLElement {
   return target
 }
 
-function triggerBlobDownload(filename: string, blob: Blob): void {
+export function triggerBlobDownload(filename: string, blob: Blob): void {
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.download = filename
@@ -89,6 +89,11 @@ function triggerBlobDownload(filename: string, blob: Blob): void {
   link.click()
   link.remove()
   window.setTimeout(() => URL.revokeObjectURL(url), 2000)
+}
+
+/** The sheet as a PNG data URL, for putting it on a PDF page. */
+export async function captureSheetDataUrl(node?: HTMLElement | null): Promise<string> {
+  return blobToDataUrl(await captureSheetPngBlob(sheetNode(node)))
 }
 
 export async function downloadSheetImage(filename: string, node?: HTMLElement | null): Promise<void> {

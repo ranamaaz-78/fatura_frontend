@@ -43,8 +43,8 @@ export function deleteCustomer(id: number): Promise<unknown> {
   return unwrap(api.delete(`/app/customers/${id}`))
 }
 
-export function previewSale(type: SaleType): Promise<{ number: string; client_code: string }> {
-  return unwrap(api.get('/app/sales/preview', { params: { type } }))
+export function previewSale(type: SaleType, issuedAt?: string): Promise<{ number: string; client_code: string }> {
+  return unwrap(api.get('/app/sales/preview', { params: { type, issued_at: issuedAt } }))
 }
 
 export function listSales(params: SaleListParams): Promise<SaleList> {

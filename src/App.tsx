@@ -42,6 +42,7 @@ import ProductsPage from './pages/app/Products'
 import ProformasPage from './pages/app/Proformas'
 import PurchasesPage from './pages/app/Purchases'
 import QuotesPage from './pages/app/Quotes'
+import ReportDownloadsPage from './pages/app/ReportDownloads'
 import ReportsPage from './pages/app/Reports'
 import SettingsPage from './pages/app/Settings'
 import StockPage from './pages/app/Stock'
@@ -121,6 +122,9 @@ function App() {
                 <Route path="delivery-notes" element={<DeliveryNotesPage />} />
                 <Route path="delivery-notes/:id" element={<InvoiceDetailPage />} />
               </Route>
+              <Route element={<RequirePermission permission="delivery_notes.update" />}>
+                <Route path="delivery-notes/:id/edit" element={<InvoiceNewPage />} />
+              </Route>
               <Route element={<RequirePermission permission="quotes.update" />}>
                 <Route path="quotes/:id/edit" element={<InvoiceNewPage />} />
               </Route>
@@ -157,6 +161,8 @@ function App() {
               </Route>
               <Route element={<RequirePermission permission="reports.view" />}>
                 <Route path="reports" element={<ReportsPage />} />
+                <Route path="downloads" element={<ReportDownloadsPage />} />
+                <Route path="reports/downloads" element={<Navigate to="/app/downloads" replace />} />
               </Route>
               <Route element={<RequirePermission permission="printables.view" />}>
                 <Route path="printables" element={<PrintablesPage />} />

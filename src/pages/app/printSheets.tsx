@@ -473,7 +473,7 @@ function ItemsTable({
         </thead>
         <tbody>
           {lines.map((line, index) => {
-            const detail = [line.sr_number, line.description].filter(Boolean).join(' · ')
+            const detail = line.description ?? ''
             const cell = cn('py-2.5 align-top', `${D}py-[5px]`, edge, style.td)
             return (
               <tr key={line.position} className={style.row(index)}>
@@ -624,7 +624,7 @@ function InvoiceSheet({ document, company, currency, lines, issued, theme, logoS
 
   const columns: Column[] = [
     { key: 'qty', label: td('print.qty', 'Qty'), width: 48, render: (line) => qtyText(line.quantity) },
-    { key: 'price', label: td('sales.unitPrice', 'Unit price'), width: 88, render: (line) => formatCents(line.unit_price, currency) },
+    { key: 'price', label: td('sales.unitPrice', 'Price'), width: 88, render: (line) => formatCents(line.unit_price, currency) },
     ...discountColumn(lines, 52),
     { key: 'iva', label: 'IVA', width: 46, render: (line) => `${line.iva_percent}%` },
     {
@@ -690,7 +690,11 @@ function InvoiceSheet({ document, company, currency, lines, issued, theme, logoS
           <TotalRows
             rows={[
               ...discountRows(document, currency),
-              { label: td('sales.taxableBase', 'Taxable base'), value: formatCents(document.base_cents, currency) },
+              {
+                label: document.discount_cents
+                  ? td('sales.subtotalAfterDiscount', 'Subtotal after discount')
+                  : td('sales.subtotal', 'Subtotal'),
+                value: formatCents(document.base_cents, currency) },
               { label: 'IVA', value: formatCents(document.tax_cents, currency) },
               ...recargoRows(document, currency),
             ]}
@@ -725,7 +729,7 @@ function QuotationSheet({ document, company, currency, lines, issued, theme, log
 
   const columns: Column[] = [
     { key: 'qty', label: td('print.qty', 'Qty'), width: 44, render: (line) => qtyText(line.quantity) },
-    { key: 'price', label: td('sales.unitPrice', 'Unit price'), width: 80, render: (line) => formatCents(line.unit_price, currency) },
+    { key: 'price', label: td('sales.unitPrice', 'Price'), width: 80, render: (line) => formatCents(line.unit_price, currency) },
     ...discountColumn(lines, 48),
     { key: 'iva', label: 'IVA', width: 44, render: (line) => `${line.iva_percent}%` },
     { key: 'net', label: td('print.priceNet', 'Net'), width: 84, render: (line) => formatCents(grossOf(line).base, currency) },
@@ -856,7 +860,7 @@ function ProformaSheet({ document, company, currency, lines, issued, theme, logo
 
   const columns: Column[] = [
     { key: 'qty', label: td('print.qty', 'Qty'), width: 48, render: (line) => qtyText(line.quantity) },
-    { key: 'price', label: td('sales.unitPrice', 'Unit price'), width: 88, render: (line) => formatCents(line.unit_price, currency) },
+    { key: 'price', label: td('sales.unitPrice', 'Price'), width: 88, render: (line) => formatCents(line.unit_price, currency) },
     {
       key: 'amount',
       label: td('sales.amount', 'Amount'),
@@ -961,6 +965,7 @@ function ProformaSheet({ document, company, currency, lines, issued, theme, logo
 
 /** Deliberately carries nothing of the issuing company: no name, address, email or logo. */
 function AlbaranSheet({ document, currency, lines, issued, theme }: SheetProps) {
+  const heading = td('sales.typeAlbaran', 'Delivery note')
   const display = saleDisplayStatus(document)
   const units = lines.reduce((sum, line) => sum + line.quantity, 0)
   const attn = clientAttn(document)
@@ -974,7 +979,7 @@ function AlbaranSheet({ document, currency, lines, issued, theme }: SheetProps) 
       className: 'font-bold text-[#0f172a]',
       render: (line) => qtyText(line.quantity),
     },
-    { key: 'price', label: td('sales.unitPrice', 'Unit price'), width: 92, render: (line) => formatCents(line.unit_price, currency) },
+    { key: 'price', label: td('sales.unitPrice', 'Price'), width: 92, render: (line) => formatCents(line.unit_price, currency) },
     ...discountColumn(lines, 56),
     {
       key: 'amount',
@@ -996,8 +1001,14 @@ function AlbaranSheet({ document, currency, lines, issued, theme }: SheetProps) 
     <SheetFrame theme={theme} voided={display === 'voided'} lineCount={lines.length} className={cn('px-14 pt-14 pb-10', `${D}pt-11 ${D}pb-8`)}>
       <header className="flex items-start justify-between gap-8">
         <div>
-          <h1 className="m-0 text-[46px] leading-[0.9] font-black tracking-[-0.04em] text-[var(--print-accent)] uppercase">
-            Albarán
+          {/* One line whatever the language: "ALBARÁN" is short, "DELIVERY NOTE" is not, so the longer one is set smaller. */}
+          <h1
+            className={cn(
+              'm-0 leading-[0.9] font-black tracking-[-0.04em] whitespace-nowrap text-[var(--print-accent)] uppercase',
+              heading.length > 9 ? 'text-[34px]' : 'text-[46px]',
+            )}
+          >
+            {heading}
           </h1>
         </div>
         <div className="grid shrink-0 grid-cols-2 overflow-hidden rounded-md border-2 border-[#0f172a] text-center">

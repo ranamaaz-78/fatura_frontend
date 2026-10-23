@@ -1,6 +1,7 @@
 import {
   Building2,
   CreditCard,
+  Download,
   FileCheck2,
   FileText,
   Newspaper,
@@ -103,7 +104,8 @@ export const APP_NAV: NavGroup[] = [
     titleKey: 'nav.group.analytics',
     titleFallback: 'Analytics and settings',
     items: [
-      { to: '/app/reports', labelKey: 'nav.reports', fallback: 'Reports', icon: TrendingUp },
+      { to: '/app/reports', labelKey: 'nav.reports', fallback: 'Reports', icon: TrendingUp, end: true },
+      { to: '/app/downloads', labelKey: 'nav.downloads', fallback: 'Downloads', icon: Download },
       { to: '/app/printables', labelKey: 'nav.printables', fallback: 'Printables', icon: Printer },
       { to: '/app/team', labelKey: 'nav.team', fallback: 'Team and roles', icon: UserCog, ownerOnly: true },
       { to: '/app/settings', labelKey: 'nav.settings', fallback: 'Settings', icon: Settings },
@@ -184,6 +186,7 @@ const NAV_PERMISSION: Record<string, string> = {
   '/app/product-images': 'product_images.view',
   '/app/suppliers': 'suppliers.view',
   '/app/reports': 'reports.view',
+  '/app/downloads': 'reports.view',
   '/app/printables': 'printables.view',
 }
 

@@ -34,6 +34,7 @@ import { daysText, STATE_LABEL, STATE_STYLE, subscriptionInfo } from '../../lib/
 import { getErrorMessage } from '../../services/api'
 import { cancelSubscription, listCompanies, resendAccess, setCompanyStatus, whatsappFromError } from '../../services/admin/companies'
 import type { Company, CompanyCounts, CompanyStatus, SubscriptionState } from '../../types/module01'
+import { ProductImportModal } from '../app/ProductImportModal'
 import { RenewSubscriptionModal } from './RenewSubscriptionModal'
 import { localCountry } from '../../lib/countries'
 
@@ -118,6 +119,7 @@ function AdminCompanies() {
   const [renewing, setRenewing] = useState<Company | null>(null)
   const [suspending, setSuspending] = useState<Company | null>(null)
   const [cancelling, setCancelling] = useState<Company | null>(null)
+  const [importing, setImporting] = useState<Company | null>(null)
 
   const query = useQuery({
     queryKey: ['admin', 'companies', tab, search, page],
@@ -262,6 +264,9 @@ function AdminCompanies() {
         >
           {info.state === 'none' ? t('admin.startPlan', 'Start plan') : t('admin.renewShort', 'Renew')}
         </Button>
+        <Button size="sm" variant="secondary" onClick={() => setImporting(row)} className="mr-1 whitespace-nowrap">
+          {t('admin.importData', 'Import data')}
+        </Button>
         {reminder ? (
           <IconButton
             label={t('admin.remindWhatsapp', 'Message on WhatsApp')}
@@ -352,6 +357,16 @@ function AdminCompanies() {
       />
 
       <RenewSubscriptionModal company={renewing} onClose={() => setRenewing(null)} />
+
+      {importing ? (
+        <ProductImportModal
+          open
+          companyId={importing.id}
+          companyName={importing.name}
+          onClose={() => setImporting(null)}
+          onImported={() => undefined}
+        />
+      ) : null}
 
       <ConfirmDialog
         open={suspending !== null}

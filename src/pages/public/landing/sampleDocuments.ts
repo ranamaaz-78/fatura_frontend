@@ -26,7 +26,6 @@ export const SAMPLE_COMPANY = {
 
 type Row = {
   article: string
-  sr: string
   qty: number
   price: number
   iva: number
@@ -34,11 +33,11 @@ type Row = {
 }
 
 const ROWS: Row[] = [
-  { article: t('sample.drill', 'Cordless drill 18 V, 2 batteries'), sr: 'DR-1802', qty: 2, price: 8900, iva: 21 },
-  { article: t('sample.bits', 'Drill bit set, 25 pieces'), sr: 'BT-025', qty: 4, price: 1490, iva: 21, discount: 10 },
-  { article: t('sample.gloves', 'Work gloves, size L'), sr: 'GL-210', qty: 12, price: 395, iva: 21 },
-  { article: t('sample.screws', 'Wood screws 4 x 40 mm, box of 200'), sr: 'SC-440', qty: 6, price: 560, iva: 21 },
-  { article: t('sample.manual', 'Technical manual (print)'), sr: 'MN-004', qty: 2, price: 1200, iva: 4 },
+  { article: t('sample.drill', 'Cordless drill 18 V, 2 batteries'), qty: 2, price: 8900, iva: 21 },
+  { article: t('sample.bits', 'Drill bit set, 25 pieces'), qty: 4, price: 1490, iva: 21, discount: 10 },
+  { article: t('sample.gloves', 'Work gloves, size L'), qty: 12, price: 395, iva: 21 },
+  { article: t('sample.screws', 'Wood screws 4 x 40 mm, box of 200'), qty: 6, price: 560, iva: 21 },
+  { article: t('sample.manual', 'Technical manual (print)'), qty: 2, price: 1200, iva: 4 },
 ]
 
 function lines(taxed: boolean, discounted: boolean): SaleLine[] {
@@ -51,7 +50,6 @@ function lines(taxed: boolean, discounted: boolean): SaleLine[] {
     return {
       position: index + 1,
       product_id: null,
-      sr_number: row.sr,
       article: row.article,
       description: null,
       quantity: row.qty,

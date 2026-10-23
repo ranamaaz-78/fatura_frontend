@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { AlertTriangle, CheckCircle2, MailCheck, MessageCircle } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
 import { Modal } from '../../components/ui/Modal'
@@ -68,6 +68,8 @@ export function ConvertWizard({ application, open, onClose, onConverted }: Conve
   const [draft, setDraft] = useState<Draft>(() => draftFrom(application))
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [result, setResult] = useState<ConvertResult | null>(null)
+  // Until the admin picks a payment method (or "none") themselves, the first one is chosen: a new account is normally paid.
+  const [paymentTouched, setPaymentTouched] = useState(false)
 
   const plansQuery = useQuery({ queryKey: ['admin', 'plans'], queryFn: listPlans, enabled: open })
   const methodsQuery = useQuery({ queryKey: ['admin', 'payment-methods'], queryFn: listPaymentMethods, enabled: open })
@@ -87,8 +89,16 @@ export function ConvertWizard({ application, open, onClose, onConverted }: Conve
   }, [plan, periods])
 
   function set<K extends keyof Draft>(key: K, value: Draft[K]) {
+    if (key === 'payment_method_id') setPaymentTouched(true)
     setDraft((current) => ({ ...current, [key]: value }))
   }
+
+  const firstMethodId = methods[0] ? String(methods[0].id) : ''
+  useEffect(() => {
+    if (open && !paymentTouched && firstMethodId !== '') {
+      setDraft((current) => (current.payment_method_id === '' ? { ...current, payment_method_id: firstMethodId } : current))
+    }
+  }, [open, paymentTouched, firstMethodId])
 
   const mutation = useMutation({
     mutationFn: () =>
@@ -350,6 +360,11 @@ export function ConvertWizard({ application, open, onClose, onConverted }: Conve
               label={t('admin.paymentMethod', 'Payment method')}
               value={draft.payment_method_id}
               error={fieldErrors.payment_method_id}
+              hint={
+                draft.payment_method_id
+                  ? t('admin.invoicePaidHint', 'The invoice is sent as Paid.')
+                  : t('admin.invoicePendingHint', 'No payment recorded: the invoice is sent as Pending.')
+              }
               onChange={(event) => set('payment_method_id', event.target.value)}
             >
               <option value="">{t('admin.noPayment', 'No payment recorded')}</option>

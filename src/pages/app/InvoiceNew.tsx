@@ -20,6 +20,7 @@ import type { Customer, DiscountType, IssuableType, PaymentStatus, SaleDocument,
 import { isSaleConverted, isSaleExpired } from '../../types/sales'
 import { docPermission, usePermissions } from '../../auth/permissions'
 import { ISSUABLE_TYPES, celebratesPayment, isIssuable, rulesFor, typeLabel } from './documentTypes'
+import { isPastMonth, nowLocal, shortDate, snapIssueDate, withOffset } from '../../lib/issueDate'
 import { DiscountEditor } from './DiscountEditor'
 import { RecargoPicker } from './RecargoPicker'
 import { RecordPaymentModal } from './RecordPaymentModal'
@@ -27,7 +28,6 @@ import { RecordPaymentModal } from './RecordPaymentModal'
 type DraftLine = {
   key: string
   product_id: number | null
-  sr_number: string
   article: string
   description: string
   quantity: number
@@ -45,12 +45,6 @@ function ivaOptions(rates: { rate: number }[], current: string): string[] {
 
 const QUOTE_VALID_DAYS = 7
 
-function nowLocal(): string {
-  const date = new Date()
-  const pad = (value: number) => String(value).padStart(2, '0')
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
-}
-
 function toLocalInput(iso: string): string {
   const date = new Date(iso)
   if (Number.isNaN(date.getTime())) return nowLocal()
@@ -58,20 +52,20 @@ function toLocalInput(iso: string): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
 }
 
-function linesFromDocument(document: SaleDocument, products: Product[]): DraftLine[] {
+/** `held`: pieces of each product this very document already holds, which are available to it again while it is edited. */
+function linesFromDocument(document: SaleDocument, products: Product[], held: Record<number, number> = {}): DraftLine[] {
   return (document.lines ?? []).map((line) => {
     const product = line.product_id === null ? undefined : products.find((row) => row.id === line.product_id)
     return {
       key: crypto.randomUUID(),
       product_id: line.product_id,
-      sr_number: line.sr_number ?? '',
       article: line.article,
       description: line.description ?? '',
       quantity: line.quantity,
       unitPrice: centsToInput(line.unit_price),
       discount: String(line.discount_percent),
       iva: String(line.iva_percent),
-      stock: product?.quantity ?? null,
+      stock: product ? product.quantity + (held[product.id] ?? 0) : null,
     }
   })
 }
@@ -101,12 +95,11 @@ function digits(value: string): string {
 
 function productRank(product: Product, query: string): number {
   const barcode = product.barcode.toLowerCase()
-  const sr = (product.sr_number ?? '').toLowerCase()
   const article = product.article.toLowerCase()
   const brand = (product.brand ?? '').toLowerCase()
-  if (barcode === query || sr === query) return 0
-  if (barcode.startsWith(query) || sr.startsWith(query) || article.startsWith(query)) return 1
-  if (article.includes(query) || barcode.includes(query) || sr.includes(query) || brand.includes(query)) return 2
+  if (barcode === query) return 0
+  if (barcode.startsWith(query) || article.startsWith(query)) return 1
+  if (article.includes(query) || barcode.includes(query) || brand.includes(query)) return 2
   return 99
 }
 
@@ -126,8 +119,16 @@ function InvoiceNew() {
   const [type, setType] = useState<IssuableType>(editing ? 'quotation' : isIssuable(requested) ? requested : 'factura')
   const [hydrated, setHydrated] = useState(false)
   const [recargoRestored, setRecargoRestored] = useState(false)
+  // Editing a delivery note: what it already took out of stock (it is put back when saved), so it can keep those pieces.
+  const [held, setHeld] = useState<Record<number, number>>({})
   const rules = rulesFor(type)
   const [issuedAt, setIssuedAt] = useState(nowLocal)
+  // Invoices, delivery notes and proformas are dated by month (see lib/issueDate); a quotation is free.
+  const datedByMonth = type !== 'quotation'
+  // Switching from a quotation (any date) to another kind brings a date it cannot have back to the nearest allowed one.
+  useEffect(() => {
+    if (datedByMonth) setIssuedAt((current) => snapIssueDate(current))
+  }, [datedByMonth])
   // A quotation stays open for a week from the date written on it; the server applies the same rule.
   const quoteEnd = (() => {
     const start = new Date(issuedAt)
@@ -172,10 +173,8 @@ function InvoiceNew() {
   // Each list opens this screen with its own ?type=, and the route is shared,
   // so the screen is not remounted when one list sends us to another.
   useEffect(() => {
-    if (editing) {
-      setType('quotation')
-      return
-    }
+    // Editing: the document being edited decides the type (it is set once the document has loaded).
+    if (editing) return
     if (isIssuable(requested) && can(docPermission(requested, 'create'))) {
       setType(requested)
       return
@@ -192,8 +191,9 @@ function InvoiceNew() {
   })
 
   const preview = useQuery({
-    queryKey: ['app', 'sales', 'preview', type],
-    queryFn: () => previewSale(type),
+    // The number carries the month, so it follows the month of the date (F-202610/... or F-202609/...).
+    queryKey: ['app', 'sales', 'preview', type, issuedAt.slice(0, 7)],
+    queryFn: () => previewSale(type, withOffset(issuedAt)),
     enabled: !editing,
   })
 
@@ -324,16 +324,36 @@ function InvoiceNew() {
   useEffect(() => {
     const document = existing.data
     if (!document || hydrated) return
-    if (isSaleConverted(document) && document.converted_to) {
-      navigate(`${rulesFor(document.converted_to.type).listPath}/${document.converted_to.id}`, { replace: true })
+    if (document.type === 'quotation') {
+      if (isSaleConverted(document) && document.converted_to) {
+        navigate(`${rulesFor(document.converted_to.type).listPath}/${document.converted_to.id}`, { replace: true })
+        return
+      }
+      if (isSaleExpired(document)) {
+        push({ tone: 'danger', title: t('sales.quoteExpiredEdit', 'This quotation has expired and can no longer be edited.') })
+        navigate(`${rulesFor('quotation').listPath}/${document.id}`, { replace: true })
+        return
+      }
+    } else if (document.type !== 'albaran' || document.can_edit === false) {
+      // Only a quotation or an unpaid delivery note can be opened for editing.
+      push({
+        tone: 'danger',
+        title:
+          document.type === 'albaran'
+            ? t('sales.deliveryNotNotEditable', 'This delivery note can no longer be edited: it is paid, voided or already invoiced.')
+            : t('sales.notEditable', 'This document cannot be edited.'),
+      })
+      navigate(`${rulesFor(document.type).listPath}/${document.id}`, { replace: true })
       return
     }
-    if (isSaleExpired(document)) {
-      push({ tone: 'danger', title: t('sales.quoteExpiredEdit', 'This quotation has expired and can no longer be edited.') })
-      navigate(`${rulesFor('quotation').listPath}/${document.id}`, { replace: true })
-      return
+    setType(document.type as IssuableType)
+    const heldNow: Record<number, number> = {}
+    if (document.type === 'albaran') {
+      for (const line of document.lines ?? []) {
+        if (line.product_id !== null) heldNow[line.product_id] = (heldNow[line.product_id] ?? 0) + line.quantity
+      }
+      setHeld(heldNow)
     }
-    setType('quotation')
     setIssuedAt(toLocalInput(document.issued_at))
     if (document.discount_type && document.discount_cents > 0) {
       setDiscountOpen(true)
@@ -348,7 +368,7 @@ function InvoiceNew() {
     setClientPhone(document.client_phone ?? '')
     setClientNif(document.client_nif ?? '')
     setClientAddress(document.client_address ?? '')
-    setLines(linesFromDocument(document, catalog.data ?? []))
+    setLines(linesFromDocument(document, catalog.data ?? [], heldNow))
     setHydrated(true)
   }, [catalog.data, existing.data, hydrated, navigate])
 
@@ -447,7 +467,6 @@ function InvoiceNew() {
             {
               key: crypto.randomUUID(),
               product_id: product.id,
-              sr_number: product.sr_number ?? '',
               article: product.article,
               description: product.description ?? '',
               quantity: 1,
@@ -455,7 +474,7 @@ function InvoiceNew() {
               unitPrice: centsToInput(product.selling_price),
               discount: '0',
               iva: String(product.iva_percent),
-              stock: product.quantity,
+              stock: product.quantity + (held[product.id] ?? 0),
             },
           ]
         }
@@ -508,7 +527,6 @@ function InvoiceNew() {
 
     const prepared = lines.map((line) => ({
       product_id: line.product_id,
-      sr_number: line.sr_number.trim() || null,
       article: line.article.trim(),
       description: line.description.trim() || null,
       quantity: line.quantity,
@@ -524,7 +542,7 @@ function InvoiceNew() {
 
     return {
       type,
-      issued_at: new Date(issuedAt).toISOString(),
+      issued_at: withOffset(issuedAt),
       payment_status: rules.settlesPayment ? payment : 'pending',
       customer_id: customerId,
       save_customer: customerId === null,
@@ -560,7 +578,9 @@ function InvoiceNew() {
   }
 
   const issueLabel = editing
-    ? t('sales.saveQuote', 'Save quotation')
+    ? type === 'albaran'
+      ? t('sales.saveDeliveryNote', 'Save delivery note')
+      : t('sales.saveQuote', 'Save quotation')
     : rules.movesStock
       ? t('sales.issueAndDeduct', 'Issue :type and deduct stock').replace(':type', typeLabel(type).toLowerCase())
       : t('sales.issueOnly', 'Issue :type').replace(':type', typeLabel(type).toLowerCase())
@@ -586,11 +606,17 @@ function InvoiceNew() {
           </span>
           <div>
             <h1 className="text-xl font-bold tracking-[-0.02em] text-slate-900">
-              {editing ? t('sales.editQuote', 'Edit quotation') : t('sales.newTitle', 'New sale')}
+              {editing
+                ? type === 'albaran'
+                  ? t('sales.editDeliveryNote', 'Edit delivery note')
+                  : t('sales.editQuote', 'Edit quotation')
+                : t('sales.newTitle', 'New sale')}
             </h1>
             <p className="mt-0.5 text-xs text-slate-500">
               {editing
-                ? t('sales.editQuoteHint', 'Change the client or the lines. The quotation number stays.')
+                ? type === 'albaran'
+                  ? t('sales.editDeliveryNoteHint', 'Change the client or the lines while it is unpaid. The number and date stay, and the stock is adjusted by the difference.')
+                  : t('sales.editQuoteHint', 'Change the client or the lines. The quotation number stays.')
                 : t('sales.newSubtitle', 'Invoice, delivery note, quotation or proforma, with the client and the lines on one screen.')}
             </p>
           </div>
@@ -662,7 +688,7 @@ function InvoiceNew() {
               <span className={label}>{t('sales.document', 'Document')}</span>
               {editing ? (
                 <span className="block rounded-lg bg-brand-600 px-2 py-1.5 text-xs font-bold text-brand-on">
-                  {typeLabel('quotation')}
+                  {typeLabel(type)}
                 </span>
               ) : (
                 <div className="grid grid-cols-2 gap-1.5">
@@ -693,9 +719,23 @@ function InvoiceNew() {
               <input
                 type="datetime-local"
                 value={issuedAt}
-                onChange={(event) => setIssuedAt(event.target.value)}
+                // A quotation keeps any date; everything else is today's month up to now, or a past month's last day.
+                max={datedByMonth ? nowLocal() : undefined}
+                // A delivery note keeps the date its number was issued on.
+                disabled={editing && type === 'albaran'}
+                onChange={(event) => setIssuedAt(datedByMonth ? snapIssueDate(event.target.value) : event.target.value)}
                 className="w-full rounded-lg border border-line bg-card px-2.5 py-1.5 text-xs text-ink outline-none"
               />
+              {editing && type === 'albaran' ? (
+                <span className="mt-1 block text-[10.5px] leading-snug text-ink-muted">
+                  {t('sales.deliveryDateFixed', 'The date and number of a delivery note stay as they were issued.')}
+                </span>
+              ) : null}
+              {!(editing && type === 'albaran') && datedByMonth && isPastMonth(issuedAt) ? (
+                <span className="mt-1 block text-[10.5px] leading-snug text-ink-muted">
+                  {t('sales.pastMonthHint', 'Past month: the date can only be its last day (:date).').replace(':date', shortDate(issuedAt))}
+                </span>
+              ) : null}
               {type === 'quotation' && quoteEnd ? (
                 <span
                   className={cn(
@@ -901,7 +941,7 @@ function InvoiceNew() {
                 }}
                 onKeyDown={onProductKeyDown}
                 onFocus={() => setDropdown(true)}
-                placeholder={t('sales.productPlaceholder', 'Name, sr number or barcode')}
+                placeholder={t('sales.productPlaceholder', 'Name or barcode')}
                 className="w-full rounded-xl border-2 border-brand-500/40 bg-card py-3 pr-3 pl-11 text-sm font-medium outline-none"
               />
             </span>
@@ -926,7 +966,7 @@ function InvoiceNew() {
                     <span className="min-w-0">
                       <span className="block truncate text-sm font-bold text-slate-900">{product.article}</span>
                       <span className="text-[11px] text-slate-500">
-                        {product.sr_number ?? '—'} · {product.barcode} · IVA {product.iva_percent}%
+                        {product.barcode} · IVA {product.iva_percent}%
                       </span>
                     </span>
                     <span className="shrink-0 text-right">
@@ -958,22 +998,32 @@ function InvoiceNew() {
             <div className="min-w-[920px]">
               <div className="flex items-center bg-slate-50 px-3 py-3 text-xs font-bold text-slate-600">
                 <span className="w-10 text-center">#</span>
-                <span className="w-28 px-2">{t('sales.sr', 'Sr number')}</span>
                 <span className="min-w-0 flex-1 px-2">{t('sales.article', 'Article')}</span>
                 {rules.showsAvailable ? <span className="w-40 px-2">{t('sales.available', 'Available')}</span> : null}
-                <span className="w-28 text-center">{t('sales.qty', 'Quantity')}</span>
-                <span className="w-24 text-right">{t('sales.price', 'Price')}</span>
-                {rules.carriesDiscount ? <span className="w-16 text-right">{t('sales.dto', 'Dto %')}</span> : null}
-                {rules.carriesTax ? <span className="w-16 text-right">{t('sales.iva', '% IVA')}</span> : null}
+                <span className="w-28 shrink-0 text-center">{t('sales.qty', 'Quantity')}</span>
+                {/* Each heading sits over its cell: numbers on the right edge of their box, the tax rate on the left of its list. */}
+                <span className="w-28 shrink-0 px-1">
+                  <span className="block pr-2 text-right">{t('sales.price', 'Price')}</span>
+                </span>
+                {rules.carriesDiscount ? (
+                  <span className="w-20 shrink-0 px-1">
+                    <span className="block pr-2 text-right">{t('sales.dto', 'Dto %')}</span>
+                  </span>
+                ) : null}
+                {rules.carriesTax ? (
+                  <span className="w-28 shrink-0 px-1">
+                    <span className="block pl-2.5 text-left">{t('sales.iva', '% IVA')}</span>
+                  </span>
+                ) : null}
                 {rules.showsPriceWithTax ? (
                   <>
-                    <span className="w-28 text-right">{t('sales.priceNet', 'Without tax')}</span>
-                    <span className="w-28 text-right">{t('sales.priceGross', 'With tax')}</span>
+                    <span className="w-28 shrink-0 px-2 text-right">{t('sales.priceNet', 'Without tax')}</span>
+                    <span className="w-28 shrink-0 px-2 text-right">{t('sales.priceGross', 'With tax')}</span>
                   </>
                 ) : (
-                  <span className="w-24 text-right">{t('sales.total', 'Total')}</span>
+                  <span className="w-28 shrink-0 px-2 text-right">{t('sales.total', 'Total')}</span>
                 )}
-                <span className="w-10" />
+                <span className="w-10 shrink-0" />
               </div>
               {lines.length === 0 ? (
                 <p className="px-4 py-8 text-center text-xs text-slate-400">
@@ -997,7 +1047,6 @@ function InvoiceNew() {
                   return (
                     <div key={line.key} className="flex items-center border-t border-slate-100 px-3 py-2.5">
                       <span className="w-10 text-center text-xs text-slate-400">{index + 1}</span>
-                      <span className="w-28 px-2 text-[11px] text-slate-500">{line.sr_number || '—'}</span>
                       <span className="min-w-0 flex-1 truncate px-2 text-xs font-bold text-slate-900">{line.article}</span>
                       {rules.showsAvailable ? (
                         <span className="flex w-40 flex-col items-start px-2">
@@ -1017,7 +1066,7 @@ function InvoiceNew() {
                           )}
                         </span>
                       ) : null}
-                      <span className="flex w-28 justify-center">
+                      <span className="flex w-28 shrink-0 justify-center">
                         <span className="inline-flex items-center overflow-hidden rounded-lg border border-slate-300">
                           <button type="button" onClick={() => changeQuantity(line, line.quantity - 1)} className="cursor-pointer p-1.5 text-slate-600">
                             <Minus className="h-3.5 w-3.5" />
@@ -1033,30 +1082,34 @@ function InvoiceNew() {
                           </button>
                         </span>
                       </span>
-                      <input
-                        aria-label={`${t('sales.price', 'Price')} ${line.article}`}
-                        value={line.unitPrice}
-                        inputMode="decimal"
-                        onChange={(event) => changeLine(line.key, { unitPrice: onlyDecimal(event.target.value) })}
-                        placeholder={rules.manualPrice ? t('sales.typePrice', 'Price') : undefined}
-                        className={cn(
-                          'w-24 rounded-lg border px-2 py-1 text-right text-xs font-bold outline-none',
-                          rules.manualPrice && line.unitPrice.trim() === ''
-                            ? 'border-amber-400 bg-amber-50'
-                            : 'border-slate-300',
-                        )}
-                      />
-                      {rules.carriesDiscount ? (
+                      <span className="w-28 shrink-0 px-1">
                         <input
-                          aria-label={`${t('sales.dto', 'Dto %')} ${line.article}`}
-                          value={line.discount}
+                          aria-label={`${t('sales.price', 'Price')} ${line.article}`}
+                          value={line.unitPrice}
                           inputMode="decimal"
-                          onChange={(event) => changeLine(line.key, { discount: onlyDecimal(event.target.value) })}
-                          className="ml-2 w-14 rounded-lg border border-line bg-card px-2 py-1 text-right text-xs text-ink outline-none"
+                          onChange={(event) => changeLine(line.key, { unitPrice: onlyDecimal(event.target.value) })}
+                          placeholder={rules.manualPrice ? t('sales.typePrice', 'Price') : undefined}
+                          className={cn(
+                            'w-full rounded-lg border px-2 py-1 text-right text-xs font-bold outline-none',
+                            rules.manualPrice && line.unitPrice.trim() === ''
+                              ? 'border-amber-400 bg-amber-50'
+                              : 'border-slate-300',
+                          )}
                         />
+                      </span>
+                      {rules.carriesDiscount ? (
+                        <span className="w-20 shrink-0 px-1">
+                          <input
+                            aria-label={`${t('sales.dto', 'Dto %')} ${line.article}`}
+                            value={line.discount}
+                            inputMode="decimal"
+                            onChange={(event) => changeLine(line.key, { discount: onlyDecimal(event.target.value) })}
+                            className="w-full rounded-lg border border-line bg-card px-2 py-1 text-right text-xs text-ink outline-none"
+                          />
+                        </span>
                       ) : null}
                       {rules.carriesTax ? (
-                        <span className="ml-2 w-24 shrink-0">
+                        <span className="w-28 shrink-0 px-1">
                           <Select
                             compact
                             aria-label={t('sales.iva', '% IVA')}
@@ -1073,15 +1126,15 @@ function InvoiceNew() {
                       ) : null}
                       {rules.showsPriceWithTax ? (
                         <>
-                          <span className="w-28 text-right text-sm font-bold text-slate-900">
+                          <span className="w-28 shrink-0 px-2 text-right text-sm font-bold text-slate-900">
                             {formatCents(math.base, currency)}
                           </span>
-                          <span className="w-28 text-right text-sm font-bold text-brand-600">
+                          <span className="w-28 shrink-0 px-2 text-right text-sm font-bold text-brand-600">
                             {formatCents(math.total, currency)}
                           </span>
                         </>
                       ) : (
-                        <span className="w-24 text-right text-sm font-bold text-slate-900">
+                        <span className="w-28 shrink-0 px-2 text-right text-sm font-bold text-slate-900">
                           {formatCents(math.total, currency)}
                         </span>
                       )}
@@ -1090,7 +1143,7 @@ function InvoiceNew() {
                           type="button"
                           aria-label={`${t('common.delete', 'Delete')} ${line.article}`}
                           onClick={() => setLines((current) => current.filter((item) => item.key !== line.key))}
-                          className="flex w-10 cursor-pointer justify-center text-slate-400 hover:text-rose-600"
+                          className="flex w-10 shrink-0 cursor-pointer justify-center text-slate-400 hover:text-rose-600"
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
@@ -1132,7 +1185,7 @@ function InvoiceNew() {
             <div className="flex flex-col gap-2 text-xs">
               <span className="flex justify-between text-slate-600">
                 <span>
-                  {rules.carriesTax && !discountOpen ? t('sales.base', 'Taxable base') : t('sales.subtotal', 'Subtotal')}
+                  {t('sales.subtotal', 'Subtotal')}
                 </span>
                 <span className="font-bold text-slate-800">
                   {formatCents(discountOpen ? totals.gross : totals.base, currency)}
@@ -1157,7 +1210,7 @@ function InvoiceNew() {
               ) : null}
               {discountOpen && rules.carriesTax ? (
                 <span className="flex justify-between text-slate-600">
-                  <span>{t('sales.base', 'Taxable base')}</span>
+                  <span>{t('sales.subtotalAfterDiscount', 'Subtotal after discount')}</span>
                   <span className="font-bold text-slate-800">{formatCents(totals.base, currency)}</span>
                 </span>
               ) : null}

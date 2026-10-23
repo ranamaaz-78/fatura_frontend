@@ -41,11 +41,14 @@ function typeLabel(type: PrintableType): string {
   return t('nav.proformas', 'Proformas')
 }
 
+/** The sample numbers use the real format: prefix, month (YYYYMM) and a five-digit serial. */
 function sampleNumber(type: PrintableType): string {
-  if (type === 'factura') return 'F-2026/0001'
-  if (type === 'albaran') return 'AL-2026/0001'
-  if (type === 'quotation') return 'Q-2026/0001'
-  return 'PF-2026/0001'
+  const now = new Date()
+  const month = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}`
+  if (type === 'factura') return `F-${month}/00001`
+  if (type === 'albaran') return `AL-${month}/00001`
+  if (type === 'quotation') return `Q-${month}/00001`
+  return `PF-${month}/00001`
 }
 
 function sampleLines(type: PrintableType): SaleLine[] {
@@ -54,7 +57,6 @@ function sampleLines(type: PrintableType): SaleLine[] {
     {
       position: 1,
       product_id: null,
-      sr_number: 'SR-104',
       article: 'USB-C cable 2 m',
       description: null,
       quantity: 2,
@@ -68,7 +70,6 @@ function sampleLines(type: PrintableType): SaleLine[] {
     {
       position: 2,
       product_id: null,
-      sr_number: null,
       article: 'Wireless mouse',
       description: null,
       quantity: 1,

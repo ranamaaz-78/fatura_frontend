@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { ArrowRight, Check, ChevronLeft, MailCheck, MessageCircle, ShieldCheck } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Controller, useForm, useWatch, type UseFormRegisterReturn } from 'react-hook-form'
 import { Link, useSearchParams } from 'react-router-dom'
 import { z } from 'zod'
@@ -19,7 +19,6 @@ import {
   DEFAULT_COUNTRY,
   DIAL_OPTIONS,
   countryByName,
-  countryForDial,
   detectFromInternational,
   isPossibleNumber,
   localDigits,
@@ -66,7 +65,7 @@ const schema = z
       ctx.addIssue({
         code: 'custom',
         path: ['phone'],
-        message: t('apply.that_number_does_not_look_right_for_the', 'That number does not look right for the selected country.'),
+        message: t('apply.that_number_does_not_look_right_for_the', 'That number does not look right for the selected dialling code.'),
       })
     }
     if (values.whatsapp_same) return
@@ -239,24 +238,28 @@ function Apply() {
   const phoneValue = useWatch({ control, name: 'phone' })
   const waDial = useWatch({ control, name: 'whatsapp_dial_code' })
 
+  // The country and the phone number are separate things: someone in Spain can give a Pakistani number. The country
+  // only suggests a dialling code until the applicant picks a code (or pastes a number) themselves; after that it never
+  // overwrites it, and choosing a code never changes the country.
+  const dialChosen = useRef(false)
+
   function changePhoneDial(dial: string) {
-    const match = countryForDial(dial, getValues('country'))
+    dialChosen.current = true
     setValue('dial_code', dial, { shouldValidate: Boolean(errors.phone) })
-    if (match) setValue('country', match.name)
   }
 
   function changeCountry(name: string) {
     const match = countryByName(name)
-    if (!match) return
+    if (!match || dialChosen.current) return
     setValue('dial_code', match.dial)
   }
 
-  /** A pasted "+34 612..." sets the code and country; plain typing is left as typed. */
+  /** A pasted "+92 300..." sets the dialling code and the number; the country stays as chosen. */
   function typePhone(raw: string) {
     const found = detectFromInternational(raw)
     if (found) {
+      dialChosen.current = true
       setValue('dial_code', found.dial)
-      setValue('country', found.country.name)
       setValue('phone', found.local)
     }
   }
@@ -313,6 +316,7 @@ function Apply() {
       setStep('form')
       setPending(null)
       setOtp('')
+      dialChosen.current = false
       reset({
         dial_code: DEFAULT_COUNTRY.dial,
         country: DEFAULT_COUNTRY.name,

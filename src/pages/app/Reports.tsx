@@ -29,10 +29,12 @@ import { Button } from '../../components/ui/Button'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { Select } from '../../components/ui/Select'
 import { Skeleton, SkeletonStatGrid } from '../../components/ui/Skeleton'
+import { useToast } from '../../components/ui/Toast'
 import { t } from '../../i18n'
 import { cn } from '../../lib/cn'
 import { TONE_AMBER, TONE_GREEN } from '../../lib/status'
-import { centsToExcelAmount, downloadWorkbook } from '../../lib/exportReport'
+import { centsToExcelAmount, downloadStyledReport, type ReportColumnFormat } from '../../lib/exportReport'
+import { downloadFileName, fileDate } from '../../lib/fileName'
 import { formatDate } from '../../lib/format'
 import { formatCents } from '../../lib/money'
 import { getErrorMessage } from '../../services/api'
@@ -77,6 +79,10 @@ type Column = {
   text: (row: ReportRow) => string
   excel: (row: ReportRow) => string | number | null
   node?: (row: ReportRow) => ReactNode
+  /** How the cell is written in Excel: a number with its own format, so it can be summed, sorted and filtered. */
+  format?: ReportColumnFormat
+  /** Added up in the total row of the Excel sheet. */
+  sum?: boolean
 }
 
 type Tile = { label: string; value: string; hint: string; tile: string; icon: ReactNode }
@@ -132,16 +138,21 @@ function moneyCol(key: string, header: string): Column {
     align: 'right',
     text: (row) => formatCents(asNumber(row[key]), currentCurrency),
     excel: (row) => centsToExcelAmount(asNumber(row[key])),
+    format: 'money',
+    sum: true,
   }
 }
 
-function countCol(key: string, header: string): Column {
+/** `sum` is false where adding the column up would mislead (a document with two tax rates counts under both). */
+function countCol(key: string, header: string, sum = true): Column {
   return {
     key,
     header,
     align: 'right',
     text: (row) => String(asNumber(row[key])),
     excel: (row) => asNumber(row[key]),
+    format: 'count',
+    sum,
   }
 }
 
@@ -153,6 +164,7 @@ function shareCol(key: string, total: number, header: string): Column {
     text: (row) => formatShare(asNumber(row[key]), total),
     excel: (row) => shareValue(asNumber(row[key]), total),
     node: (row) => <ShareBar value={asNumber(row[key])} total={total} />,
+    format: 'percent',
   }
 }
 
@@ -255,10 +267,10 @@ function columnsFor(kind: ReportKind, currency: string, data: ReportPayload): Co
           key: 'rate',
           header: t('reports.rate', 'Rate'),
           text: (row) => `${asNumber(row.rate)}%`,
-          excel: (row) => asNumber(row.rate),
+          excel: (row) => `${asNumber(row.rate)}%`,
         },
         countCol('line_count', t('reports.lines', 'Lines')),
-        countCol('document_count', t('reports.documents', 'Documents')),
+        countCol('document_count', t('reports.documents', 'Documents'), false),
         money('base_cents', t('reports.base', 'Base')),
         money('tax_cents', t('reports.taxAmount', 'Tax')),
         money('total_cents', t('reports.total', 'Total')),
@@ -281,7 +293,7 @@ function columnsFor(kind: ReportKind, currency: string, data: ReportPayload): Co
           ),
         },
         countCol('quantity', t('reports.quantity', 'Quantity')),
-        countCol('document_count', t('reports.onDocuments', 'On documents')),
+        countCol('document_count', t('reports.onDocuments', 'On documents'), false),
         money('base_cents', t('reports.base', 'Base')),
         money('total_cents', t('reports.total', 'Total')),
         shareCol('quantity', kpis.quantity ?? 0, t('reports.share', 'Share')),
@@ -321,6 +333,7 @@ function columnsFor(kind: ReportKind, currency: string, data: ReportPayload): Co
           align: 'right',
           text: (row) => String(asNumber(row.days_open)),
           excel: (row) => asNumber(row.days_open),
+          format: 'count',
           node: (row) => <DaysChip days={asNumber(row.days_open)} />,
         },
         {
@@ -365,7 +378,7 @@ function columnsFor(kind: ReportKind, currency: string, data: ReportPayload): Co
           node: (row) => <StockChip band={asText(row.band)} />,
         },
         countCol('quantity', t('reports.quantity', 'Quantity')),
-        countCol('minimum_stock', t('reports.lowStock', 'Low stock')),
+        countCol('minimum_stock', t('reports.lowStock', 'Low stock'), false),
         money('stock_value_cents', t('reports.stockValue', 'Stock value')),
         shareCol('stock_value_cents', kpis.stock_value_cents ?? 0, t('reports.share', 'Share')),
       ]
@@ -501,44 +514,81 @@ function isEmpty(data: ReportPayload): boolean {
   return tableRows(data).length === 0
 }
 
-function exportPayload(kind: ReportKind, data: ReportPayload, currency: string, period: PaymentPeriod, from: string, to: string): void {
+/** The period as a person reads it, for the line under the title of the Excel sheet. */
+function periodText(kind: ReportKind, period: PaymentPeriod, from: string, to: string): string {
+  if (!usesPeriod(kind)) return t('reports.snapshotHint', 'Live snapshot — date range does not apply.')
+  if (period === 'custom') return `${formatDate(from)} – ${formatDate(to)}`
+  if (period === 'month') return t('sales.thisMonth', 'This month')
+  if (period === 'week') return t('payments.thisWeek', 'This week')
+  if (period === 'day') return t('payments.thisDay', 'Today')
+  return t('common.all', 'All')
+}
+
+/** The summary tiles as Excel lines: the same labels, with real numbers where the value is one. */
+function summaryRows(kind: ReportKind, data: ReportPayload, currency: string) {
+  return kpisFor(kind, data.kpis, currency).map((tileItem) => {
+    for (const [key, value] of Object.entries(data.kpis)) {
+      if (key.endsWith('_cents') && formatCents(value, currency) === tileItem.value) {
+        return { label: tileItem.label, value: centsToExcelAmount(value), format: 'money' as const }
+      }
+      if (!key.endsWith('_cents') && String(value) === tileItem.value) {
+        return { label: tileItem.label, value, format: 'count' as const }
+      }
+    }
+    return { label: tileItem.label, value: tileItem.value, format: 'text' as const }
+  })
+}
+
+async function exportPayload(
+  kind: ReportKind,
+  data: ReportPayload,
+  currency: string,
+  companyName: string,
+  period: PaymentPeriod,
+  from: string,
+  to: string,
+): Promise<void> {
   const cols = columnsFor(kind, currency, data)
   const rows = tableRows(data)
-  const kpiSheet: Array<Array<string | number | null>> = [[t('reports.kind', 'Report'), kindLabel(kind)]]
-  Object.entries(data.kpis).forEach(([key, value]) => {
-    kpiSheet.push([key, key.endsWith('_cents') ? centsToExcelAmount(value) : value])
+
+  await downloadStyledReport({
+    // Company - Sales - 2026-10-19 (or the dates of a custom period)
+    filename: downloadFileName([companyName, kindLabel(kind), period === 'custom' && usesPeriod(kind) ? `${from} ${t('reportDownloads.to', 'to')} ${to}` : fileDate()], 'xlsx'),
+    title: kindLabel(kind),
+    subtitle: [companyName, periodText(kind, period, from, to), `${t('reports.generated', 'Generated')} ${formatDate(new Date())}`]
+      .filter(Boolean)
+      .join('  ·  '),
+    currency,
+    summaryTitle: t('reports.summary', 'Summary'),
+    tableTitle: t('reports.details', 'Details'),
+    totalLabel: t('reports.total', 'Total'),
+    summary: summaryRows(kind, data, currency),
+    columns: cols.map((col) => ({ header: col.header, format: col.format ?? 'text', sum: col.sum })),
+    rows: rows.map((row) => cols.map((col) => col.excel(row))),
+    extra:
+      data.series && data.series.length > 0
+        ? [
+            {
+              name: t('reports.byDay', 'Sales by day'),
+              columns: [
+                { header: t('sales.date', 'Date'), format: 'text' as const },
+                { header: t('reports.documents', 'Documents'), format: 'count' as const },
+                { header: t('reports.total', 'Total'), format: 'money' as const },
+              ],
+              rows: data.series.map((point: ReportSeriesPoint) => [
+                formatDay(point.day),
+                point.document_count,
+                centsToExcelAmount(point.total_cents),
+              ]),
+            },
+          ]
+        : undefined,
   })
-
-  const table: Array<Array<string | number | null>> = [cols.map((col) => col.header)]
-  rows.forEach((row) => {
-    table.push(cols.map((col) => col.excel(row)))
-  })
-
-  const sheets = [
-    { name: t('reports.kind', 'Report'), rows: kpiSheet },
-    { name: kindLabel(kind), rows: table },
-  ]
-
-  if (data.series && data.series.length > 0) {
-    sheets.push({
-      name: t('reports.byDay', 'Sales by day'),
-      rows: [
-        [t('sales.date', 'Date'), t('reports.documents', 'Documents'), t('reports.total', 'Total')],
-        ...data.series.map((point: ReportSeriesPoint) => [
-          formatDay(point.day),
-          point.document_count,
-          centsToExcelAmount(point.total_cents),
-        ]),
-      ],
-    })
-  }
-
-  const stamp = usesPeriod(kind) ? (period === 'custom' ? `${from}_${to}` : period) : 'snapshot'
-  downloadWorkbook(`ykdigitalsolutions-${kind}-${stamp}.xlsx`, sheets)
 }
 
 function Reports() {
   const { session } = useAuth()
+  const { push } = useToast()
   const currency = session?.company?.currency ?? 'EUR'
   const [kind, setKind] = useState<ReportKind>('sales')
   const [period, setPeriod] = useState<PaymentPeriod>('month')
@@ -580,7 +630,10 @@ function Reports() {
           disabled={!data || isEmpty(data)}
           className={cn(headerButton, 'bg-slate-100 text-slate-700 hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-50')}
           onClick={() => {
-            if (data) exportPayload(kind, data, currency, period, from, to)
+            if (!data) return
+            exportPayload(kind, data, currency, session?.company?.name ?? '', period, from, to).catch((error) =>
+              push({ tone: 'danger', title: getErrorMessage(error) }),
+            )
           }}
         >
           <FileSpreadsheet className="h-4 w-4 text-brand-600" />

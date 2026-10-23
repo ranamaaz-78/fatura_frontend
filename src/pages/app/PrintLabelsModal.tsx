@@ -1,6 +1,6 @@
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { AlertTriangle, Printer } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
-import { BarcodeSvg } from '../../components/ui/BarcodeSvg'
 import { Button } from '../../components/ui/Button'
 import { Checkbox } from '../../components/ui/Checkbox'
 import { Input } from '../../components/ui/Input'
@@ -8,22 +8,29 @@ import { Modal } from '../../components/ui/Modal'
 import { Select } from '../../components/ui/Select'
 import { useToast } from '../../components/ui/Toast'
 import { t } from '../../i18n'
-import { formatCents } from '../../lib/money'
 import {
   CUSTOM_SHEET,
   DEFAULT_CUSTOM,
+  DEFAULT_DPI,
+  GOOD_MODULE_MM,
   LABEL_SHEETS,
   PAGES,
+  buildLabelSheet,
   cleanCustom,
+  fitLabelOptions,
   layoutProblem,
   printLabelSheet,
   resolvedSpec,
+  unavailableChoices,
   type BarHeight,
   type CustomLabel,
   type LabelSheet,
   type PageSize,
+  type PrinterDpi,
   type TextSize,
 } from '../../lib/printLabels'
+import { getErrorMessage } from '../../services/api'
+import { markLabelsPrinted } from '../../services/catalog'
 import type { Product } from '../../types/catalog'
 
 export type PrintLabelsModalProps = {
@@ -40,6 +47,9 @@ type Saved = {
   textSize: TextSize
   barHeight: BarHeight
   border: boolean
+  dpi: PrinterDpi
+  offsetX: string
+  offsetY: string
 }
 
 const STORAGE_KEY = 'labels.settings'
@@ -62,6 +72,9 @@ function loadSaved(): Saved {
     textSize: 'normal',
     barHeight: 'normal',
     border: false,
+    dpi: DEFAULT_DPI,
+    offsetX: '0',
+    offsetY: '0',
   }
 
   try {
@@ -77,6 +90,9 @@ function loadSaved(): Saved {
       textSize: parsed.textSize ?? 'normal',
       barHeight: parsed.barHeight ?? 'normal',
       border: Boolean(parsed.border),
+      dpi: parsed.dpi === 300 || parsed.dpi === 0 ? parsed.dpi : DEFAULT_DPI,
+      offsetX: String(parsed.offsetX ?? '0'),
+      offsetY: String(parsed.offsetY ?? '0'),
     }
   } catch {
     return fallback
@@ -85,6 +101,16 @@ function loadSaved(): Saved {
 
 export function PrintLabelsModal({ open, products, currency, onClose }: PrintLabelsModalProps) {
   const { push } = useToast()
+  const queryClient = useQueryClient()
+  // Every print is remembered per product, so the "labels to print" list knows what is done and what is not.
+  const record = useMutation({
+    mutationFn: markLabelsPrinted,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['app', 'products'] })
+      push({ tone: 'success', title: t('labelQueue.markedPrinted', 'Sent to print and marked as printed.') })
+    },
+    onError: (error) => push({ tone: 'danger', title: getErrorMessage(error) }),
+  })
   const [saved] = useState(loadSaved)
   const [sheet, setSheet] = useState<LabelSheet>(saved.sheet)
   const [turned, setTurned] = useState(saved.turned)
@@ -92,10 +118,13 @@ export function PrintLabelsModal({ open, products, currency, onClose }: PrintLab
   const [textSize, setTextSize] = useState<TextSize>(saved.textSize)
   const [barHeight, setBarHeight] = useState<BarHeight>(saved.barHeight)
   const [border, setBorder] = useState(saved.border)
+  const [dpi, setDpi] = useState<PrinterDpi>(saved.dpi)
+  // Lines the content up on the roll when the paper feeds a little off: millimetres right and down.
+  const [offsetX, setOffsetX] = useState(saved.offsetX)
+  const [offsetY, setOffsetY] = useState(saved.offsetY)
   const [copies, setCopies] = useState('8')
   const [showPrice, setShowPrice] = useState(true)
   const [showName, setShowName] = useState(true)
-  const [showSku, setShowSku] = useState(false)
 
   const usingCustom = sheet === CUSTOM_SHEET
   const custom = useMemo(
@@ -115,17 +144,61 @@ export function PrintLabelsModal({ open, products, currency, onClose }: PrintLab
   const problem = layoutProblem(spec, custom, usingCustom)
   const perProduct = Math.max(1, Math.min(200, Number(copies) || 1))
   const total = products.length * perProduct
-  const preview = products.slice(0, spec.roll ? 3 : 6)
+  const preview = products.slice(0, spec.roll ? 3 : 4)
+
+  // A roll label only prints what fits it. What does not is left off here and switched off below, never squeezed in.
+  const fit = fitLabelOptions(spec, { showName, showPrice, textSize, barHeight }, dpi)
+  const blocked = unavailableChoices(spec, fit.options)
+  const leftOff = fit.changed
+    .filter((key) => key === 'showName' || key === 'showPrice' || key === 'textSize' || key === 'barHeight')
+    .map((key) =>
+      key === 'showName'
+        ? t('labels.fieldName', 'name')
+        : key === 'showPrice'
+          ? t('labels.fieldPrice', 'price')
+          : key === 'textSize'
+            ? t('labels.fieldTextSize', 'text size')
+            : t('labels.fieldBarHeight', 'barcode height'),
+    )
+  const thin = spec.roll && fit.fits && fit.module < GOOD_MODULE_MM && dpi !== 0
+
+  const shiftX = Math.max(-5, Math.min(5, Number(offsetX.replace(',', '.')) || 0))
+  const shiftY = Math.max(-5, Math.min(5, Number(offsetY.replace(',', '.')) || 0))
+  const printOptions = {
+    sheet,
+    copies: perProduct,
+    showName,
+    showPrice,
+    currency,
+    turned,
+    custom,
+    textSize,
+    barHeight,
+    border,
+    dpi,
+    offsetX: shiftX,
+    offsetY: shiftY,
+  }
+  // The preview is the page that will print, drawn by the same code, so what is seen is what comes out.
+  const previewHtml = useMemo(
+    () =>
+      buildLabelSheet(
+        preview.map((product) => ({ article: product.article, barcode: product.barcode, selling_price: product.selling_price })),
+        { ...printOptions, copies: 1 },
+      ).replace('</style>', 'body{background:#fff;padding:1px} .label{outline:1px dashed #cbd5e1;background:#fff}</style>'),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [products, sheet, turned, custom, showName, showPrice, textSize, barHeight, border, dpi, currency, shiftX, shiftY],
+  )
 
   // Remember what the shop prints on, so it is already set next time.
   useEffect(() => {
     try {
-      const value: Saved = { sheet, turned, custom: customText, textSize, barHeight, border }
+      const value: Saved = { sheet, turned, custom: customText, textSize, barHeight, border, dpi, offsetX, offsetY }
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(value))
     } catch {
       /* private window: the choice just is not remembered */
     }
-  }, [sheet, turned, customText, textSize, barHeight, border])
+  }, [sheet, turned, customText, textSize, barHeight, border, dpi, offsetX, offsetY])
 
   function setCustom(field: keyof CustomLabel, value: string) {
     setCustomText((current) => ({ ...current, [field]: value }))
@@ -135,24 +208,27 @@ export function PrintLabelsModal({ open, products, currency, onClose }: PrintLab
     const ok = printLabelSheet(
       products.map((product) => ({
         article: product.article,
-        sr_number: product.sr_number,
         barcode: product.barcode,
         selling_price: product.selling_price,
       })),
-      { sheet, copies: perProduct, showName, showPrice, showSku, currency, turned, custom, textSize, barHeight, border },
+      printOptions,
     )
 
     if (!ok) {
       push({ tone: 'danger', title: t('labels.blocked', 'Your browser blocked the print window. Allow pop-ups and try again.') })
       return
     }
+    // The browser cannot say whether paper came out; sending it to print is what counts as printed.
+    record.mutate(products.map((product) => product.id))
     onClose()
   }
 
-  // The sample label on screen keeps the real shape of the label.
-  const cellStyle = spec.roll
-    ? { aspectRatio: `${spec.labelWidth} / ${spec.labelHeight}`, width: `${Math.min(170, Math.max(84, spec.labelWidth * 3.4))}px` }
-    : { aspectRatio: `${spec.labelWidth} / ${spec.labelHeight}` }
+  // The preview page is drawn at the label's real size in millimetres, then scaled up to be seen.
+  const MM = 3.7795
+  const pageWidth = spec.columns * spec.labelWidth + (spec.columns - 1) * spec.gap
+  const rowsShown = spec.roll ? preview.length : Math.max(1, Math.ceil(preview.length / spec.columns))
+  const pageHeight = rowsShown * spec.labelHeight + (rowsShown - 1) * spec.gap
+  const zoom = Math.min(6, Math.max(1, 420 / (pageWidth * MM)))
 
   return (
     <Modal
@@ -166,7 +242,7 @@ export function PrintLabelsModal({ open, products, currency, onClose }: PrintLab
           <Button variant="secondary" onClick={onClose}>
             {t('common.cancel', 'Cancel')}
           </Button>
-          <Button icon={<Printer className="h-4 w-4" />} disabled={products.length === 0 || problem !== null} onClick={print}>
+          <Button icon={<Printer className="h-4 w-4" />} disabled={products.length === 0 || problem !== null || !fit.fits} onClick={print}>
             {t('labels.print', 'Print')}
           </Button>
         </>
@@ -185,7 +261,7 @@ export function PrintLabelsModal({ open, products, currency, onClose }: PrintLab
                 {option.label}
               </option>
             ))}
-            <option value={CUSTOM_SHEET}>{t('labels.custom', 'Custom size…')}</option>
+            <option value={CUSTOM_SHEET}>{t('labels.custom', 'Other size (custom)…')}</option>
           </Select>
 
           {usingCustom ? (
@@ -294,7 +370,10 @@ export function PrintLabelsModal({ open, products, currency, onClose }: PrintLab
             >
               <option value="small">{t('labels.small', 'Small')}</option>
               <option value="normal">{t('labels.normal', 'Normal')}</option>
-              <option value="large">{t('labels.large', 'Large')}</option>
+              <option value="large" disabled={blocked.large}>
+                {t('labels.large', 'Large')}
+                {blocked.large ? ` ${t('labels.tooBig', '(too big for this label)')}` : ''}
+              </option>
             </Select>
             <Select
               compact
@@ -304,9 +383,58 @@ export function PrintLabelsModal({ open, products, currency, onClose }: PrintLab
             >
               <option value="short">{t('labels.short', 'Short')}</option>
               <option value="normal">{t('labels.normal', 'Normal')}</option>
-              <option value="tall">{t('labels.tall', 'Tall')}</option>
+              <option value="tall" disabled={blocked.tall}>
+                {t('labels.tall', 'Tall')}
+                {blocked.tall ? ` ${t('labels.tooBig', '(too big for this label)')}` : ''}
+              </option>
             </Select>
           </div>
+
+          <Select
+            compact
+            label={t('labels.dpi', 'Printer resolution')}
+            value={String(dpi)}
+            onChange={(event) => setDpi(Number(event.target.value) as PrinterDpi)}
+          >
+            <option value="203">{t('labels.dpi203', '203 dpi (most label printers)')}</option>
+            <option value="300">{t('labels.dpi300', '300 dpi')}</option>
+            <option value="0">{t('labels.dpi0', 'Laser or inkjet')}</option>
+          </Select>
+
+          {spec.roll ? (
+            <div className="grid grid-cols-2 gap-2.5">
+              <Input
+                compact
+                label={t('labels.shiftX', 'Move right (mm)')}
+                inputMode="decimal"
+                value={offsetX}
+                onChange={(event) => setOffsetX(event.target.value)}
+              />
+              <Input
+                compact
+                label={t('labels.shiftY', 'Move down (mm)')}
+                inputMode="decimal"
+                value={offsetY}
+                onChange={(event) => setOffsetY(event.target.value)}
+              />
+            </div>
+          ) : null}
+
+          {!fit.fits ? (
+            <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-[11px] text-rose-900">
+              {t('labels.tooShort', 'This label is too short for a barcode that scans. Pick a taller label.')}
+            </p>
+          ) : null}
+          {leftOff.length > 0 ? (
+            <p className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-[11px] text-amber-900">
+              {t('labels.leftOff', 'Left off because it does not fit this label: :things.').replace(':things', leftOff.join(', '))}
+            </p>
+          ) : null}
+          {thin ? (
+            <p className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-[11px] text-amber-900">
+              {t('labels.thinBars', 'The thinnest bar is :mm mm on this label. Many scanners struggle below 0.19 mm: a wider label scans better.').replace(':mm', fit.module.toFixed(3))}
+            </p>
+          ) : null}
 
           <Input
             compact
@@ -318,18 +446,15 @@ export function PrintLabelsModal({ open, products, currency, onClose }: PrintLab
           <div className="flex flex-col gap-2.5 pt-1">
             <Checkbox
               label={t('labels.showPrice', 'Show price')}
-              checked={showPrice}
+              checked={fit.options.showPrice}
+              disabled={blocked.showPrice}
               onChange={(event) => setShowPrice(event.target.checked)}
             />
             <Checkbox
               label={t('labels.showName', 'Show product name')}
-              checked={showName}
+              checked={fit.options.showName}
+              disabled={blocked.showName}
               onChange={(event) => setShowName(event.target.checked)}
-            />
-            <Checkbox
-              label={t('labels.showSku', 'Show sr number')}
-              checked={showSku}
-              onChange={(event) => setShowSku(event.target.checked)}
             />
             <Checkbox
               label={t('labels.border', 'Draw a border around each label')}
@@ -351,46 +476,24 @@ export function PrintLabelsModal({ open, products, currency, onClose }: PrintLab
             </div>
           ) : null}
 
-          <div
-            className={
-              spec.roll
-                ? 'mt-2.5 flex flex-wrap gap-3 rounded-lg bg-card p-3'
-                : 'mt-2.5 grid gap-2 rounded-lg bg-card p-2.5'
-            }
-            style={spec.roll ? undefined : { gridTemplateColumns: `repeat(${Math.min(spec.columns, 4)}, minmax(0, 1fr))` }}
-          >
-            {preview.map((product) => (
-              <div
-                key={product.id}
-                style={cellStyle}
-                className={
-                  'flex flex-col items-center justify-center overflow-hidden p-1.5 text-center ' +
-                  (border ? 'rounded-md border border-slate-500 bg-white' : 'rounded-md border border-dashed border-slate-300 bg-white')
-                }
-              >
-                {showName ? (
-                  <span
-                    className="block w-full truncate font-bold"
-                    style={{ fontSize: textSize === 'small' ? 7 : textSize === 'large' ? 10 : 8.5 }}
-                  >
-                    {product.article}
-                  </span>
-                ) : null}
-                <div className="mt-1 w-full" style={{ height: barHeight === 'short' ? 22 : barHeight === 'tall' ? 38 : 30 }}>
-                  <BarcodeSvg code={product.barcode} className="h-full w-full" />
-                </div>
-                {showSku && product.sr_number ? (
-                  <span className="block w-full truncate text-slate-600" style={{ fontSize: 7 }}>
-                    {product.sr_number}
-                  </span>
-                ) : null}
-                {showPrice ? (
-                  <span className="block font-bold" style={{ fontSize: textSize === 'small' ? 9 : textSize === 'large' ? 13 : 11 }}>
-                    {formatCents(product.selling_price, currency)}
-                  </span>
-                ) : null}
-              </div>
-            ))}
+          <div className="mt-2.5 overflow-auto rounded-lg bg-card p-3">
+            <div style={{ width: pageWidth * MM * zoom + 2, height: pageHeight * MM * zoom + 2 }}>
+              <iframe
+                title={t('labels.preview', 'Preview')}
+                srcDoc={previewHtml}
+                sandbox=""
+                tabIndex={-1}
+                style={{
+                  width: pageWidth * MM + 2,
+                  height: pageHeight * MM + 2,
+                  border: 0,
+                  transform: `scale(${zoom})`,
+                  transformOrigin: 'top left',
+                  display: 'block',
+                  background: '#fff',
+                }}
+              />
+            </div>
           </div>
 
           <p className="mt-2.5 text-[11px] text-slate-500">

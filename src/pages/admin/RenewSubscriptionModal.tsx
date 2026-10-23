@@ -28,6 +28,8 @@ export function RenewSubscriptionModal({ company, onClose }: RenewSubscriptionMo
   const [planId, setPlanId] = useState('')
   const [periods, setPeriods] = useState('1')
   const [methodId, setMethodId] = useState('')
+  // Until the admin picks a payment method (or "none") themselves, the first one is chosen.
+  const [methodTouched, setMethodTouched] = useState(false)
   const [reference, setReference] = useState('')
 
   const plansQuery = useQuery({ queryKey: ['admin', 'plans'], queryFn: listPlans, enabled: open })
@@ -39,8 +41,14 @@ export function RenewSubscriptionModal({ company, onClose }: RenewSubscriptionMo
     setPlanId(current?.plan_id ? String(current.plan_id) : '')
     setPeriods('1')
     setMethodId('')
+    setMethodTouched(false)
     setReference('')
   }, [company])
+
+  const firstMethodId = (methodsQuery.data ?? []).find((method) => method.is_active)?.id
+  useEffect(() => {
+    if (open && !methodTouched && firstMethodId !== undefined) setMethodId((current) => (current === '' ? String(firstMethodId) : current))
+  }, [open, methodTouched, firstMethodId, company])
 
   const plan = (plansQuery.data ?? []).find((item) => String(item.id) === planId)
   const count = Math.max(1, Math.min(36, Number(periods) || 1))
@@ -106,7 +114,15 @@ export function RenewSubscriptionModal({ company, onClose }: RenewSubscriptionMo
           value={periods}
           onChange={(event) => setPeriods(event.target.value)}
         />
-        <Select label={t('admin.paymentMethod', 'Payment method')} value={methodId} onChange={(event) => setMethodId(event.target.value)}>
+        <Select
+          label={t('admin.paymentMethod', 'Payment method')}
+          value={methodId}
+          hint={methodId ? t('admin.invoicePaidHint', 'The invoice is sent as Paid.') : t('admin.invoicePendingHint', 'No payment recorded: the invoice is sent as Pending.')}
+          onChange={(event) => {
+            setMethodTouched(true)
+            setMethodId(event.target.value)
+          }}
+        >
           <option value="">{t('admin.noPayment', 'No payment recorded')}</option>
           {(methodsQuery.data ?? [])
             .filter((method) => method.is_active)

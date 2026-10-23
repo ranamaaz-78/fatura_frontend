@@ -1,5 +1,6 @@
 import type { Company, CompanyCounts, CompanyStatus, PageMeta, Subscription, SubscriptionState } from '../../types/module01'
 import { isAxiosError } from 'axios'
+import type { ImportRow } from '../../types/catalog'
 import { api, unwrap } from '../api'
 
 export type CompanyList = {
@@ -45,6 +46,10 @@ export type StartSubscriptionInput = {
 
 export function startSubscription(companyId: number, input: StartSubscriptionInput): Promise<Subscription> {
   return unwrap<Subscription>(api.post(`/admin/companies/${companyId}/subscriptions`, input))
+}
+
+export function importCompanyProducts(companyId: number, rows: ImportRow[]): Promise<{ created: number }> {
+  return unwrap<{ created: number }>(api.post(`/admin/companies/${companyId}/products/import`, { rows }))
 }
 
 export function cancelSubscription(subscriptionId: number): Promise<Subscription> {

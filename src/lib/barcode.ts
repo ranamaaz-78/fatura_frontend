@@ -1,5 +1,6 @@
 import { code128Geometry } from './code128'
 import { ean13Geometry } from './ean13'
+import { ean8Geometry } from './ean8'
 
 export type BarcodeRect = { x: number; width: number; height: number }
 export type BarcodeText = { x: number; y: number; anchor: 'start' | 'middle'; text: string }
@@ -20,14 +21,14 @@ export const GUARD_HEIGHT = 66
 export const TEXT_BASELINE = 69
 
 /**
- * EAN-13 when the code really is one, Code 128 otherwise. Codes that only look
+ * EAN-13 or EAN-8 when the code really is one, Code 128 otherwise (digits packed two to a symbol). Codes that only look
  * like an EAN (wrong check digit) still have to print something a scanner reads.
  */
 export function barcodeGeometry(code: string): BarcodeGeometry | null {
   const trimmed = code.trim()
   if (trimmed === '') return null
 
-  return ean13Geometry(trimmed) ?? code128Geometry(trimmed)
+  return ean13Geometry(trimmed) ?? ean8Geometry(trimmed) ?? code128Geometry(trimmed)
 }
 
 export function barcodeSymbolHeight(geometry: BarcodeGeometry): number {

@@ -258,7 +258,7 @@ function InvoiceDetail() {
   const display = saleDisplayStatus(document)
   const voided = isSaleVoided(document)
   const canVoid = canVoidType(document.type) && document.payment_status === 'paid' && !voided && can(docPermission(document.type, 'void'))
-  // Only a quotation can still be edited; every other document is paid, returned or voided, not changed.
+  // A quotation can be edited while it is open, and a delivery note while it is unpaid; the rest are paid, returned or voided, not changed.
   const canUpdate = can(docPermission(document.type, 'update'))
   const canPay = can(docPermission(document.type, 'pay'))
   const quoteExpired = document.type === 'quotation' && !isSaleConverted(document) && isSaleExpired(document)
@@ -348,6 +348,14 @@ function InvoiceDetail() {
             <MessageCircle className="h-4 w-4 text-emerald-600" />
             {t('whatsapp.sendBtn', 'WhatsApp')}
           </button>
+          {document.type === 'albaran' && document.can_edit && canUpdate ? (
+            <Link
+              to={`/app/delivery-notes/${document.id}/edit`}
+              className="inline-flex h-[38px] items-center gap-2 rounded-xl bg-slate-100 px-3.5 text-xs font-semibold text-slate-700 hover:bg-slate-200"
+            >
+              {t('common.edit', 'Edit')}
+            </Link>
+          ) : null}
           {openQuote ? (
             <>
               {canUpdate ? (

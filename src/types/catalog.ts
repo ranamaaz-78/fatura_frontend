@@ -13,7 +13,6 @@ export type Category = {
 /** `buying_price` and `selling_price` are cents, the way the API sends them. */
 export type Product = {
   id: number
-  sr_number: string | null
   article: string
   description: string | null
   quantity: number
@@ -22,9 +21,13 @@ export type Product = {
   supplier_id: number | null
   supplier?: string | null
   brand: string | null
-  image_code: string | null
+  short_code: string | null
   barcode: string
   barcode_generated: boolean
+  /** How many times its label was sent to print (a reprint counts), when last, and whether it ever was. */
+  label_print_count: number
+  label_last_printed_at: string | null
+  label_printed: boolean
   buying_price: number
   /** The buying price before its latest change. Null until it has changed once. */
   last_buying_price: number | null
@@ -34,7 +37,7 @@ export type Product = {
   minimum_stock: number
 }
 
-export type ProductStockFilter = 'all' | 'low' | 'out' | 'no_barcode'
+export type ProductStockFilter = 'all' | 'low' | 'out' | 'no_barcode' | 'labels' | 'labels_pending' | 'labels_printed'
 
 export type ProductListParams = {
   page?: number
@@ -47,7 +50,7 @@ export type ProductListParams = {
 export type ProductList = {
   items: Product[]
   meta: { current_page: number; last_page: number; per_page: number; total: number }
-  counts: { all: number; low: number; out: number; no_barcode: number }
+  counts: { all: number; low: number; out: number; no_barcode: number; labels_pending: number; labels_printed: number }
   stock_value: number
 }
 
@@ -55,8 +58,7 @@ export type ProductInput = {
   article: string
   description: string | null
   brand: string | null
-  image_code: string | null
-  sr_number: string | null
+  short_code: string | null
   barcode: string | null
   category_id: number | null
   supplier_id: number | null
@@ -69,13 +71,12 @@ export type ProductInput = {
 
 /** One row of the import grid. Category travels as a name, not an id. */
 export type ImportRow = {
-  sr_number: string | null
   article: string
   description: string | null
   category: string | null
   supplier: string | null
   brand: string | null
-  image_code: string | null
+  short_code: string | null
   barcode: string | null
   quantity: number
   minimum_stock: number

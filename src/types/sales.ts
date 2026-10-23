@@ -83,7 +83,6 @@ export type SaleLine = {
   id?: number
   position: number
   product_id: number | null
-  sr_number: string | null
   article: string
   description: string | null
   quantity: number
@@ -192,6 +191,8 @@ export type SaleDocument = {
   from_document?: { id: number; number: string } | null
   /** Delivery notes only: can be turned into an invoice (not voided, no live invoice yet). */
   can_invoice?: boolean
+  /** An open quotation, or a delivery note that is still unpaid: the server says so. */
+  can_edit?: boolean
   from_proforma?: { id: number; number: string } | null
   is_partial: boolean
   lines?: SaleLine[]
@@ -201,7 +202,6 @@ export type SaleDocument = {
 
 export type SaleLineInput = {
   product_id: number | null
-  sr_number: string | null
   article: string
   description: string | null
   quantity: number

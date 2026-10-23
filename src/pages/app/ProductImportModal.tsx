@@ -2,6 +2,7 @@ import { useMutation } from '@tanstack/react-query'
 import { AlertTriangle, CheckCircle2, Download, FileSpreadsheet, Upload } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import * as XLSX from 'xlsx'
+import { useAuth } from '../../auth/AuthProvider'
 import { Button } from '../../components/ui/Button'
 import { FileDropzone } from '../../components/ui/FileDropzone'
 import { Modal } from '../../components/ui/Modal'
@@ -13,6 +14,7 @@ import { cn } from '../../lib/cn'
 import { parseAmountToCents, parseNumber } from '../../lib/money'
 import { downloadProductDemoSheet } from '../../lib/productDemoSheet'
 import { getErrorMessage } from '../../services/api'
+import { importCompanyProducts } from '../../services/admin/companies'
 import { importProducts } from '../../services/catalog'
 import type { ImportRow, ImportRowError } from '../../types/catalog'
 import {
@@ -30,13 +32,12 @@ type Step = 'upload' | 'map' | 'preview'
 type GridRow = Record<ImportField, string>
 
 const CELL_WIDTH: Record<ImportField, string> = {
-  sr_number: 'w-28',
   article: 'w-44',
   description: 'w-32',
   category: 'w-28',
   supplier: 'w-32',
   brand: 'w-24',
-  image_code: 'w-24',
+  short_code: 'w-24',
   barcode: 'w-32',
   quantity: 'w-14',
   minimum_stock: 'w-14',
@@ -95,7 +96,7 @@ function rowProblems(row: GridRow, index: number, all: GridRow[]): string[] {
     }
   }
 
-  for (const key of ['barcode', 'sr_number'] as const) {
+  for (const key of ['barcode'] as const) {
     const value = row[key].trim()
     if (value === '') continue
     const twin = all.findIndex((other, position) => position !== index && other[key].trim() === value)
@@ -110,13 +111,12 @@ function rowProblems(row: GridRow, index: number, all: GridRow[]): string[] {
 function toImportRow(row: GridRow): ImportRow {
   const buying = parseAmountToCents(row.buying_price) ?? 0
   return {
-    sr_number: row.sr_number.trim() || null,
     article: row.article.trim(),
     description: row.description.trim() || null,
     category: row.category.trim() || null,
     supplier: row.supplier.trim() || null,
     brand: row.brand.trim() || null,
-    image_code: row.image_code.trim() || null,
+    short_code: row.short_code.trim() || null,
     barcode: row.barcode.trim() || null,
     quantity: Math.round(parseNumber(row.quantity) ?? 0),
     minimum_stock: Math.round(parseNumber(row.minimum_stock) ?? 0),
@@ -130,10 +130,14 @@ export type ProductImportModalProps = {
   open: boolean
   onClose: () => void
   onImported: () => void
+  /** Super admin only: import into this company instead of the signed-in one. */
+  companyId?: number
+  companyName?: string
 }
 
-export function ProductImportModal({ open, onClose, onImported }: ProductImportModalProps) {
+export function ProductImportModal({ open, onClose, onImported, companyId, companyName }: ProductImportModalProps) {
   const { push } = useToast()
+  const { session } = useAuth()
   const [step, setStep] = useState<Step>('upload')
   const [fileName, setFileName] = useState('')
   const [headers, setHeaders] = useState<string[]>([])
@@ -207,7 +211,10 @@ export function ProductImportModal({ open, onClose, onImported }: ProductImportM
   const badCount = problems.filter((list) => list.length > 0).length
 
   const importMutation = useMutation({
-    mutationFn: () => importProducts(grid.map(toImportRow)),
+    mutationFn: () =>
+      companyId === undefined
+        ? importProducts(grid.map(toImportRow))
+        : importCompanyProducts(companyId, grid.map(toImportRow)),
     onSuccess: (result) => {
       push({ tone: 'success', title: t('import.imported_count', '{count} products imported.', { count: result.created }) })
       onImported()
@@ -242,7 +249,12 @@ export function ProductImportModal({ open, onClose, onImported }: ProductImportM
       onClose={close}
       maxWidth="4xl"
       title={t('products.importExcel', 'Import Excel')}
-      subtitle={fileName || t('import.subtitle', 'Bring your whole catalog in from a spreadsheet.')}
+      subtitle={
+        fileName ||
+        (companyName
+          ? t('import.subtitleCompany', 'Importing into {name}.', { name: companyName })
+          : t('import.subtitle', 'Bring your whole catalog in from a spreadsheet.'))
+      }
       footer={
         step === 'upload' ? (
           <Button variant="secondary" onClick={close}>
@@ -295,7 +307,7 @@ export function ProductImportModal({ open, onClose, onImported }: ProductImportM
             {readError ? <p className="text-xs text-rose-600">{readError}</p> : null}
             <button
               type="button"
-              onClick={downloadProductDemoSheet}
+              onClick={() => downloadProductDemoSheet(companyName ?? session?.company?.name)}
               className="inline-flex cursor-pointer items-center gap-1.5 text-xs font-semibold text-brand-600 hover:underline"
             >
               <Download className="h-3.5 w-3.5" />

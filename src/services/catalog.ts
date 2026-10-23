@@ -73,6 +73,24 @@ export async function listAllProducts(): Promise<Product[]> {
   return items
 }
 
+/** Every product whose barcode the system made (their labels have to be printed), printed or not. */
+export async function listLabelProducts(): Promise<Product[]> {
+  const first = await listProducts({ per_page: 100, page: 1, stock: 'labels' })
+  const items = [...first.items]
+  for (let page = 2; page <= first.meta.last_page; page += 1) {
+    const next = await listProducts({ per_page: 100, page, stock: 'labels' })
+    items.push(...next.items)
+  }
+  return items
+}
+
+/** Records that these products' labels were sent to print. They stay in the lists, marked as printed. */
+export function markLabelsPrinted(productIds: number[]): Promise<{ updated: number }> {
+  return unwrap<{ updated: number }>(
+    api.post('/app/products/labels/printed', { items: productIds.map((id) => ({ product_id: id })) }),
+  )
+}
+
 export function getProduct(id: number): Promise<Product> {
   return unwrap<Product>(api.get(`/app/products/${id}`))
 }

@@ -67,7 +67,7 @@ export function ProductDrawer({ product, currency, onClose, onEdit, onPrint, onD
 
   const findImage = useProductImageLookup()
   const current = query.data ?? product
-  const file = findImage(current?.image_code ?? null)
+  const file = findImage(current?.short_code ?? null)
   const stockTone =
     !current || current.quantity <= 0
       ? TONE_ROSE
@@ -130,12 +130,12 @@ export function ProductDrawer({ product, currency, onClose, onEdit, onPrint, onD
             <div className="flex h-32 flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-line bg-page text-center">
               <ImageOff className="h-6 w-6 text-slate-300" />
               <p className="px-4 text-[11px] text-slate-500">
-                {current.image_code
+                {current.short_code
                   ? t('products.noImageMatch', 'No file in the image folder is named :code.').replace(
                       ':code',
-                      current.image_code,
+                      current.short_code,
                     )
-                  : t('products.noImageCode', 'This product has no image code yet.')}
+                  : t('products.noShortCode', 'This product has no short code yet.')}
               </p>
             </div>
           )}
@@ -196,10 +196,9 @@ export function ProductDrawer({ product, currency, onClose, onEdit, onPrint, onD
           </div>
 
           <dl className="grid grid-cols-2 gap-x-4 gap-y-3">
-            <Field label={t('products.srNumber', 'Sr number')} value={current.sr_number ?? '—'} />
             <Field label={t('products.brand', 'Brand')} value={current.brand ?? '—'} />
             <Field label={t('products.supplier', 'Supplier')} value={current.supplier ?? '—'} />
-            <Field label={t('products.imageCode', 'Image code')} value={current.image_code ?? '—'} />
+            <Field label={t('products.shortCode', 'Short code')} value={current.short_code ?? '—'} />
             <Field
               label={t('products.barcode', 'Bar code')}
               value={<span className="text-[13px]">{current.barcode}</span>}

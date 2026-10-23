@@ -34,6 +34,7 @@ import { deleteProduct, listProducts } from '../../services/catalog'
 import type { Product, ProductImage, ProductStockFilter } from '../../types/catalog'
 import { CategoryManagerModal, useCategories } from './CategoryManagerModal'
 import { useProductImageLookup } from './productImageLookup'
+import { LabelQueueModal } from './LabelQueueModal'
 import { PrintLabelsModal } from './PrintLabelsModal'
 import { ProductDrawer } from './ProductDrawer'
 import { ProductImportModal } from './ProductImportModal'
@@ -50,7 +51,7 @@ function initials(article: string): string {
   return letters.toUpperCase()
 }
 
-/** The folder image whose name matches the image code, or the design's initials tile. */
+/** The folder image whose name matches the short code, or the design's initials tile. */
 function Thumb({ product, file }: { product: Product; file: ProductImage | null }) {
   if (file) {
     return (
@@ -92,6 +93,7 @@ function KpiCard({
   icon,
   tile,
   pill,
+  onClick,
 }: {
   label: string
   value: string | number
@@ -99,9 +101,18 @@ function KpiCard({
   icon: ReactNode
   tile: string
   pill?: { text: string; className: string }
+  /** A card that opens something is a button. */
+  onClick?: () => void
 }) {
+  const Root = onClick ? 'button' : 'div'
   return (
-    <div className="rounded-xl border border-line/80 bg-card p-5 shadow-xs">
+    <Root
+      {...(onClick ? { type: 'button' as const, onClick } : {})}
+      className={cn(
+        'rounded-xl border border-line/80 bg-card p-5 text-left shadow-xs',
+        onClick && 'cursor-pointer transition-colors hover:border-slate-300 hover:bg-page focus:ring-2 focus:ring-brand-500/30 focus:outline-none',
+      )}
+    >
       <div className="flex items-center justify-between">
         <span className="text-xs font-medium tracking-[0.04em] text-slate-500 uppercase">{label}</span>
         <span className={cn('flex rounded-lg p-2.5', tile)}>{icon}</span>
@@ -113,7 +124,7 @@ function KpiCard({
         ) : null}
       </div>
       <p className="mt-1 text-xs text-slate-500">{sub}</p>
-    </div>
+    </Root>
   )
 }
 
@@ -136,6 +147,9 @@ function Products() {
   const [categoriesOpen, setCategoriesOpen] = useState(false)
   const [importOpen, setImportOpen] = useState(false)
   const [labelTargets, setLabelTargets] = useState<Product[] | null>(null)
+  // "Labels to print": the list of products whose barcode the system made. Printing from it comes back to it.
+  const [queueOpen, setQueueOpen] = useState(false)
+  const [printFromQueue, setPrintFromQueue] = useState(false)
   const [deleting, setDeleting] = useState<Product | null>(null)
   const [viewing, setViewing] = useState<Product | null>(null)
 
@@ -164,7 +178,7 @@ function Products() {
 
   const rows = useMemo(() => query.data?.items ?? [], [query.data])
   const meta = query.data?.meta
-  const counts = query.data?.counts ?? { all: 0, low: 0, out: 0, no_barcode: 0 }
+  const counts = query.data?.counts ?? { all: 0, low: 0, out: 0, no_barcode: 0, labels_pending: 0, labels_printed: 0 }
 
   const deleteMutation = useMutation({
     mutationFn: (product: Product) => deleteProduct(product.id),
@@ -214,7 +228,7 @@ function Products() {
     { id: 'all', label: t('common.all', 'All'), count: counts.all },
     { id: 'low', label: t('products.lowStock', 'Low stock'), count: counts.low },
     { id: 'out', label: t('products.outOfStock', 'Out'), count: counts.out },
-    { id: 'no_barcode', label: t('products.noBarcode', 'No barcode'), count: counts.no_barcode },
+    { id: 'labels', label: t('products.labelsChip', 'System barcode'), count: counts.no_barcode },
   ]
 
   const firstOnPage = meta && meta.total > 0 ? (meta.current_page - 1) * meta.per_page + 1 : 0
@@ -293,8 +307,8 @@ function Products() {
           </h1>
           <p className="mt-0.5 text-xs text-slate-500">
             {counts.all} {t('products.countLabel', 'products')} · {counts.low}{' '}
-            {t('products.lowStock', 'Low stock').toLowerCase()} · {counts.no_barcode}{' '}
-            {t('products.withoutBarcode', 'without a barcode')}
+            {t('products.lowStock', 'Low stock').toLowerCase()} · {counts.labels_pending}{' '}
+            {t('products.labelsToPrintLower', 'labels to print')}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2.5">
@@ -321,7 +335,7 @@ function Products() {
           <button
             type="button"
             className={cn(headerButton, 'bg-slate-100 text-slate-700 hover:bg-slate-200')}
-            onClick={downloadProductDemoSheet}
+            onClick={() => downloadProductDemoSheet(session?.company?.name)}
           >
             <Download className="h-4 w-4 text-emerald-600" />
             {t('products.demoSheet', 'Demo sheet')}
@@ -375,16 +389,19 @@ function Products() {
           pill={counts.low > 0 ? { text: t('products.review', 'Review'), className: TONE_AMBER } : undefined}
         />
         <KpiCard
-          label={t('products.kpiWithoutBarcode', 'Without barcode')}
-          value={counts.no_barcode}
-          sub={t('products.withoutBarcodeHint', 'Labels not printed yet')}
+          label={t('products.kpiLabels', 'Labels to print')}
+          value={counts.labels_pending}
+          sub={t('products.kpiLabelsSub', ':printed printed of :total with a system barcode')
+            .replace(':printed', String(counts.labels_printed))
+            .replace(':total', String(counts.no_barcode))}
           icon={<ScanLine className="h-5 w-5" />}
           tile={TONE_AMBER}
           pill={
-            counts.no_barcode > 0
-              ? { text: t('products.generate', 'Generate'), className: TONE_AMBER }
+            counts.labels_pending > 0
+              ? { text: t('labels.print', 'Print'), className: TONE_AMBER }
               : undefined
           }
+          onClick={() => setQueueOpen(true)}
         />
       </div>
 
@@ -397,7 +414,7 @@ function Products() {
               type="text"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder={t('products.searchPlaceholder', 'Search name, sr number or barcode')}
+              placeholder={t('products.searchPlaceholder', 'Search name, brand or barcode')}
               className="h-[38px] w-full rounded-xl border border-line bg-card pr-3 pl-8.5 text-[13px] outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-600/20"
             />
           </span>
@@ -458,7 +475,7 @@ function Products() {
           <>
             {/* Desktop rows */}
             <div className="hidden overflow-x-auto md:block">
-              <div className="min-w-[1230px]">
+              <div className="min-w-[1100px]">
                 <div className="flex items-center border-b border-line bg-page px-4 py-2.5 text-[11px] font-semibold tracking-[0.08em] text-slate-500 uppercase">
                   <span className="w-8.5">
                     <input
@@ -470,8 +487,8 @@ function Products() {
                       className="h-[15px] w-[15px] accent-brand-600"
                     />
                   </span>
-                  <span className="flex-grow">{t('products.product', 'Product')}</span>
-                  <span className="w-[130px]">{t('products.imageCode', 'Image code')}</span>
+                  <span className="max-w-[300px] min-w-0 flex-1">{t('products.product', 'Product')}</span>
+                  <div className="flex min-w-0 flex-1 items-center justify-between gap-4 pl-4">
                   <span className="w-[130px]">{t('products.category', 'Category')}</span>
                   <span className="w-[120px] text-center whitespace-nowrap">{t('products.cost', 'Buying price')}</span>
                   <span className="w-[140px] text-center whitespace-nowrap">
@@ -480,6 +497,7 @@ function Products() {
                   <span className="w-[100px] text-right whitespace-nowrap">{t('products.sellingPrice', 'Selling price')}</span>
                   <span className="w-[90px] text-right">{t('products.stock', 'Stock')}</span>
                   <span className="w-[150px] text-right">{t('products.actions', 'Actions')}</span>
+                  </div>
                 </div>
 
                 {rows.map((product) => (
@@ -499,8 +517,8 @@ function Products() {
                         className="h-[15px] w-[15px] accent-brand-600"
                       />
                     </span>
-                    <span className="flex min-w-0 flex-grow items-center gap-3">
-                      <Thumb product={product} file={findImage(product.image_code)} />
+                    <span className="flex max-w-[300px] min-w-0 flex-1 items-center gap-3">
+                      <Thumb product={product} file={findImage(product.short_code)} />
                       <span className="min-w-0">
                         <button
                           type="button"
@@ -509,21 +527,14 @@ function Products() {
                         >
                           {product.article}
                         </button>
-                        <span className="block text-[11px] text-slate-500">
-                          {product.sr_number ?? '—'}
-                          {product.brand ? ` · ${product.brand}` : ''}
-                        </span>
+                        {product.short_code || product.brand ? (
+                          <span className="block text-[11px] text-slate-500">
+                            {[product.short_code, product.brand].filter(Boolean).join(' · ')}
+                          </span>
+                        ) : null}
                       </span>
                     </span>
-                    <span className="w-[130px] pr-2">
-                      {product.image_code ? (
-                        <span title={product.image_code} className="block truncate text-[11px] text-slate-700">
-                          {product.image_code}
-                        </span>
-                      ) : (
-                        <span className="text-[11px] text-slate-400">—</span>
-                      )}
-                    </span>
+                    <div className="flex min-w-0 flex-1 items-center justify-between gap-4 pl-4">
                     <span className="w-[130px]">
                       {product.category ? (
                         <span className="inline-block rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-medium text-slate-700">
@@ -557,6 +568,7 @@ function Products() {
                       </span>
                     </span>
                     <span className="flex w-[150px] justify-end gap-1">{actions(product)}</span>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -665,7 +677,24 @@ function Products() {
         open={labelTargets !== null}
         products={labelTargets ?? []}
         currency={currency}
-        onClose={() => setLabelTargets(null)}
+        onClose={() => {
+          setLabelTargets(null)
+          // Back to the list it was started from.
+          if (printFromQueue) {
+            setPrintFromQueue(false)
+            setQueueOpen(true)
+          }
+        }}
+      />
+      <LabelQueueModal
+        open={queueOpen}
+        onClose={() => setQueueOpen(false)}
+        onPrint={(picked) => {
+          // One dialog at a time: the list closes while labels are set up, and opens again after.
+          setQueueOpen(false)
+          setPrintFromQueue(true)
+          setLabelTargets(picked)
+        }}
       />
       <ProductDrawer
         product={viewing}
