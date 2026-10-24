@@ -19,6 +19,9 @@ import { Kbd, Shimmer, deskButtonClass } from '../ui/kit'
 const fieldLabel = 'mb-1.5 block text-[11px] font-bold tracking-[0.08em] text-ink-muted uppercase'
 const field =
   'h-10 w-full rounded-xl border border-line bg-card/80 px-3 text-[13px] text-ink outline-none transition focus:border-brand-600 focus:ring-4 focus:ring-brand-600/12'
+// The client card is a little tighter, so the bill and the Issue button stay in view on a 1080p screen.
+const clientField =
+  'h-9 w-full rounded-xl border border-line bg-card/80 px-3 text-[13px] text-ink outline-none transition focus:border-brand-600 focus:ring-4 focus:ring-brand-600/12'
 
 /**
  * The POS as a counter: a scanner bar and the receipt on the left, the client and the bill on the right. The sale
@@ -64,17 +67,17 @@ export default function DeskPos() {
   const busyLabel = editing ? t('common.saving', 'Saving') : t('sales.issuing', 'Issuing...')
 
   return (
-    <div className="space-y-5">
-      <Header sale={sale} />
-
+    <div>
+      {/* Two columns from the top: the sale on the left, the client and the bill on the right (always in view). */}
       <div className="grid grid-cols-[minmax(0,1fr)_400px] items-start gap-5">
         <div className="min-w-0 space-y-5">
+          <Header sale={sale} />
           <Scanner sale={sale} inputRef={scanRef} />
           <Receipt sale={sale} />
           <Notes sale={sale} />
         </div>
 
-        <aside className="sticky top-0 space-y-5">
+        <aside className="sticky top-0 space-y-4">
           <ClientCard sale={sale} />
 
           <section className="desk-glass-strong overflow-hidden">
@@ -142,10 +145,12 @@ function Header({ sale }: { sale: SaleComposer }) {
   return (
     <section className="desk-glass relative overflow-hidden px-6 py-5">
       <span aria-hidden className="pointer-events-none absolute -top-24 left-1/3 h-56 w-[50%] rounded-full opacity-20 blur-3xl transition-colors" style={{ background: identityFor(type).color }} />
-      <div className="relative flex flex-wrap items-center gap-x-8 gap-y-4">
+
+      {/* First line: what this screen is, and whether stock moves. */}
+      <div className="relative flex flex-wrap items-start justify-between gap-x-6 gap-y-2">
         <div className="min-w-0">
           <h1 className="text-[24px] leading-tight font-extrabold tracking-[-0.03em] text-ink">{title}</h1>
-          <p className="mt-0.5 max-w-md text-[12px] text-ink-muted">
+          <p className="mt-0.5 max-w-xl text-[12px] text-ink-muted">
             {editing
               ? type === 'albaran'
                 ? t('sales.editDeliveryNoteHint', 'Change the client or the lines while it is unpaid. The number and date stay, and the stock is adjusted by the difference.')
@@ -153,9 +158,21 @@ function Header({ sale }: { sale: SaleComposer }) {
               : t('sales.newSubtitle', 'Invoice, delivery note, quotation or proforma, with the client and the lines on one screen.')}
           </p>
         </div>
+        <span
+          className={cn(
+            'inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3 text-[12px] font-semibold ring-1 ring-inset',
+            rules.movesStock ? 'bg-emerald-500/10 text-emerald-700 ring-emerald-500/25 app-dark:text-emerald-300' : 'bg-elevated text-ink-muted ring-line',
+          )}
+        >
+          <ShieldCheck className="h-3.5 w-3.5" />
+          {rules.movesStock ? t('sales.stockProtected', 'Stock protected, no negatives') : t('sales.stockUntouched', 'Stock is not touched')}
+        </span>
+      </div>
 
-        {/* One button per kind of document, each in its own colour. */}
-        <div className="flex gap-1.5 rounded-2xl bg-elevated/80 p-1.5">
+      {/* Second line: the kind of document, then its number and date. */}
+      <div className="relative mt-4 flex flex-wrap items-start gap-x-6 gap-y-4">
+        {/* One button per kind of document, each in its own colour. Lined up with the fields beside it, under their labels. */}
+        <div className="mt-4 flex flex-wrap gap-1.5 rounded-2xl bg-elevated/80 p-1.5">
           {(editing ? [type] : options).map((option) => {
             const optionIdentity = identityFor(option)
             const OptionIcon = optionIdentity.icon
@@ -167,7 +184,7 @@ function Header({ sale }: { sale: SaleComposer }) {
                 disabled={editing}
                 onClick={() => setType(option)}
                 className={cn(
-                  'inline-flex h-11 items-center gap-2 rounded-xl px-4 text-[13px] font-bold transition',
+                  'inline-flex h-10 items-center gap-2 rounded-xl px-3.5 text-[13px] font-bold transition',
                   on ? 'bg-card text-ink shadow-[0_6px_20px_-10px_rgb(15_23_42/0.4)]' : 'text-ink-muted hover:bg-card/60 hover:text-ink',
                 )}
               >
@@ -213,15 +230,6 @@ function Header({ sale }: { sale: SaleComposer }) {
               </span>
             ) : null}
           </div>
-          <span
-            className={cn(
-              'mt-6 inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-[12px] font-semibold ring-1 ring-inset',
-              rules.movesStock ? 'bg-emerald-500/10 text-emerald-700 ring-emerald-500/25 app-dark:text-emerald-300' : 'bg-elevated text-ink-muted ring-line',
-            )}
-          >
-            <ShieldCheck className="h-3.5 w-3.5" />
-            {rules.movesStock ? t('sales.stockProtected', 'Stock protected, no negatives') : t('sales.stockUntouched', 'Stock is not touched')}
-          </span>
         </div>
       </div>
     </section>
@@ -542,7 +550,7 @@ function ClientCard({ sale }: { sale: SaleComposer }) {
   } = sale
 
   return (
-    <section className="desk-glass relative z-10 p-5">
+    <section className="desk-glass relative z-10 px-5 py-4">
       <div className="flex items-center justify-between gap-2">
         <h2 className="flex items-center gap-2 text-[11px] font-bold tracking-[0.12em] text-ink-muted uppercase">
           <UserRound className="h-4 w-4" />
@@ -567,7 +575,7 @@ function ClientCard({ sale }: { sale: SaleComposer }) {
         </div>
       </div>
 
-      <div className="mt-4 space-y-3">
+      <div className="mt-3 space-y-2.5">
         <div className="relative">
           <span className={fieldLabel}>{t('sales.phone', 'Telephone')}</span>
           <span className="relative block">
@@ -579,7 +587,7 @@ function ClientCard({ sale }: { sale: SaleComposer }) {
               inputMode="tel"
               autoComplete="off"
               placeholder={t('sales.phoneSearch', 'Search by phone number')}
-              className={cn(field, 'desk-num pl-9')}
+              className={cn(clientField, 'desk-num pl-9')}
             />
           </span>
           {customerId === null && phoneMatches.length > 0 ? (
@@ -613,14 +621,14 @@ function ClientCard({ sale }: { sale: SaleComposer }) {
         </div>
 
         <Field label={t('sales.clientName', 'Name')} required>
-          <input value={clientName} onChange={(event) => setClientName(event.target.value)} autoComplete="off" className={cn(field, 'font-semibold')} />
+          <input value={clientName} onChange={(event) => setClientName(event.target.value)} autoComplete="off" className={cn(clientField, 'font-semibold')} />
         </Field>
         <div className="grid grid-cols-2 gap-3">
           <Field label={t('sales.clientCompany', 'Company name')}>
-            <input value={clientCompany} onChange={(event) => setClientCompany(event.target.value)} autoComplete="off" className={field} />
+            <input value={clientCompany} onChange={(event) => setClientCompany(event.target.value)} autoComplete="off" className={clientField} />
           </Field>
           <Field label={t('sales.taxId', 'N.I.F/N.I.E')}>
-            <input value={clientNif} onChange={(event) => setClientNif(event.target.value.toUpperCase())} autoComplete="off" className={cn(field, 'uppercase')} />
+            <input value={clientNif} onChange={(event) => setClientNif(event.target.value.toUpperCase())} autoComplete="off" className={cn(clientField, 'uppercase')} />
           </Field>
         </div>
         <Field label={t('sales.clientAddress', 'Address')}>
@@ -630,7 +638,7 @@ function ClientCard({ sale }: { sale: SaleComposer }) {
             maxLength={255}
             autoComplete="off"
             placeholder={t('sales.clientAddressPlaceholder', 'Street, number, city')}
-            className={field}
+            className={clientField}
           />
         </Field>
       </div>

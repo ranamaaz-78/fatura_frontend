@@ -33,7 +33,8 @@ export function IconRail({ admin }: { admin: boolean }) {
           </span>
         </div>
 
-        <nav className="desk-scroll flex-1 space-y-4 overflow-x-hidden overflow-y-auto px-3 py-2">
+        {/* No visible scrollbar: it would eat into the 48px the icons are centred in (the wheel still scrolls). */}
+        <nav className="desk-rail-nav flex-1 space-y-4 overflow-x-hidden overflow-y-auto px-3 py-2">
           {groups.map((group) => (
             <div key={group.titleKey}>
               <p className="mb-1.5 h-4 truncate px-3 text-[10px] font-semibold tracking-[0.12em] text-sidebar-muted uppercase opacity-0 transition-opacity duration-150 group-hover/rail:opacity-100">
@@ -51,7 +52,8 @@ export function IconRail({ admin }: { admin: boolean }) {
                       title={label}
                       className={({ isActive }) =>
                         cn(
-                          'relative flex h-11 items-center gap-3.5 rounded-xl px-[13px] text-[13px] font-medium whitespace-nowrap transition-colors',
+                          // 14px + 20px icon + 14px = the 48px of the folded rail, so the icon sits dead centre in its box.
+                          'relative flex h-12 items-center gap-3.5 rounded-xl px-3.5 text-[13px] font-medium whitespace-nowrap transition-colors',
                           isActive
                             ? 'desk-glow bg-brand-600 text-brand-on'
                             : item.highlight
@@ -62,10 +64,10 @@ export function IconRail({ admin }: { admin: boolean }) {
                     >
                       {({ isActive }) => (
                         <>
-                          <Icon className="h-[19px] w-[19px] shrink-0" strokeWidth={isActive ? 2.3 : 1.9} />
+                          <Icon className="h-5 w-5 shrink-0" strokeWidth={isActive ? 2.3 : 1.9} />
                           <span className="opacity-0 transition-opacity duration-150 group-hover/rail:opacity-100">{label}</span>
                           {item.highlight && !isActive ? (
-                            <span className="absolute top-2 left-[34px] h-2 w-2 rounded-full bg-brand-500 ring-2 ring-[var(--desk-chrome)]" />
+                            <span className="absolute top-2.5 left-[30px] h-2 w-2 rounded-full bg-brand-500 ring-2 ring-[var(--desk-chrome)]" />
                           ) : null}
                         </>
                       )}

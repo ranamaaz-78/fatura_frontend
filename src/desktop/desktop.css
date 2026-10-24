@@ -116,12 +116,16 @@ html[data-app-mode='dark'] .desk-hero {
   background-size: 28px 28px;
 }
 
-/* Each screen slides in gently. It moves `translate`, not `transform`, so the hover lift still works afterwards. */
+/*
+ * Each screen slides in gently. It moves `translate`, not `transform`, so the hover lift still works afterwards.
+ * Fill "backwards" only: an animation that stays applied once it ends makes its element the frame for every
+ * position: fixed child, and a dialog would then cover only the screen's box instead of the whole window.
+ */
 @keyframes desk-rise {
   from { opacity: 0; translate: 0 8px; }
   to { opacity: 1; translate: none; }
 }
-.desk-rise { animation: desk-rise 220ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.desk-rise { animation: desk-rise 220ms cubic-bezier(0.2, 0.8, 0.2, 1) backwards; }
 .desk-rise-1 { animation-delay: 40ms; }
 .desk-rise-2 { animation-delay: 80ms; }
 .desk-rise-3 { animation-delay: 120ms; }
@@ -131,7 +135,11 @@ html[data-app-mode='dark'] .desk-hero {
   from { opacity: 0; translate: 0 -6px; scale: 0.98; }
   to { opacity: 1; translate: none; scale: none; }
 }
-.desk-pop { animation: desk-pop 160ms ease-out both; }
+.desk-pop { animation: desk-pop 160ms ease-out backwards; }
+
+/* The icon rail scrolls with the wheel but shows no bar: a bar would push the icons off centre. */
+.desk-rail-nav { scrollbar-width: none; }
+.desk-rail-nav::-webkit-scrollbar { display: none; }
 
 /* The login screen's moving light. */
 @keyframes desk-aurora {
