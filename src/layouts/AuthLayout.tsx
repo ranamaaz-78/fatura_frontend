@@ -1,10 +1,12 @@
-import { Check, ChevronLeft, MessageCircle } from 'lucide-react'
+import { Check, ChevronLeft, Download, MessageCircle, Monitor } from 'lucide-react'
 import { Link, Outlet } from 'react-router-dom'
 import { t } from '../i18n'
 import { supportEmail, supportWhatsappUrl } from '../lib/support'
 import { Logo } from '../components/brand/Logo'
 import { LanguageSwitcher } from '../components/ui/LanguageSwitcher'
 import { isDesktop } from '../lib/desktop'
+import { useDesktopRelease } from '../pages/public/landing/useDesktopRelease'
+import { desktopDownloadUrl, formatMegabytes } from '../services/desktopApp'
 
 const ASIDE_BACKGROUND = {
   backgroundImage:
@@ -21,6 +23,8 @@ const PROMISES = [
 
 export function AuthLayout() {
   const whatsappUrl = supportWhatsappUrl()
+  // Offered on the website only: inside the Windows app there is nothing to download.
+  const release = useDesktopRelease().data ?? null
 
   return (
     <div className="flex min-h-screen flex-col bg-[#f8f9ff] text-[#0b1c30] lg:flex-row">
@@ -72,6 +76,25 @@ export function AuthLayout() {
             ) : null}
           </div>
         </div>
+
+        {release && !isDesktop ? (
+          <a
+            href={desktopDownloadUrl()}
+            download={release.file_name}
+            className="mt-3 flex items-center gap-3 rounded-[20px] border border-white/12 bg-white/6 px-4 py-3 transition-colors hover:bg-white/10"
+          >
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#2563eb]/30 text-[#9fd0ff]">
+              <Monitor className="h-[18px] w-[18px]" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-[13px] font-semibold text-white">{t('windowsApp.loginTitle', 'Use the Windows app')}</span>
+              <span className="block text-xs text-[#94a3b8]">
+                v{release.version} · {formatMegabytes(release.size_bytes)}
+              </span>
+            </span>
+            <Download className="h-[18px] w-[18px] shrink-0 text-[#4edea3]" />
+          </a>
+        ) : null}
       </aside>
 
       <main className="flex flex-1 flex-col px-5 py-6 sm:px-10">

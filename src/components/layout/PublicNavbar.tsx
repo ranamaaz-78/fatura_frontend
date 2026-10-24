@@ -14,6 +14,7 @@ const LINKS = [
   { id: 'features', key: 'nav.features', fallback: 'Features' },
   { id: 'documents', key: 'nav.documents', fallback: 'Documents' },
   { id: 'how', key: 'nav.howItWorks', fallback: 'How it works' },
+  { id: 'windows', key: 'nav.windowsApp', fallback: 'Windows app' },
   { id: 'pricing', key: 'nav.pricing', fallback: 'Pricing' },
   { id: 'about', key: 'nav.about', fallback: 'About' },
   { id: 'faq', key: 'nav.faq', fallback: 'FAQ' },

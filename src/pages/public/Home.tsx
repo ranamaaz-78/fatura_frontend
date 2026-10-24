@@ -35,6 +35,7 @@ import { FeatureBento } from './landing/FeatureBento'
 import { Reveal } from './landing/hooks'
 import { LegalDialog } from './landing/LegalDialog'
 import { useSiteContent } from './landing/useSiteContent'
+import { WindowsSection } from './landing/WindowsSection'
 import { LANDING_SECTIONS } from './landing/sections'
 import { HeroMockup, MobileShowcase } from './Mockups'
 import { PlanCard } from './PricingCards'
@@ -810,6 +811,7 @@ function Home() {
       <DocumentShowcase />
       <HowItWorks />
       <MobileSection />
+      <WindowsSection />
       <PricingSection />
       <AboutSection />
       <FaqSection />

@@ -32,7 +32,7 @@ for (const key of Object.keys(es)) if (!(key in catalog)) problems.push(`unused 
 
 /** Visible strings that read the same in both languages, or are not shown to people. */
 const ALLOW_FILES = ['lib/printFonts.ts', 'lib/printLabels.ts', 'components/ui/BarcodeSvg.tsx', 'main.tsx']
-const ALLOW_TEXT = /^(WhatsApp|PDF|IVA|· IVA|mm\)?|\.pdf|F-2026\/0185\.pdf|N\.I\.F \/ N\.I\.E|Albarán|Bearer \$\{\}|xMidYMid meet)$|must be used within|^Screen crashed:|^empty workbook$/
+const ALLOW_TEXT = /^(Ctrl [A-Z↵]|SHA-256|Enter ↵|Esc|WhatsApp|PDF|IVA|· IVA|mm\)?|\.pdf|F-2026\/0185\.pdf|N\.I\.F \/ N\.I\.E|Albarán|Bearer \$\{\}|xMidYMid meet)$|must be used within|^Screen crashed:|^empty workbook$/
 const hardCoded = audit().filter((f) => !ALLOW_FILES.includes(f.file) && !ALLOW_TEXT.test(f.text))
 for (const f of hardCoded) problems.push(`hardcoded ${f.file}:${f.line}  ${f.kind}  "${f.text.slice(0, 70)}"`)
 

@@ -1,0 +1,208 @@
+/*
+ * The Windows app's look ("YK Command"). Every colour comes from the theme tokens (--app-*), so all colour schemes and
+ * light/dark keep working. Loaded only by the desktop build: the website never sees this file.
+ */
+
+:root {
+  --desk-radius: 18px;
+  --desk-radius-sm: 12px;
+  --desk-rail: 72px;
+  --desk-titlebar: 40px;
+  --desk-statusbar: 28px;
+  --desk-glass: color-mix(in oklab, var(--app-card) 82%, transparent);
+  --desk-glass-strong: color-mix(in oklab, var(--app-card) 94%, transparent);
+  --desk-edge: color-mix(in oklab, var(--app-line) 75%, transparent);
+  --desk-highlight: rgb(255 255 255 / 0.7);
+  --desk-shadow: 0 1px 2px rgb(15 23 42 / 0.04), 0 8px 24px -12px rgb(15 23 42 / 0.12), 0 24px 48px -32px rgb(15 23 42 / 0.18);
+  --desk-shadow-lift: 0 2px 4px rgb(15 23 42 / 0.05), 0 16px 32px -14px rgb(15 23 42 / 0.2), 0 32px 64px -36px rgb(15 23 42 / 0.28);
+  --desk-glow: color-mix(in oklab, var(--app-primary) 45%, transparent);
+  --desk-chrome: color-mix(in oklab, var(--app-sidebar) 96%, var(--app-primary));
+}
+
+html[data-app-mode='dark'] {
+  --desk-glass: color-mix(in oklab, var(--app-card) 72%, transparent);
+  --desk-glass-strong: color-mix(in oklab, var(--app-card) 90%, transparent);
+  --desk-highlight: rgb(255 255 255 / 0.06);
+  --desk-shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 12px 32px -16px rgb(0 0 0 / 0.55);
+  --desk-shadow-lift: 0 2px 6px rgb(0 0 0 / 0.35), 0 20px 44px -18px rgb(0 0 0 / 0.65);
+  --desk-glow: color-mix(in oklab, var(--app-primary) 55%, transparent);
+}
+
+/* The page behind everything: a soft mesh of the theme's own colours. */
+.desk-canvas {
+  background-color: var(--app-page);
+  background-image:
+    radial-gradient(1100px 620px at 8% -10%, color-mix(in oklab, var(--app-primary) 13%, transparent), transparent 62%),
+    radial-gradient(900px 560px at 105% 8%, color-mix(in oklab, var(--app-secondary) 11%, transparent), transparent 60%),
+    radial-gradient(800px 600px at 60% 120%, color-mix(in oklab, var(--app-primary) 8%, transparent), transparent 60%);
+  background-attachment: fixed;
+}
+
+.desk-glass {
+  background: var(--desk-glass);
+  border: 1px solid var(--desk-edge);
+  border-radius: var(--desk-radius);
+  box-shadow: inset 0 1px 0 var(--desk-highlight), var(--desk-shadow);
+  backdrop-filter: blur(18px) saturate(1.2);
+}
+
+.desk-glass-strong {
+  background: var(--desk-glass-strong);
+  border: 1px solid var(--desk-edge);
+  border-radius: var(--desk-radius);
+  box-shadow: inset 0 1px 0 var(--desk-highlight), var(--desk-shadow-lift);
+  backdrop-filter: blur(24px) saturate(1.3);
+}
+
+.desk-lift {
+  transition: transform 160ms ease-out, box-shadow 160ms ease-out, border-color 160ms ease-out;
+}
+.desk-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: inset 0 1px 0 var(--desk-highlight), var(--desk-shadow-lift);
+  border-color: color-mix(in oklab, var(--app-primary) 35%, var(--app-line));
+}
+
+/* The window chrome (title bar, rail, status bar) is always dark, whatever the theme. */
+.desk-chrome {
+  background: var(--desk-chrome);
+  color: var(--app-sidebar-text);
+}
+
+.desk-glow {
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--app-primary) 60%, transparent), 0 6px 22px -6px var(--desk-glow);
+}
+
+.desk-hero {
+  background:
+    radial-gradient(600px 300px at 0% 0%, color-mix(in oklab, var(--app-hover) 55%, transparent), transparent 70%),
+    radial-gradient(500px 320px at 100% 100%, color-mix(in oklab, var(--app-secondary) 50%, transparent), transparent 70%),
+    linear-gradient(135deg, color-mix(in oklab, var(--app-primary) 92%, #000), color-mix(in oklab, var(--app-primary) 70%, #020617));
+  color: #fff;
+  border-radius: var(--desk-radius);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.18), 0 24px 48px -28px var(--desk-glow);
+}
+
+/* Dark schemes use a light primary, so the hero is mixed down to keep white text readable. */
+html[data-app-mode='dark'] .desk-hero {
+  background:
+    radial-gradient(600px 300px at 0% 0%, color-mix(in oklab, var(--app-primary) 38%, transparent), transparent 70%),
+    radial-gradient(500px 320px at 100% 100%, color-mix(in oklab, var(--app-secondary) 26%, transparent), transparent 70%),
+    linear-gradient(135deg, color-mix(in oklab, var(--app-primary) 42%, #0b1220), color-mix(in oklab, var(--app-primary) 22%, #020617));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.1), 0 0 0 1px color-mix(in oklab, var(--app-primary) 30%, transparent), 0 24px 48px -28px var(--desk-glow);
+}
+
+.desk-num {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+  letter-spacing: -0.02em;
+}
+
+.desk-drag {
+  -webkit-app-region: drag;
+  app-region: drag;
+}
+.desk-nodrag {
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+
+/* Subtle grid behind the document "paper" on a detail screen. */
+.desk-desk {
+  background-color: color-mix(in oklab, var(--app-elevated) 70%, transparent);
+  background-image:
+    linear-gradient(color-mix(in oklab, var(--app-line) 45%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in oklab, var(--app-line) 45%, transparent) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
+/* Each screen slides in gently. It moves `translate`, not `transform`, so the hover lift still works afterwards. */
+@keyframes desk-rise {
+  from { opacity: 0; translate: 0 8px; }
+  to { opacity: 1; translate: none; }
+}
+.desk-rise { animation: desk-rise 220ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.desk-rise-1 { animation-delay: 40ms; }
+.desk-rise-2 { animation-delay: 80ms; }
+.desk-rise-3 { animation-delay: 120ms; }
+.desk-rise-4 { animation-delay: 160ms; }
+
+@keyframes desk-pop {
+  from { opacity: 0; translate: 0 -6px; scale: 0.98; }
+  to { opacity: 1; translate: none; scale: none; }
+}
+.desk-pop { animation: desk-pop 160ms ease-out both; }
+
+/* The login screen's moving light. */
+@keyframes desk-aurora {
+  0% { transform: translate3d(0, 0, 0) rotate(0deg) scale(1); }
+  50% { transform: translate3d(4%, -3%, 0) rotate(8deg) scale(1.08); }
+  100% { transform: translate3d(0, 0, 0) rotate(0deg) scale(1); }
+}
+.desk-aurora { animation: desk-aurora 18s ease-in-out infinite; }
+
+@keyframes desk-float {
+  0%, 100% { transform: translateY(0) rotate(var(--tilt, 0deg)); }
+  50% { transform: translateY(-14px) rotate(var(--tilt, 0deg)); }
+}
+.desk-float { animation: desk-float 7s ease-in-out infinite; }
+
+@keyframes desk-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+.desk-pulse { animation: desk-pulse 1.8s ease-in-out infinite; }
+
+/* Slimmer scrollbars than the website: a desktop app scrolls with the wheel. */
+.desk-scroll::-webkit-scrollbar { width: 10px; height: 10px; }
+.desk-scroll::-webkit-scrollbar-thumb {
+  background: color-mix(in oklab, var(--app-muted) 45%, transparent);
+  border: 3px solid transparent;
+  background-clip: padding-box;
+  border-radius: 999px;
+}
+.desk-scroll::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in oklab, var(--app-muted) 70%, transparent);
+  background-clip: padding-box;
+}
+
+/*
+ * The screens that keep the website's layout (products, clients, settings, reports, admin…) take the app's surfaces
+ * here, so they sit in the same world. No blur on these: a dialog inside one of them must still cover the window.
+ */
+.desk-canvas main :is(.bg-card.rounded-2xl, .bg-card.rounded-xl, .bg-card.rounded-3xl) {
+  background: var(--desk-glass-strong);
+  border-color: var(--desk-edge);
+  border-radius: var(--desk-radius);
+  box-shadow: inset 0 1px 0 var(--desk-highlight), var(--desk-shadow);
+}
+.desk-canvas main :is(thead.bg-page, thead.bg-slate-50) {
+  background: color-mix(in oklab, var(--app-elevated) 55%, transparent);
+}
+.desk-canvas main :is(button, a).bg-brand-600 {
+  box-shadow: 0 6px 18px -8px var(--desk-glow);
+}
+.desk-canvas main h1.text-xl {
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+.desk-canvas [role='dialog'] {
+  border-radius: 22px;
+  border-color: var(--desk-edge);
+  box-shadow: inset 0 1px 0 var(--desk-highlight), var(--desk-shadow-lift);
+}
+.desk-canvas .modal-backdrop {
+  backdrop-filter: blur(6px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .desk-rise, .desk-pop, .desk-aurora, .desk-float, .desk-pulse { animation: none; }
+  .desk-lift, .desk-lift:hover { transition: none; transform: none; }
+}
+
+@media print {
+  .desk-canvas { background: none; }
+  /* A blurred panel would hold the printed sheet in place on screen, not on the page. */
+  .desk-glass, .desk-glass-strong { backdrop-filter: none !important; }
+}

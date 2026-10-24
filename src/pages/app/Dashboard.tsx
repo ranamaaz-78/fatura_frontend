@@ -8,6 +8,7 @@ import {
   Receipt,
   TrendingUp,
 } from 'lucide-react'
+import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import {
   Bar,
@@ -35,48 +36,48 @@ import type { DashboardDocument, DashboardStockRow } from '../../types/module01'
 import type { SaleType } from '../../types/sales'
 import { rulesFor, typeLabel } from './documentTypes'
 
-const CHART = ['var(--app-primary)', 'var(--app-secondary)', '#b45309', '#0369a1', '#6d28d9', '#be123c', '#334155', '#047857']
+export const CHART = ['var(--app-primary)', 'var(--app-secondary)', '#b45309', '#0369a1', '#6d28d9', '#be123c', '#334155', '#047857']
 
 const headerButton =
   'inline-flex h-[38px] items-center gap-2 rounded-xl px-3.5 text-xs font-semibold transition-colors cursor-pointer'
 
-function formatDay(day: string): string {
+export function formatDay(day: string): string {
   const parts = day.split('-')
   if (parts.length !== 3) return day
   return `${parts[2]}/${parts[1]}`
 }
 
-function shortTick(value: string): string {
+export function shortTick(value: string): string {
   return value.length > 10 ? `${value.slice(0, 9)}…` : value
 }
 
-function docHref(type: string, id: number): string {
+export function docHref(type: string, id: number): string {
   if (type === 'factura' || type === 'albaran' || type === 'quotation' || type === 'proforma') {
     return `${rulesFor(type).listPath}/${id}`
   }
   return '/app/invoices'
 }
 
-function docTypeLabel(type: string): string {
+export function docTypeLabel(type: string): string {
   if (type === 'factura' || type === 'albaran' || type === 'quotation' || type === 'proforma') {
     return typeLabel(type as SaleType)
   }
   return type
 }
 
-function paymentLabel(status: string): string {
+export function paymentLabel(status: string): string {
   if (status === 'paid') return t('reports.paid', 'Paid')
   if (status === 'partial') return t('reports.partial', 'Partial')
   return t('reports.pending', 'Pending')
 }
 
-function paymentTone(status: string): string {
+export function paymentTone(status: string): string {
   if (status === 'paid') return 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 app-dark:bg-emerald-500/15 app-dark:text-emerald-300 app-dark:ring-emerald-500/30'
   if (status === 'partial') return 'bg-sky-50 text-sky-800 ring-1 ring-sky-200 app-dark:bg-sky-500/15 app-dark:text-sky-300 app-dark:ring-sky-500/30'
   return 'bg-amber-50 text-amber-800 ring-1 ring-amber-200 app-dark:bg-amber-500/15 app-dark:text-amber-300 app-dark:ring-amber-500/30'
 }
 
-function statusColor(status: string): string {
+export function statusColor(status: string): string {
   if (status === 'paid') return '#059669'
   if (status === 'partial') return '#0284c7'
   return '#d97706'

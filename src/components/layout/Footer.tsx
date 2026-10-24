@@ -1,7 +1,9 @@
-import { ArrowUp, MessageCircle } from 'lucide-react'
+import { ArrowUp, Download, MessageCircle } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { t } from '../../i18n'
 import { supportEmail, supportWhatsappUrl } from '../../lib/support'
+import { useDesktopRelease } from '../../pages/public/landing/useDesktopRelease'
+import { desktopDownloadUrl } from '../../services/desktopApp'
 import { Logo } from '../brand/Logo'
 import { LanguageSwitcher } from '../ui/LanguageSwitcher'
 
@@ -35,6 +37,7 @@ const COLUMNS = [
 
 export function Footer() {
   const whatsappUrl = supportWhatsappUrl()
+  const release = useDesktopRelease().data ?? null
 
   return (
     <footer className="bg-[#0b1c30] px-5 pt-16 pb-10 text-[#cbd5e1]">
@@ -89,6 +92,17 @@ export function Footer() {
                     </a>
                   ),
                 )}
+                {column.heading.key === 'footer.product' ? (
+                  // The installer straight away once there is one; before that, the section that says it is coming.
+                  <a
+                    href={release ? desktopDownloadUrl() : '#windows'}
+                    download={release ? release.file_name : undefined}
+                    className="inline-flex items-center gap-1.5 text-[#4edea3] transition-colors hover:text-white"
+                  >
+                    <Download className="h-4 w-4" />
+                    {t('windowsApp.download', 'Download for Windows')}
+                  </a>
+                ) : null}
               </div>
             ))}
           </div>

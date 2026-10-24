@@ -1,7 +1,8 @@
-import { useEffect, type ReactNode } from 'react'
+import { Suspense, useEffect, type ReactNode } from 'react'
 import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { ErrorBoundary } from './components/ErrorBoundary'
-import { isDesktop, openExternal, PUBLIC_SITE_URL } from './lib/desktop'
+import * as Desk from './desktop/screens'
+import { DESKTOP_UI, isDesktop, openExternal, PUBLIC_SITE_URL } from './lib/desktop'
 import { AuthProvider } from './auth/AuthProvider'
 import { RequireGuest, RequirePermission, RequireRole, RequireSetupDone } from './auth/guards'
 import { AdminLayout } from './layouts/AdminLayout'
@@ -14,6 +15,7 @@ import AuditLogsPage from './pages/admin/AuditLogs'
 import AdminCompaniesPage from './pages/admin/Companies'
 import AdminCompanyDetailPage from './pages/admin/CompanyDetail'
 import AdminDashboardPage from './pages/admin/Dashboard'
+import AdminDesktopAppPage from './pages/admin/DesktopApp'
 import AdminPaymentMethodsPage from './pages/admin/PaymentMethods'
 import AdminPlansPage from './pages/admin/Plans'
 import AdminReportsPage from './pages/admin/Reports'
@@ -57,6 +59,11 @@ function RouteGuard({ children }: { children: ReactNode }) {
   return <ErrorBoundary key={location.pathname}>{children}</ErrorBoundary>
 }
 
+/** The website's screen, or the Windows app's own version of it when the site is built for the app. */
+function pick(web: ReactNode, desk: ReactNode): ReactNode {
+  return DESKTOP_UI ? desk : web
+}
+
 /** In the Windows app the application form is not part of the app: it opens on the website, in the browser. */
 function ApplyInBrowser() {
   const location = useLocation()
@@ -75,6 +82,7 @@ function App() {
     <BrowserRouter>
       <AuthProvider>
         <RouteGuard>
+        <Suspense fallback={null}>
         <Routes>
           {/* Apply brings its own shell: no site navbar or footer. */}
           <Route path="/apply" element={isDesktop ? <ApplyInBrowser /> : <ApplyPage />} />
@@ -82,7 +90,7 @@ function App() {
           <Route path="/verify/:code/invoice" element={<PublicInvoicePage />} />
 
           <Route element={<PublicLayout />}>
-            <Route path="/" element={isDesktop ? <Navigate to="/login" replace /> : <HomePage />} />
+            <Route path="/" element={isDesktop || DESKTOP_UI ? <Navigate to="/login" replace /> : <HomePage />} />
             {/* The site is one landing page now. Old links land on the matching section. */}
             <Route path="/features" element={<Navigate to="/#features" replace />} />
             <Route path="/pricing" element={<Navigate to="/#pricing" replace />} />
@@ -93,7 +101,7 @@ function App() {
           </Route>
 
           <Route element={<RequireGuest />}>
-            <Route element={<AuthLayout />}>
+            <Route element={pick(<AuthLayout />, <Desk.DesktopAuthLayout />)}>
               <Route path="/login" element={<LoginPage />} />
               <Route path="/set-password" element={<SetPasswordPage />} />
               <Route path="/forgot-password" element={<ForgotPasswordPage />} />
@@ -105,36 +113,36 @@ function App() {
             {/* The company setup steps sit outside the workspace shell: the workspace is closed until they are done. */}
             <Route path="/app/setup" element={<CompanySetupPage />} />
             <Route element={<RequireSetupDone />}>
-            <Route path="/app" element={<AppLayout />}>
+            <Route path="/app" element={pick(<AppLayout />, <Desk.DesktopShell />)}>
               <Route index element={<Navigate to="dashboard" replace />} />
               <Route element={<RequirePermission permission="dashboard.view" />}>
-                <Route path="dashboard" element={<DashboardPage />} />
+                <Route path="dashboard" element={pick(<DashboardPage />, <Desk.Dashboard />)} />
               </Route>
               <Route path="subscription" element={<Navigate to="/app/settings?tab=subscription" replace />} />
               <Route element={<RequirePermission permission="invoices.create|delivery_notes.create|quotes.create|proformas.create" />}>
-                <Route path="invoices/new" element={<InvoiceNewPage />} />
+                <Route path="invoices/new" element={pick(<InvoiceNewPage />, <Desk.Pos />)} />
               </Route>
               <Route element={<RequirePermission permission="invoices.view" />}>
-                <Route path="invoices" element={<InvoicesPage />} />
-                <Route path="invoices/:id" element={<InvoiceDetailPage />} />
+                <Route path="invoices" element={pick(<InvoicesPage />, <Desk.DocumentList type="factura" />)} />
+                <Route path="invoices/:id" element={pick(<InvoiceDetailPage />, <Desk.DocumentDetail />)} />
               </Route>
               <Route element={<RequirePermission permission="delivery_notes.view" />}>
-                <Route path="delivery-notes" element={<DeliveryNotesPage />} />
-                <Route path="delivery-notes/:id" element={<InvoiceDetailPage />} />
+                <Route path="delivery-notes" element={pick(<DeliveryNotesPage />, <Desk.DocumentList type="albaran" />)} />
+                <Route path="delivery-notes/:id" element={pick(<InvoiceDetailPage />, <Desk.DocumentDetail />)} />
               </Route>
               <Route element={<RequirePermission permission="delivery_notes.update" />}>
-                <Route path="delivery-notes/:id/edit" element={<InvoiceNewPage />} />
+                <Route path="delivery-notes/:id/edit" element={pick(<InvoiceNewPage />, <Desk.Pos />)} />
               </Route>
               <Route element={<RequirePermission permission="quotes.update" />}>
-                <Route path="quotes/:id/edit" element={<InvoiceNewPage />} />
+                <Route path="quotes/:id/edit" element={pick(<InvoiceNewPage />, <Desk.Pos />)} />
               </Route>
               <Route element={<RequirePermission permission="quotes.view" />}>
-                <Route path="quotes" element={<QuotesPage />} />
-                <Route path="quotes/:id" element={<InvoiceDetailPage />} />
+                <Route path="quotes" element={pick(<QuotesPage />, <Desk.DocumentList type="quotation" />)} />
+                <Route path="quotes/:id" element={pick(<InvoiceDetailPage />, <Desk.DocumentDetail />)} />
               </Route>
               <Route element={<RequirePermission permission="proformas.view" />}>
-                <Route path="proformas" element={<ProformasPage />} />
-                <Route path="proformas/:id" element={<InvoiceDetailPage />} />
+                <Route path="proformas" element={pick(<ProformasPage />, <Desk.DocumentList type="proforma" />)} />
+                <Route path="proformas/:id" element={pick(<InvoiceDetailPage />, <Desk.DocumentDetail />)} />
               </Route>
               <Route element={<RequirePermission permission="payments.view" />}>
                 <Route path="payments" element={<PaymentsPage />} />
@@ -176,7 +184,7 @@ function App() {
           </Route>
 
           <Route element={<RequireRole roles={['super_admin']} />}>
-            <Route path="/admin" element={<AdminLayout />}>
+            <Route path="/admin" element={pick(<AdminLayout />, <Desk.DesktopShell admin />)}>
               <Route index element={<Navigate to="dashboard" replace />} />
               <Route path="dashboard" element={<AdminDashboardPage />} />
               <Route path="applications" element={<AdminApplicationsPage />} />
@@ -185,6 +193,7 @@ function App() {
               <Route path="plans" element={<AdminPlansPage />} />
               <Route path="payment-methods" element={<AdminPaymentMethodsPage />} />
               <Route path="site-content" element={<AdminSiteContentPage />} />
+              <Route path="desktop-app" element={<AdminDesktopAppPage />} />
               <Route path="account" element={<AdminAccountPage />} />
               <Route path="users" element={<AdminUsersPage />} />
               <Route path="reports" element={<AdminReportsPage />} />
@@ -195,6 +204,7 @@ function App() {
           <Route path="/dev/ui" element={<UiGallery />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        </Suspense>
         </RouteGuard>
       </AuthProvider>
     </BrowserRouter>
