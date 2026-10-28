@@ -12,6 +12,7 @@ import { CHART, docHref, docTypeLabel, formatDay, paymentLabel, shortTick, statu
 import { getErrorMessage } from '../../services/api'
 import { getAppDashboard } from '../../services/app'
 import type { DashboardDocument, DashboardStockRow } from '../../types/module01'
+import { DemoEntryCard } from '../../demo/DemoEntryCard'
 import { NEW_DOCUMENTS, newDocumentPath } from '../shell/routes'
 import { identityFor } from '../ui/docIdentity'
 import { Kbd, KpiTile, Panel, PanelLink, Pill, Shimmer, Sparkline, deskButtonClass } from '../ui/kit'
@@ -155,6 +156,8 @@ export default function DeskDashboard() {
           />
         </div>
       </div>
+
+      <DemoEntryCard />
 
       <div className="grid grid-cols-12 gap-5">
         <Panel className="col-span-12 xl:col-span-8" title={t('dashboard.salesThisMonth', 'Sales this month')} bodyClassName="px-3 pb-4">

@@ -449,7 +449,7 @@ function InvoiceNew() {
           ) : null}
         </div>
 
-        <div className="relative flex flex-col gap-2">
+        <div data-tour="pos-scan" className="relative flex flex-col gap-2">
           <span className="text-xs font-bold tracking-[0.06em] text-slate-700 uppercase">
             {t('sales.findProduct', 'Scan a barcode or search a product')}
           </span>

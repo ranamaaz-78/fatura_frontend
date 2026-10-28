@@ -15,6 +15,7 @@ import AuditLogsPage from './pages/admin/AuditLogs'
 import AdminCompaniesPage from './pages/admin/Companies'
 import AdminCompanyDetailPage from './pages/admin/CompanyDetail'
 import AdminDashboardPage from './pages/admin/Dashboard'
+import AdminDemoPage from './pages/admin/Demo'
 import AdminDesktopAppPage from './pages/admin/DesktopApp'
 import AdminPaymentMethodsPage from './pages/admin/PaymentMethods'
 import AdminPlansPage from './pages/admin/Plans'
@@ -194,6 +195,7 @@ function App() {
               <Route path="payment-methods" element={<AdminPaymentMethodsPage />} />
               <Route path="site-content" element={<AdminSiteContentPage />} />
               <Route path="desktop-app" element={<AdminDesktopAppPage />} />
+              <Route path="demo" element={<AdminDemoPage />} />
               <Route path="account" element={<AdminAccountPage />} />
               <Route path="users" element={<AdminUsersPage />} />
               <Route path="reports" element={<AdminReportsPage />} />

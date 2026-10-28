@@ -14,6 +14,8 @@ export type BitmapLabel = {
   article: string
   price: string
   barcode: string
+  /** The company name at the top of the label. */
+  store?: string
 }
 
 export type BitmapSettings = {
@@ -23,6 +25,7 @@ export type BitmapSettings = {
   metrics: RollMetrics
   showName: boolean
   showPrice: boolean
+  showStore?: boolean
   /** Millimetres to move everything right and down, to line it up on the roll. */
   offsetX: number
   offsetY: number
@@ -61,11 +64,21 @@ export function labelBitmap(label: BitmapLabel, settings: BitmapSettings): strin
   const gap = px(metrics.gap)
   const nameHeight = settings.showName ? px(metrics.nameHeight) : 0
   const priceHeight = settings.showPrice ? px(metrics.priceHeight) : 0
+  const showStore = Boolean(settings.showStore && label.store)
+  const storeHeight = showStore ? px(metrics.storeHeight) : 0
   const block = px(metrics.block)
-  const rows = Number(settings.showName) + Number(settings.showPrice)
-  const contentHeight = nameHeight + block + priceHeight + rows * gap
+  const rows = Number(settings.showName) + Number(settings.showPrice) + Number(showStore)
+  const contentHeight = storeHeight + nameHeight + block + priceHeight + rows * gap
   const shiftX = px(settings.offsetX)
   let y = Math.max(0, Math.floor((height - contentHeight) / 2)) + px(settings.offsetY)
+
+  if (showStore) {
+    const size = Math.max(6, Math.round(metrics.storePt * MM_PER_PT * k))
+    context.font = `600 ${size}px ${FONT}`
+    context.textAlign = 'center'
+    context.fillText(fitText(context, label.store ?? '', innerWidth), Math.round(width / 2) + shiftX, y + Math.round(storeHeight * 0.82))
+    y += storeHeight + gap
+  }
 
   if (settings.showName) {
     const size = Math.max(6, Math.round(metrics.namePt * MM_PER_PT * k))

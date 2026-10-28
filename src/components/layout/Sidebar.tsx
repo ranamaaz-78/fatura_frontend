@@ -71,6 +71,7 @@ export function Sidebar({ accent = 'blue', onNavigate }: SidebarProps) {
                     key={item.to}
                     to={item.to}
                     end={item.end}
+                    data-tour={`nav:${item.to}`}
                     onClick={onNavigate}
                     className={({ isActive }) =>
                       cn(

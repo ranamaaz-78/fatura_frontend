@@ -21,7 +21,7 @@ export function IconRail({ admin }: { admin: boolean }) {
   const company = admin ? t('nav.roleAdmin', 'Platform admin') : (session?.company?.name ?? '')
 
   return (
-    <aside className="relative z-30 w-[var(--desk-rail)] shrink-0 select-none print:hidden">
+    <aside data-tour="menu" className="relative z-30 w-[var(--desk-rail)] shrink-0 select-none print:hidden">
       <div className="desk-chrome group/rail absolute inset-y-0 left-0 flex w-[var(--desk-rail)] flex-col overflow-hidden border-r border-white/8 transition-[width,box-shadow] duration-200 ease-out hover:w-[264px] hover:shadow-[24px_0_48px_-24px_rgb(0_0_0/0.5)]">
         <div className="flex h-16 shrink-0 items-center gap-3 px-[18px]">
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/8 ring-1 ring-white/10">
@@ -50,6 +50,7 @@ export function IconRail({ admin }: { admin: boolean }) {
                       to={item.to}
                       end={item.end}
                       title={label}
+                      data-tour={`nav:${item.to}`}
                       className={({ isActive }) =>
                         cn(
                           // 14px + 20px icon + 14px = the 48px of the folded rail, so the icon sits dead centre in its box.

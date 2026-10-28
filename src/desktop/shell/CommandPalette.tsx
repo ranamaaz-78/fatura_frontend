@@ -1,4 +1,4 @@
-import { CornerDownLeft, LogOut, Moon, Search, Sun, type LucideIcon } from 'lucide-react'
+import { CornerDownLeft, FlaskConical, LogOut, Moon, Search, Sun, type LucideIcon } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../auth/AuthProvider'
@@ -21,7 +21,7 @@ type Entry = {
 /** Ctrl+K: jump to any screen the person may open, start a document, or switch light / dark. Nothing else. */
 export function CommandPalette({ admin, open, onClose }: { admin: boolean; open: boolean; onClose: () => void }) {
   const navigate = useNavigate()
-  const { logout } = useAuth()
+  const { logout, session, enterDemo, exitDemo } = useAuth()
   const { can, isOwner } = usePermissions()
   const { mode, setMode } = useTheme()
   const [query, setQuery] = useState('')
@@ -60,9 +60,17 @@ export function CommandPalette({ admin, open, onClose }: { admin: boolean; open:
       icon: mode === 'dark' ? Sun : Moon,
       run: () => setMode(mode === 'dark' ? 'light' : 'dark'),
     })
+    // Practice in the shared demo account (or come back out of it). Only for people inside a company.
+    if (!admin && session?.company && (session.company.is_demo || session.demo_enabled !== false)) {
+      list.push(
+        session.company.is_demo
+          ? { id: 'demo', label: t('demo.exit', 'Exit demo'), section: t('demo.mode', 'Demo mode'), icon: FlaskConical, run: () => void exitDemo() }
+          : { id: 'demo', label: t('demo.enter', 'Practice in the demo'), section: t('demo.mode', 'Demo mode'), icon: FlaskConical, run: () => void enterDemo() },
+      )
+    }
     list.push({ id: 'logout', label: t('nav.logout', 'Log out'), section: t('nav.settings', 'Settings'), icon: LogOut, run: () => void logout() })
     return list
-  }, [admin, can, isOwner, logout, mode, navigate, setMode])
+  }, [admin, can, enterDemo, exitDemo, isOwner, logout, mode, navigate, session?.company, session?.demo_enabled, setMode])
 
   const shown = useMemo(() => {
     const needle = query.trim().toLowerCase()

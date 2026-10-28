@@ -1,8 +1,10 @@
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { preloadScreens } from '../screens'
 import { docPermission, usePermissions } from '../../auth/permissions'
 import { ThemeProvider } from '../../theme/ThemeProvider'
 import '../desktop.css'
+import { DemoLayer } from '../../demo/DemoLayer'
 import { CommandPalette } from './CommandPalette'
 import { IconRail } from './IconRail'
 import { NEW_DOCUMENTS, newDocumentPath } from './routes'
@@ -53,12 +55,15 @@ function Workspace({ admin }: { admin: boolean }) {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [admin, can, navigate])
 
+  useEffect(() => preloadScreens(), [])
+
   return (
     <div className="desk-canvas flex min-w-0 flex-1 flex-col print:contents">
       <TitleBar admin={admin} onSearch={() => setPaletteOpen(true)} />
+      <DemoLayer />
       <div className="flex min-h-0 flex-1 print:contents">
         <IconRail admin={admin} />
-        <main className="desk-scroll min-w-0 flex-1 overflow-y-auto overscroll-contain print:contents">
+        <main data-tour="page" className="desk-scroll min-w-0 flex-1 overflow-y-auto overscroll-contain print:contents">
           {showUpdate ? (
             <div className="mx-auto w-full max-w-[1680px] px-7 pt-6 print:hidden">
               <UpdateBanner status={update} onLater={() => setLaterKey(updateKey)} />
@@ -66,7 +71,9 @@ function Workspace({ admin }: { admin: boolean }) {
           ) : null}
           {/* Like the website, the new-sale screen is not remounted when ?type= changes: it switches type and keeps the lines. */}
           <div key={location.pathname} className="desk-rise mx-auto w-full max-w-[1680px] space-y-6 px-7 py-6 print:contents">
-            <Outlet />
+            <Suspense fallback={null}>
+              <Outlet />
+            </Suspense>
           </div>
         </main>
       </div>

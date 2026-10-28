@@ -1,8 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { AlertTriangle, Building2, Coins, CreditCard, ImagePlus, KeyRound, Mail, MessageCircle, Percent, Settings, type LucideIcon } from 'lucide-react'
+import { AlertTriangle, Building2, Coins, CreditCard, FlaskConical, Hash, ImagePlus, KeyRound, Mail, MessageCircle, Percent, Settings, type LucideIcon } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../auth/AuthProvider'
+import { DemoSettingsTab } from '../../demo/DemoSettingsTab'
 import { ChangePasswordForm } from '../../components/account/ChangePasswordForm'
 import { Badge } from '../../components/ui/Badge'
 import { FileDropzone } from '../../components/ui/FileDropzone'
@@ -34,11 +35,12 @@ import { updateCompany } from '../../services/company'
 import { loadLogoBlob, uploadCompanyLogo } from '../../services/printables'
 import type { Company } from '../../types/module01'
 
+import { NumberingTab } from './NumberingTab'
 import { RatesManager, type RatesApi } from './RatesManager'
 import { WhatsAppTab } from './WhatsAppTab'
 import { localCountry } from '../../lib/countries'
 
-type TabId = 'company' | 'subscription' | 'password' | 'iva' | 'recargo' | 'whatsapp'
+type TabId = 'company' | 'subscription' | 'password' | 'iva' | 'recargo' | 'numbering' | 'whatsapp' | 'demo'
 
 type CompanyDraft = {
   name: string
@@ -59,11 +61,13 @@ const TABS: { id: TabId; label: string; icon: LucideIcon }[] = [
   { id: 'password', label: t('settings.tabPassword', 'Password'), icon: KeyRound },
   { id: 'iva', label: t('settings.tabIva', 'IVA'), icon: Percent },
   { id: 'recargo', label: t('settings.tabRecargo', 'Recargo'), icon: Coins },
+  { id: 'numbering', label: t('settings.tabNumbering', 'Numbering'), icon: Hash },
   { id: 'whatsapp', label: t('settings.tabWhatsApp', 'WhatsApp'), icon: MessageCircle },
+  { id: 'demo', label: t('settings.tabDemo', 'Demo'), icon: FlaskConical },
 ]
 
 function parseTab(value: string | null): TabId {
-  if (value === 'subscription' || value === 'password' || value === 'iva' || value === 'recargo' || value === 'whatsapp') return value
+  if (value === 'subscription' || value === 'password' || value === 'iva' || value === 'recargo' || value === 'numbering' || value === 'whatsapp' || value === 'demo') return value
   return 'company'
 }
 
@@ -517,7 +521,8 @@ function SubscriptionTab() {
 }
 
 function Page() {
-  const { can, isOwner } = usePermissions()
+  const { can, isOwner, isDemo } = usePermissions()
+  const { session } = useAuth()
   const [params, setParams] = useSearchParams()
   const [tab, setTab] = useState<TabId>(() => parseTab(params.get('tab')))
 
@@ -527,6 +532,9 @@ function Page() {
 
   // The subscription is the owner's; the company, rates and WhatsApp wording need Settings; a password is everyone's own.
   const tabs = TABS.filter((item) => {
+    // The shared demo account keeps its company details, password and WhatsApp as they are; the rest is for practice.
+    if (item.id === 'demo') return !isDemo && session?.demo_enabled !== false
+    if (isDemo) return item.id === 'iva' || item.id === 'recargo' || item.id === 'numbering'
     if (item.id === 'subscription') return isOwner
     if (item.id === 'password') return true
     return can('settings.view')
@@ -534,7 +542,7 @@ function Page() {
   const canEdit = can('settings.update')
   // The page opens on the company tab; someone who may not see it lands on the first tab they can.
   const activeTab: TabId = tabs.some((item) => item.id === tab) ? tab : (tabs[0]?.id ?? 'password')
-  const readOnly = activeTab !== 'password' && activeTab !== 'subscription' && !canEdit
+  const readOnly = activeTab !== 'password' && activeTab !== 'subscription' && activeTab !== 'demo' && !canEdit
 
   function selectTab(id: string) {
     const next = parseTab(id)
@@ -599,6 +607,8 @@ function Page() {
             {activeTab === 'password' ? <PasswordTab /> : null}
             {activeTab === 'iva' && tabs.some((item) => item.id === 'iva') ? <IvaTab /> : null}
             {activeTab === 'recargo' && tabs.some((item) => item.id === 'recargo') ? <RecargoTab /> : null}
+            {activeTab === 'numbering' && tabs.some((item) => item.id === 'numbering') ? <NumberingTab /> : null}
+            {activeTab === 'demo' && tabs.some((item) => item.id === 'demo') ? <DemoSettingsTab /> : null}
             {activeTab === 'whatsapp' && tabs.some((item) => item.id === 'whatsapp') ? <WhatsAppTab /> : null}
           </fieldset>
         </div>

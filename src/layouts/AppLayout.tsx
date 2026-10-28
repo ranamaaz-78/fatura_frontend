@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { DemoLayer } from '../demo/DemoLayer'
 import { BottomTabs } from '../components/layout/BottomTabs'
 import { APP_NAV, TAB_ROOTS } from '../components/layout/nav'
 import { Sidebar } from '../components/layout/Sidebar'
@@ -31,7 +32,7 @@ function Shell() {
 
   return (
     <>
-      <aside className="app-sidebar hidden w-64 shrink-0 select-none border-r border-sidebar-line bg-sidebar text-sidebar-text print:hidden lg:flex lg:flex-col">
+      <aside data-tour="menu" className="app-sidebar hidden w-64 shrink-0 select-none border-r border-sidebar-line bg-sidebar text-sidebar-text print:hidden lg:flex lg:flex-col">
         <Sidebar />
       </aside>
 
@@ -45,6 +46,7 @@ function Shell() {
       ) : null}
 
       <div className="flex min-w-0 flex-1 flex-col print:contents">
+        <DemoLayer />
         <div className="print:hidden">
           <TopBar
             title={title}
@@ -53,7 +55,7 @@ function Shell() {
             onMenu={() => setMenuOpen(true)}
           />
         </div>
-        <main className="flex-1 space-y-6 overflow-y-auto p-4 overscroll-contain sm:p-6 print:contents">
+        <main data-tour="page" className="flex-1 space-y-6 overflow-y-auto p-4 overscroll-contain sm:p-6 print:contents">
           <Outlet />
         </main>
         <div className="print:hidden">

@@ -100,6 +100,8 @@ export type LabelOptions = {
   copies: number
   showName: boolean
   showPrice: boolean
+  /** The company name printed at the top of every label. Empty leaves it off. It is for this print only. */
+  storeName?: string
   currency: string
   /** Roll labels only: turn the label a quarter so width and height swap. */
   turned?: boolean
@@ -196,7 +198,7 @@ export const GOOD_MODULE_MM = 0.19
 const SAMPLE_UNITS = 109
 const BAR_SHARE: Record<BarHeight, number> = { short: 0.7, normal: 0.9, tall: 1 }
 
-export type LabelWanted = { showName: boolean; showPrice: boolean; textSize: TextSize; barHeight: BarHeight }
+export type LabelWanted = { showName: boolean; showPrice: boolean; showStore?: boolean; textSize: TextSize; barHeight: BarHeight }
 
 /** How the parts of a roll label share its height, in millimetres and points. */
 export type RollMetrics = {
@@ -209,8 +211,11 @@ export type RollMetrics = {
   innerHeight: number
   namePt: number
   pricePt: number
+  /** The company name line at the top, a little smaller than the product name. */
+  storePt: number
   nameHeight: number
   priceHeight: number
+  storeHeight: number
   /** Bars and digits together. */
   block: number
 }
@@ -251,14 +256,16 @@ export function rollMetrics(spec: LabelSheetSpec, wanted: LabelWanted): RollMetr
     const namePt = Math.max(3.6, 6 * scale * shrink)
     const pricePt = Math.max(4.4, 8 * scale * shrink)
     const gap = 0.4 * Math.min(1, scale) * shrink
+    const storePt = Math.max(3.4, namePt * 0.92)
     const nameHeight = wanted.showName ? namePt * MM_PER_PT * 1.2 : 0
     const priceHeight = wanted.showPrice ? pricePt * MM_PER_PT * 1.2 : 0
-    const rows = Number(wanted.showName) + Number(wanted.showPrice)
-    const available = innerHeight - nameHeight - priceHeight - rows * gap
+    const storeHeight = wanted.showStore ? storePt * MM_PER_PT * 1.2 : 0
+    const rows = Number(wanted.showName) + Number(wanted.showPrice) + Number(Boolean(wanted.showStore))
+    const available = innerHeight - nameHeight - priceHeight - storeHeight - rows * gap
     const block = Math.min(available * BAR_SHARE[wanted.barHeight], spec.roll ? Infinity : SHEET_MAX_BLOCK_MM)
 
     if (block >= MIN_BARCODE_MM) {
-      return { padding, paddingX, gap, innerWidth, innerHeight, namePt, pricePt, nameHeight, priceHeight, block }
+      return { padding, paddingX, gap, innerWidth, innerHeight, namePt, pricePt, storePt, nameHeight, priceHeight, storeHeight, block }
     }
   }
 
@@ -298,6 +305,8 @@ export function fitLabelOptions(spec: LabelSheetSpec, wanted: LabelWanted, dpi: 
     const relax: (() => boolean)[] = [
       () => options.barHeight === 'tall' && ((options = { ...options, barHeight: 'normal' }), note('barHeight'), true),
       () => options.textSize === 'large' && ((options = { ...options, textSize: 'normal' }), note('textSize'), true),
+      // The company name is the first text to go: the product and its price matter more on a small label.
+      () => Boolean(options.showStore) && ((options = { ...options, showStore: false }), note('showStore'), true),
       () => options.showPrice && ((options = { ...options, showPrice: false }), note('showPrice'), true),
       () => options.showName && ((options = { ...options, showName: false }), note('showName'), true),
       () => options.textSize === 'normal' && ((options = { ...options, textSize: 'small' }), note('textSize'), true),
@@ -403,16 +412,19 @@ export function buildLabelSheet(products: LabelProduct[], options: LabelOptions)
   const spec = resolvedSpec(options.sheet, options.turned, options.custom)
   const copies = Math.max(1, Math.min(200, options.copies))
   const dpi = options.dpi ?? DEFAULT_DPI
+  const storeName = (options.storeName ?? '').trim()
 
   // A roll label only prints what fits it: a name or price that would squeeze the barcode is left off.
   const fit = fitLabelOptions(spec, {
     showName: options.showName,
     showPrice: options.showPrice,
+    showStore: storeName !== '',
     textSize: options.textSize ?? 'normal',
     barHeight: options.barHeight ?? 'normal',
   }, dpi)
   const showName = fit.options.showName
   const showPrice = fit.options.showPrice
+  const showStore = Boolean(fit.options.showStore) && storeName !== ''
   // Both rolls and sheets use the same layout (bars drawn in millimetres, digits in a strip of their own); a sheet only
   // keeps the bars from growing absurdly big, and a custom label too small for it falls back to the old drawing.
   const metrics = rollMetrics(spec, fit.options)
@@ -439,8 +451,8 @@ export function buildLabelSheet(products: LabelProduct[], options: LabelOptions)
       pictures.set(
         product,
         labelBitmap(
-          { article: product.article, price: formatCents(product.selling_price, options.currency), barcode: product.barcode },
-          { width: spec.labelWidth, height: rollHeight(spec), dpi, metrics, showName, showPrice, offsetX: options.offsetX ?? 0, offsetY: options.offsetY ?? 0 },
+          { article: product.article, price: formatCents(product.selling_price, options.currency), barcode: product.barcode, store: storeName },
+          { width: spec.labelWidth, height: rollHeight(spec), dpi, metrics, showName, showPrice, showStore, offsetX: options.offsetX ?? 0, offsetY: options.offsetY ?? 0 },
         ),
       )
     }
@@ -452,12 +464,13 @@ export function buildLabelSheet(products: LabelProduct[], options: LabelOptions)
     .map((product) => {
       const picture = bitmapFor(product)
       if (picture) return `<div class="label raster"><img src="${picture}" alt=""></div>`
+      const store = showStore ? `<div class="store">${escapeHtml(storeName)}</div>` : ''
       const name = showName ? `<div class="name">${escapeHtml(product.article)}</div>` : ''
       const price = showPrice
         ? `<div class="price">${escapeHtml(formatCents(product.selling_price, options.currency))}</div>`
         : ''
       const bars = metrics ? rollBarcodeMarkup(product.barcode, metrics, dotDpi, maxModule) : barcodeMarkup(product.barcode)
-      return `<div class="label">${name}${bars}${price}</div>`
+      return `<div class="label">${store}${name}${bars}${price}</div>`
     })
     .join('')
 
@@ -482,6 +495,7 @@ export function buildLabelSheet(products: LabelProduct[], options: LabelOptions)
   .label.raster { padding: 0; }
   .label.raster > img { display: block; left: 0; top: 0; width: ${spec.labelWidth}mm; height: ${rollHeight(spec).toFixed(2)}mm; image-rendering: pixelated; image-rendering: crisp-edges; }
   .name { font-size: ${metrics ? metrics.namePt.toFixed(2) : (6 * scale).toFixed(2)}pt; font-weight: 700; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;${metrics ? ` height: ${metrics.nameHeight.toFixed(2)}mm; line-height: ${metrics.nameHeight.toFixed(2)}mm;` : ''} }
+  .store { font-size: ${metrics ? metrics.storePt.toFixed(2) : (5.5 * scale).toFixed(2)}pt; font-weight: 600; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;${metrics ? ` height: ${metrics.storeHeight.toFixed(2)}mm; line-height: ${metrics.storeHeight.toFixed(2)}mm;` : ''} }
   .fallback { font-family: 'Geist', -apple-system, 'Segoe UI', sans-serif; font-size: ${(5 * scale).toFixed(2)}pt; color: #475569; }
   .price { font-family: 'Geist', -apple-system, 'Segoe UI', sans-serif; font-size: ${metrics ? metrics.pricePt.toFixed(2) : (8 * scale).toFixed(2)}pt; font-weight: 700;${metrics ? ` height: ${metrics.priceHeight.toFixed(2)}mm; line-height: ${metrics.priceHeight.toFixed(2)}mm;` : ''} }
   .bars { ${metrics ? 'flex: none;' : `width: 100%; height: ${(spec.labelHeight * barShare).toFixed(2)}mm;`} fill: #0f172a; font-family: 'Geist', -apple-system, 'Segoe UI', sans-serif; }

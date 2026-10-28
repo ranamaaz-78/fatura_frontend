@@ -12,7 +12,7 @@ export type InvoiceVerification = {
   currency: string | null
   voided: boolean
   voided_at: string | null
-  company: { name: string | null; tax_id: string | null; city: string | null; country: string | null }
+  company: { name: string | null; tax_id: string | null; city: string | null; country: string | null; is_demo?: boolean }
 }
 
 /** Looks an invoice up by the code in its QR. `null` means there is no such invoice. */

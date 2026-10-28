@@ -117,6 +117,8 @@ export type Company = {
   profile_complete?: boolean
   missing_fields?: string[]
   status: CompanyStatus
+  /** The shared demo account customers practice in. */
+  is_demo?: boolean
   notes: string | null
   created_at: string
   users_count?: number
@@ -187,6 +189,8 @@ export type SessionPayload = {
   locale?: 'en' | 'es'
   /** Every "area.action" this person may use. The owner has them all. */
   permissions?: string[]
+  /** Whether the practice account is open (the super admin can close it). */
+  demo_enabled?: boolean
   company: Company | null
   subscription: Subscription | null
   support: SupportContact

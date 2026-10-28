@@ -184,6 +184,7 @@ function SheetFrame({
   theme,
   voided,
   expired = false,
+  demo = false,
   lineCount,
   denseAfter = DENSE_AFTER,
   row = false,
@@ -194,6 +195,8 @@ function SheetFrame({
   voided: boolean
   /** An open quotation past its week: stamped so nobody mistakes it for a live offer. */
   expired?: boolean
+  /** A document made in the shared demo account: stamped so nobody mistakes it for a real one. */
+  demo?: boolean
   lineCount: number
   /** Lines past which this sheet tightens up; the roomier layouts go dense sooner. */
   denseAfter?: number
@@ -222,6 +225,14 @@ function SheetFrame({
           className="pointer-events-none absolute top-[46%] left-1/2 z-10 -translate-x-1/2 -translate-y-1/2 -rotate-[24deg] rounded-xl border-[6px] border-[#b45309]/20 px-10 py-1 text-[96px] font-bold tracking-[0.12em] text-[#b45309]/15 uppercase"
         >
           {td('sales.expiredStamp', 'Expired')}
+        </span>
+      ) : null}
+      {demo ? (
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute top-[46%] left-1/2 z-10 -translate-x-1/2 -translate-y-1/2 -rotate-[24deg] rounded-xl border-[6px] border-[#2563eb]/20 px-10 py-1 text-[110px] font-bold tracking-[0.14em] text-[#2563eb]/15 uppercase"
+        >
+          {td('sales.demoStamp', 'Demo')}
         </span>
       ) : null}
       <div className={cn('relative box-border flex h-full min-h-0', row ? 'flex-row' : 'flex-col', className)}>{children}</div>
@@ -637,7 +648,7 @@ function InvoiceSheet({ document, company, currency, lines, issued, theme, logoS
   ]
 
   return (
-    <SheetFrame theme={theme} voided={display === 'voided'} lineCount={lines.length} className={cn('px-14 pt-14 pb-10', `${D}pt-11 ${D}pb-8`)}>
+    <SheetFrame demo={Boolean(company?.is_demo)} theme={theme} voided={display === 'voided'} lineCount={lines.length} className={cn('px-14 pt-14 pb-10', `${D}pt-11 ${D}pb-8`)}>
       <span aria-hidden="true" className="absolute inset-x-0 top-0 h-[5px] bg-[var(--print-accent)]" />
 
       <header className="flex items-start justify-between gap-10">
@@ -751,7 +762,7 @@ function QuotationSheet({ document, company, currency, lines, issued, theme, log
   ]
 
   return (
-    <SheetFrame theme={theme} voided={false} expired={Boolean(document.is_expired)} lineCount={lines.length} denseAfter={5} className={cn('px-14 pt-12 pb-10', `${D}pt-9 ${D}pb-8`)}>
+    <SheetFrame demo={Boolean(company?.is_demo)} theme={theme} voided={false} expired={Boolean(document.is_expired)} lineCount={lines.length} denseAfter={5} className={cn('px-14 pt-12 pb-10', `${D}pt-9 ${D}pb-8`)}>
       <header className="flex items-center justify-between gap-10">
         {theme.show_logo ? (
           <LogoMark company={company} logoSrc={logoSrc} show size={lines.length > 5 ? 46 : 60} imageSize={lines.length > 5 ? 58 : 76} />
@@ -871,7 +882,7 @@ function ProformaSheet({ document, company, currency, lines, issued, theme, logo
   ]
 
   return (
-    <SheetFrame theme={theme} voided={display === 'voided'} lineCount={lines.length} className={cn('px-14 pt-14 pb-10', `${D}pt-11 ${D}pb-8`)}>
+    <SheetFrame demo={Boolean(company?.is_demo)} theme={theme} voided={display === 'voided'} lineCount={lines.length} className={cn('px-14 pt-14 pb-10', `${D}pt-11 ${D}pb-8`)}>
       <span aria-hidden="true" className="absolute inset-x-0 top-0 h-[5px] bg-[var(--print-accent)]" />
 
       <header className="flex items-start justify-between gap-10">
@@ -964,7 +975,7 @@ function ProformaSheet({ document, company, currency, lines, issued, theme, logo
 /* ------------------------------------------------------------------ Albarán: a plain delivery slip */
 
 /** Deliberately carries nothing of the issuing company: no name, address, email or logo. */
-function AlbaranSheet({ document, currency, lines, issued, theme }: SheetProps) {
+function AlbaranSheet({ document, company, currency, lines, issued, theme }: SheetProps) {
   const heading = td('sales.typeAlbaran', 'Delivery note')
   const display = saleDisplayStatus(document)
   const units = lines.reduce((sum, line) => sum + line.quantity, 0)
@@ -998,7 +1009,7 @@ function AlbaranSheet({ document, currency, lines, issued, theme }: SheetProps) 
   )
 
   return (
-    <SheetFrame theme={theme} voided={display === 'voided'} lineCount={lines.length} className={cn('px-14 pt-14 pb-10', `${D}pt-11 ${D}pb-8`)}>
+    <SheetFrame demo={Boolean(company?.is_demo)} theme={theme} voided={display === 'voided'} lineCount={lines.length} className={cn('px-14 pt-14 pb-10', `${D}pt-11 ${D}pb-8`)}>
       <header className="flex items-start justify-between gap-8">
         <div>
           {/* One line whatever the language: "ALBARÁN" is short, "DELIVERY NOTE" is not, so the longer one is set smaller. */}

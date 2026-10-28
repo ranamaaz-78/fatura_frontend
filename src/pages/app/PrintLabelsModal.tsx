@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { AlertTriangle, Printer } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
+import { useAuth } from '../../auth/AuthProvider'
 import { Button } from '../../components/ui/Button'
 import { Checkbox } from '../../components/ui/Checkbox'
 import { Input } from '../../components/ui/Input'
@@ -101,7 +102,11 @@ function loadSaved(): Saved {
 
 export function PrintLabelsModal({ open, products, currency, onClose }: PrintLabelsModalProps) {
   const { push } = useToast()
+  const { session } = useAuth()
   const queryClient = useQueryClient()
+  // The company name printed on the labels starts as the business name and can be changed here. It belongs to this
+  // print only: nothing is saved to the company or remembered for next time.
+  const [storeName, setStoreName] = useState(() => session?.company?.name ?? '')
   // Every print is remembered per product, so the "labels to print" list knows what is done and what is not.
   const record = useMutation({
     mutationFn: markLabelsPrinted,
@@ -147,12 +152,14 @@ export function PrintLabelsModal({ open, products, currency, onClose }: PrintLab
   const preview = products.slice(0, spec.roll ? 3 : 4)
 
   // A roll label only prints what fits it. What does not is left off here and switched off below, never squeezed in.
-  const fit = fitLabelOptions(spec, { showName, showPrice, textSize, barHeight }, dpi)
+  const fit = fitLabelOptions(spec, { showName, showPrice, showStore: storeName.trim() !== '', textSize, barHeight }, dpi)
   const blocked = unavailableChoices(spec, fit.options)
   const leftOff = fit.changed
-    .filter((key) => key === 'showName' || key === 'showPrice' || key === 'textSize' || key === 'barHeight')
+    .filter((key) => key === 'showName' || key === 'showPrice' || key === 'showStore' || key === 'textSize' || key === 'barHeight')
     .map((key) =>
-      key === 'showName'
+      key === 'showStore'
+        ? t('labels.fieldStore', 'company name')
+        : key === 'showName'
         ? t('labels.fieldName', 'name')
         : key === 'showPrice'
           ? t('labels.fieldPrice', 'price')
@@ -169,6 +176,7 @@ export function PrintLabelsModal({ open, products, currency, onClose }: PrintLab
     copies: perProduct,
     showName,
     showPrice,
+    storeName,
     currency,
     turned,
     custom,
@@ -187,7 +195,7 @@ export function PrintLabelsModal({ open, products, currency, onClose }: PrintLab
         { ...printOptions, copies: 1 },
       ).replace('</style>', 'body{background:#fff;padding:1px} .label{outline:1px dashed #cbd5e1;background:#fff}</style>'),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [products, sheet, turned, custom, showName, showPrice, textSize, barHeight, border, dpi, currency, shiftX, shiftY],
+    [products, sheet, turned, custom, showName, showPrice, storeName, textSize, barHeight, border, dpi, currency, shiftX, shiftY],
   )
 
   // Remember what the shop prints on, so it is already set next time.
@@ -436,6 +444,15 @@ export function PrintLabelsModal({ open, products, currency, onClose }: PrintLab
             </p>
           ) : null}
 
+          <Input
+            compact
+            label={t('labels.storeName', 'Company name on the label')}
+            hint={t('labels.storeHint', 'Printed at the top of each label, for this print only. Clear it to leave it off.')}
+            maxLength={60}
+            autoComplete="off"
+            value={storeName}
+            onChange={(event) => setStoreName(event.target.value)}
+          />
           <Input
             compact
             label={t('labels.copies', 'Copies per product')}

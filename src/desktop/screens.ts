@@ -24,3 +24,12 @@ export const DocumentList: ComponentType<{ type: IssuableType }> =
 export const DocumentDetail: ComponentType = import.meta.env.MODE === 'desktop' ? lazy(() => import('./pages/DeskDocumentDetail')) : None
 
 export const Pos: ComponentType = import.meta.env.MODE === 'desktop' ? lazy(() => import('./pages/DeskPos')) : None
+
+/** Loads every screen once the shell is up, so moving between them never waits (the guided tour hops between screens quickly). */
+export function preloadScreens(): void {
+  if (import.meta.env.MODE !== 'desktop') return
+  void import('./pages/DeskDashboard')
+  void import('./pages/DeskDocumentList')
+  void import('./pages/DeskDocumentDetail')
+  void import('./pages/DeskPos')
+}

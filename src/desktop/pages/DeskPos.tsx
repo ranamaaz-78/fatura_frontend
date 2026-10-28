@@ -242,7 +242,7 @@ function Scanner({ sale, inputRef }: { sale: SaleComposer; inputRef: RefObject<H
   const open = dropdown && !camera && productQuery.trim() !== ''
 
   return (
-    <section className="relative z-20">
+    <section data-tour="pos-scan" className="relative z-20">
       <div className="desk-glass-strong flex items-center gap-3 p-2.5">
         <span className="relative min-w-0 flex-1">
           <ScanLine className="pointer-events-none absolute top-1/2 left-4 h-6 w-6 -translate-y-1/2 text-brand-600" />

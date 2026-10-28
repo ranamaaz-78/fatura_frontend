@@ -21,6 +21,7 @@ import {
   XAxis,
 } from 'recharts'
 import { useAuth } from '../../auth/AuthProvider'
+import { DemoEntryCard } from '../../demo/DemoEntryCard'
 import { Button } from '../../components/ui/Button'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { PageHeader } from '../../components/ui/PageHeader'
@@ -174,6 +175,7 @@ function Dashboard() {
 
   return (
     <div className="flex flex-col gap-5">
+      <DemoEntryCard />
       <PageHeader
         title={greeting}
         subtitle={data.company.name ?? t('dashboard.subtitle', 'This month at a glance — sales, unpaid documents and stock.')}

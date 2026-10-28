@@ -1,5 +1,7 @@
 import { adoptLocale, setDocumentLocale, t } from '../i18n'
 import { setLoginNotice } from '../lib/loginNotice'
+import { beginDemoVisit, endDemoVisit, inDemoVisit } from '../demo/demoSession'
+import { useToast } from '../components/ui/Toast'
 import { useQueryClient } from '@tanstack/react-query'
 import {
   createContext,
@@ -12,6 +14,7 @@ import {
   type ReactNode,
 } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { enterDemoRequest, exitDemoRequest } from '../services/demo'
 import { getSession, login as loginRequest, logout as logoutRequest } from '../services/auth'
 import { getAuthToken, setAuthToken, setSessionHandlers } from '../services/api'
 import type { AuthResult } from '../services/auth'
@@ -24,6 +27,10 @@ type AuthContextValue = {
   adoptSession: (result: AuthResult) => Promise<void>
   logout: () => Promise<void>
   refresh: () => Promise<void>
+  /** Goes into the shared demo account with the customer's own login, keeping their own token aside. */
+  enterDemo: () => Promise<void>
+  /** Comes out of the demo and puts the customer's own account back. */
+  exitDemo: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -35,6 +42,7 @@ export function homeFor(role: string | undefined): string {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const { push } = useToast()
   const [session, setSession] = useState<SessionPayload | null>(null)
   const [status, setStatus] = useState<'loading' | 'authenticated' | 'guest'>(
     getAuthToken() ? 'loading' : 'guest',
@@ -72,7 +80,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     setSessionHandlers({
-      onUnauthenticated: () => clear(),
+      onUnauthenticated: () => {
+        // The demo's short visit ran out: the customer is put back on their own account, not signed out.
+        if (inDemoVisit()) {
+          const back = endDemoVisit()
+          queryClient.clear()
+          if (back) {
+            push({ tone: 'info', title: t('demo.ended', 'Your demo session ended. You are back on your own account.') })
+            navigate('/app/dashboard', { replace: true })
+            void refresh()
+            return
+          }
+        }
+        clear()
+      },
       onSubscriptionExpired: () => {
         // The owner goes to the Subscription page to renew; the team cannot, so they are signed out with the reason.
         if (roleRef.current === 'staff') {
@@ -89,7 +110,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         navigate('/login', { replace: true })
       },
     })
-  }, [clear, navigate])
+  }, [clear, navigate, push, queryClient, refresh])
 
   const adoptSession = useCallback(async (result: AuthResult) => {
     setAuthToken(result.token)
@@ -110,7 +131,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [adoptSession],
   )
 
+  const enterDemo = useCallback(async () => {
+    const entry = await enterDemoRequest()
+    beginDemoVisit(entry.token)
+    // Everything on screen was the customer's own; none of it may carry over into the demo.
+    queryClient.clear()
+    await refresh()
+    navigate('/app/dashboard')
+  }, [navigate, queryClient, refresh])
+
+  const exitDemo = useCallback(async () => {
+    try {
+      // With the demo's token still in place, so the server closes this visit.
+      await exitDemoRequest()
+    } catch {
+      // A demo token that already ran out is as good as left.
+    }
+    const back = endDemoVisit()
+    queryClient.clear()
+
+    if (back) {
+      navigate('/app/dashboard')
+      await refresh()
+    } else {
+      clear()
+      navigate('/login', { replace: true })
+    }
+  }, [clear, navigate, queryClient, refresh])
+
   const logout = useCallback(async () => {
+    // Leaving from inside the demo means leaving the demo, not signing the customer out of their own account.
+    if (inDemoVisit()) {
+      await exitDemo()
+      return
+    }
+
     try {
       await logoutRequest()
     } catch {
@@ -118,13 +173,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     clear()
     navigate('/login', { replace: true })
-  }, [clear, navigate])
+  }, [clear, exitDemo, navigate])
 
   roleRef.current = session?.role
 
   const value = useMemo(
-    () => ({ session, status, login, adoptSession, logout, refresh }),
-    [session, status, login, adoptSession, logout, refresh],
+    () => ({ session, status, login, adoptSession, logout, refresh, enterDemo, exitDemo }),
+    [session, status, login, adoptSession, logout, refresh, enterDemo, exitDemo],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

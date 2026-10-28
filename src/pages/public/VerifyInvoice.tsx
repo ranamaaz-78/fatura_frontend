@@ -56,6 +56,12 @@ export default function VerifyInvoicePage() {
               <h1 className="mt-4 text-[24px] leading-tight font-extrabold tracking-[-0.02em]">{tone.title}</h1>
               <p className="mt-1.5 text-[15px] leading-relaxed text-[#434655]">{tone.body}</p>
 
+              {invoice?.company.is_demo ? (
+                <p role="note" className="mt-5 rounded-xl border border-[#c3d4ff] bg-[#eff4ff] px-4 py-3 text-sm font-semibold text-[#004ac6]">
+                  {t('demo.verifyNote', 'This is a demo invoice, made for practice. It is not a real invoice.')}
+                </p>
+              ) : null}
+
               {invoice ? (
                 <div className="mt-6 rounded-2xl border border-[#e5eeff] px-4">
                   <Row label={t('verify.number', 'Invoice no.')}>{invoice.number}</Row>

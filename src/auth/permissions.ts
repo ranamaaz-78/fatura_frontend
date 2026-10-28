@@ -14,12 +14,16 @@ export function hasPermission(list: string[] | undefined, needed: string): boole
 export function usePermissions() {
   const { session } = useAuth()
   const list = useMemo(() => session?.permissions ?? [], [session?.permissions])
-  const isOwner = session?.role === 'business_admin'
+  const isDemo = Boolean(session?.company?.is_demo)
+  // The demo account's owner is shared by everybody: what only an owner may do (team, subscription, language) stays closed.
+  const isOwner = session?.role === 'business_admin' && !isDemo
   // Stable between renders, so effects that depend on it do not run again for nothing.
   const can = useCallback((needed: string) => hasPermission(list, needed), [list])
 
   return {
     isOwner,
+    /** Inside the shared demo account. */
+    isDemo,
     list,
     /** `can('invoices.create')`, or `can('customers.view|invoices.create')` for either. */
     can,

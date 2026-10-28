@@ -295,3 +295,13 @@ html.landing-smooth { scroll-behavior: smooth; }
 .read-only-actions button:not([role="switch"]) {
   display: none;
 }
+
+/* The words of a guided-tour stop fade in; the card and the spotlight themselves glide. */
+@keyframes tour-words {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
+.tour-words { animation: tour-words 220ms ease-out; }
+@media (prefers-reduced-motion: reduce) {
+  .tour-words { animation: none; }
+}
