@@ -17,6 +17,7 @@ export const MODULE_LABEL: Record<string, () => string> = {
   products: () => t('perm.products', 'Products and barcodes'),
   product_images: () => t('perm.product_images', 'Product images'),
   stock: () => t('perm.stock', 'Stock and purchases'),
+  ledger: () => t('perm.ledger', 'Supplier Payments'),
   reports: () => t('perm.reports', 'Reports'),
   printables: () => t('perm.printables', 'Printables'),
   settings: () => t('perm.settings', 'Company settings'),

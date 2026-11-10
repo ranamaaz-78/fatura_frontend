@@ -1,0 +1,1 @@
+var e=typeof window<`u`&&window.desktop?.isDesktop===!0,t=typeof window<`u`&&window.desktop?.version||``,n=`https://ykdigitalsolutions.com`.replace(/\/+$/,``);function r(e){if(window.desktop){window.desktop.openExternal(e);return}window.open(e,`_blank`,`noopener,noreferrer`)}export{r as i,t as n,e as r,n as t};

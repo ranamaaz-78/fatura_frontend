@@ -1,7 +1,8 @@
-import { Suspense, useEffect, type ReactNode } from 'react'
+import { lazy, Suspense, useEffect, type ReactNode } from 'react'
 import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import * as Desk from './desktop/screens'
+import { PURCHASES_ENABLED } from './lib/features'
 import { DESKTOP_UI, isDesktop, openExternal, PUBLIC_SITE_URL } from './lib/desktop'
 import { AuthProvider } from './auth/AuthProvider'
 import { RequireGuest, RequirePermission, RequireRole, RequireSetupDone } from './auth/guards'
@@ -49,10 +50,14 @@ import ReportDownloadsPage from './pages/app/ReportDownloads'
 import ReportsPage from './pages/app/Reports'
 import SettingsPage from './pages/app/Settings'
 import StockPage from './pages/app/Stock'
+import SupplierLedgerPage from './pages/app/SupplierLedger'
 import StockMovementsPage from './pages/app/StockMovements'
 import SuppliersPage from './pages/app/Suppliers'
 import ApplyPage from './pages/public/Apply'
 import HomePage from './pages/public/Home'
+
+/** A sample report for looking at the PDF layout: development only. */
+const PdfPreviewPage = lazy(() => import('./pages/dev/PdfPreview'))
 
 /** Resets the error screen whenever the page changes, so one crash never traps the app. */
 function RouteGuard({ children }: { children: ReactNode }) {
@@ -157,7 +162,10 @@ function App() {
               <Route element={<RequirePermission permission="stock.view" />}>
                 <Route path="stock" element={<StockPage />} />
                 <Route path="stock/movements" element={<StockMovementsPage />} />
-                <Route path="purchases" element={<PurchasesPage />} />
+                {PURCHASES_ENABLED ? <Route path="purchases" element={<PurchasesPage />} /> : null}
+              </Route>
+              <Route element={<RequirePermission permission="ledger.view" />}>
+                <Route path="ledger" element={<SupplierLedgerPage />} />
               </Route>
               <Route element={<RequirePermission permission="products.create" />}>
                 <Route path="import" element={<ImportPage />} />
@@ -204,6 +212,7 @@ function App() {
           </Route>
 
           <Route path="/dev/ui" element={<UiGallery />} />
+          {import.meta.env.DEV ? <Route path="/dev/pdf" element={<PdfPreviewPage />} /> : null}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
         </Suspense>

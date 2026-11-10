@@ -64,6 +64,8 @@ export type Customer = {
   nif: string | null
   nie: string | null
   address: string | null
+  /** A private note about the client; never printed. */
+  remarks?: string | null
   is_active: boolean
   documents_count?: number
 }
@@ -75,6 +77,7 @@ export type CustomerInput = {
   nif: string | null
   nie: string | null
   address?: string | null
+  remarks?: string | null
 }
 
 export type DiscountType = 'percent' | 'amount'

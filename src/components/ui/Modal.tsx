@@ -62,7 +62,7 @@ export function Modal({
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
+    <div className="fixed inset-0 z-[60] overflow-y-auto">
       <div className="flex min-h-full items-end md:items-center justify-center p-0 md:p-4 text-center sm:p-0">
         <div
           className="modal-backdrop fixed inset-0 bg-overlay backdrop-blur-xs transition-opacity"

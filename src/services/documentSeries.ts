@@ -1,27 +1,22 @@
-import type { IssuableType } from '../types/sales'
 import { api, unwrap } from './api'
 
-/** How one kind of document is numbered: the letters in front and the number each month starts from. */
-export type DocumentSeries = {
-  kind: IssuableType
-  prefix: string
-  /** Where every month begins. */
-  start: number
-  /** Where this month begins (the same as start unless the owner gave this month a number of its own). */
-  first: number
-  default_prefix: string
-  /** How many of this kind went out this month. */
-  issued_this_month: number
-  /** The number the next one gets, e.g. ACME-202610/00341. */
+/** How invoices are numbered: the built-in numbers, or the company's own that continue from one typed number. */
+export type InvoiceNumbering = {
+  mode: 'auto' | 'manual'
+  /** The number the next invoice gets, e.g. ALP-00234 or F-202610/00002. */
   next_number: string
+  /** The last number handed out under the company's own numbers, or null. */
+  last_number: string | null
+  /** What a built-in number looks like, for the example on the screen. */
+  automatic_example: string
 }
 
-export type DocumentSeriesInput = Record<IssuableType, { prefix: string; start: number; first: number }>
+export type InvoiceNumberingInput = { mode: 'auto' } | { mode: 'manual'; next_number: string }
 
-export function getDocumentSeries(): Promise<{ series: DocumentSeries[] }> {
-  return unwrap<{ series: DocumentSeries[] }>(api.get('/app/document-series'))
+export function getInvoiceNumbering(): Promise<InvoiceNumbering> {
+  return unwrap<InvoiceNumbering>(api.get('/app/document-series'))
 }
 
-export function saveDocumentSeries(series: DocumentSeriesInput): Promise<{ series: DocumentSeries[] }> {
-  return unwrap<{ series: DocumentSeries[] }>(api.put('/app/document-series', { series }))
+export function saveInvoiceNumbering(input: InvoiceNumberingInput): Promise<InvoiceNumbering> {
+  return unwrap<InvoiceNumbering>(api.put('/app/document-series', input))
 }

@@ -1,4 +1,5 @@
 import {
+  BookOpen,
   Building2,
   CreditCard,
   Download,
@@ -24,6 +25,7 @@ import {
   Wallet,
   type LucideIcon,
 } from 'lucide-react'
+import { PURCHASES_ENABLED } from '../../lib/features'
 
 export type Accent = 'blue' | 'indigo'
 
@@ -100,8 +102,9 @@ export const APP_NAV: NavGroup[] = [
         fallback: 'Product images',
         icon: Images,
       },
-      { to: '/app/purchases', labelKey: 'nav.purchases', fallback: 'Purchases', icon: ShoppingBag },
+      ...(PURCHASES_ENABLED ? [{ to: '/app/purchases', labelKey: 'nav.purchases', fallback: 'Purchases', icon: ShoppingBag }] : []),
       { to: '/app/suppliers', labelKey: 'nav.suppliers', fallback: 'Suppliers', icon: Truck },
+      { to: '/app/ledger', labelKey: 'nav.ledger', fallback: 'Supplier Payments', icon: BookOpen },
     ],
   },
   {
@@ -192,6 +195,7 @@ const NAV_PERMISSION: Record<string, string> = {
   '/app/product-images': 'product_images.view',
   '/app/purchases': 'stock.view',
   '/app/suppliers': 'suppliers.view',
+  '/app/ledger': 'ledger.view',
   '/app/reports': 'reports.view',
   '/app/downloads': 'reports.view',
   '/app/printables': 'printables.view',

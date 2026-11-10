@@ -9,6 +9,7 @@ import { PageHeader } from '../../components/ui/PageHeader'
 import { SkeletonCard } from '../../components/ui/Skeleton'
 import { useToast } from '../../components/ui/Toast'
 import { intlLocale, t } from '../../i18n'
+import { PURCHASES_ENABLED } from '../../lib/features'
 import { getErrorMessage } from '../../services/api'
 import { getAdminDemo, resetDemo, setDemoEnabled } from '../../services/demo'
 
@@ -104,7 +105,7 @@ export default function AdminDemo() {
               <Figure label={t('nav.customers', 'Clients')} value={data.data.customers} icon={<Contact2 className="h-5 w-5" />} />
               <Figure label={t('nav.suppliers', 'Suppliers')} value={data.data.suppliers} icon={<Truck className="h-5 w-5" />} />
               <Figure label={t('demoAdmin.documents', 'Documents')} value={data.data.documents} icon={<FileText className="h-5 w-5" />} />
-              <Figure label={t('nav.purchases', 'Purchases')} value={data.data.purchases} icon={<ShoppingBag className="h-5 w-5" />} />
+              {PURCHASES_ENABLED ? <Figure label={t('nav.purchases', 'Purchases')} value={data.data.purchases} icon={<ShoppingBag className="h-5 w-5" />} /> : null}
             </div>
           </Card>
         </>

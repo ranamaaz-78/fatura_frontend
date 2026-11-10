@@ -3,6 +3,7 @@ import {
   AlertTriangle,
   Banknote,
   FileClock,
+  FileDown,
   FileSpreadsheet,
   Layers,
   Package,
@@ -30,13 +31,15 @@ import { EmptyState } from '../../components/ui/EmptyState'
 import { Select } from '../../components/ui/Select'
 import { Skeleton, SkeletonStatGrid } from '../../components/ui/Skeleton'
 import { useToast } from '../../components/ui/Toast'
-import { t } from '../../i18n'
+import { intlLocale, t } from '../../i18n'
 import { cn } from '../../lib/cn'
 import { TONE_AMBER, TONE_GREEN } from '../../lib/status'
 import { centsToExcelAmount, downloadStyledReport, type ReportColumnFormat } from '../../lib/exportReport'
 import { downloadFileName, fileDate } from '../../lib/fileName'
 import { formatDate } from '../../lib/format'
 import { formatCents } from '../../lib/money'
+import { downloadReportPdf, type PdfChart, type PdfComparison, type ReportPdfSpec } from '../../lib/reportPdf'
+import { agingBuckets, cumulative, fillDays, movingAverage, pctChange, periodRange, previousRange, weekdayTotals } from '../../lib/reportAnalytics'
 import { getErrorMessage } from '../../services/api'
 import { getReport } from '../../services/reports'
 import type { PaymentPeriod, SaleType } from '../../types/sales'
@@ -586,6 +589,271 @@ async function exportPayload(
   })
 }
 
+/* ---------------------------------------------------------------------------------------------- the PDF of a report */
+
+/** A colour of the theme as #rrggbb (the PDF is drawn off screen, where theme variables are not known). */
+function themeColor(name: string, fallback: string): string {
+  const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim()
+  return /^#[0-9a-f]{6}$/i.test(value) ? value : fallback
+}
+
+type CompareMetric = { key: string; label: () => string; money: boolean; goodWhen?: 'up' | 'down' }
+
+/** The headline numbers each report is compared on, this period against the one before it. */
+const COMPARE: Partial<Record<ReportKind, CompareMetric[]>> = {
+  sales: [
+    { key: 'total_cents', label: () => t('reports.total', 'Total'), money: true },
+    { key: 'document_count', label: () => t('reports.documents', 'Documents'), money: false },
+    { key: 'paid_cents', label: () => t('reports.paid', 'Paid'), money: true },
+    { key: 'outstanding_cents', label: () => t('payments.outstanding', 'Outstanding'), money: true, goodWhen: 'down' },
+    { key: 'client_count', label: () => t('reports.clients', 'Clients'), money: false },
+  ],
+  tax: [
+    { key: 'base_cents', label: () => t('reports.base', 'Base'), money: true },
+    { key: 'tax_cents', label: () => t('reports.taxAmount', 'Tax'), money: true },
+    { key: 'total_cents', label: () => t('reports.total', 'Total'), money: true },
+  ],
+  products: [
+    { key: 'quantity', label: () => t('reports.quantity', 'Quantity'), money: false },
+    { key: 'total_cents', label: () => t('reports.total', 'Total'), money: true },
+  ],
+  outstanding: [
+    { key: 'outstanding_cents', label: () => t('payments.outstanding', 'Outstanding'), money: true, goodWhen: 'down' },
+    { key: 'document_count', label: () => t('reports.documents', 'Documents'), money: false, goodWhen: 'down' },
+  ],
+  payments: [
+    { key: 'received_cents', label: () => t('payments.received', 'Received'), money: true },
+    { key: 'outstanding_cents', label: () => t('payments.outstanding', 'Outstanding'), money: true, goodWhen: 'down' },
+    { key: 'document_count', label: () => t('reports.documents', 'Documents'), money: false },
+  ],
+  clients: [
+    { key: 'total_cents', label: () => t('reports.total', 'Total'), money: true },
+    { key: 'paid_cents', label: () => t('reports.paid', 'Paid'), money: true },
+    { key: 'outstanding_cents', label: () => t('payments.outstanding', 'Outstanding'), money: true, goodWhen: 'down' },
+    { key: 'client_count', label: () => t('reports.clients', 'Clients'), money: false },
+  ],
+}
+
+function weekdayNames(): string[] {
+  // 1 January 2024 was a Monday.
+  const format = new Intl.DateTimeFormat(intlLocale(), { weekday: 'short' })
+  return Array.from({ length: 7 }, (_item, index) => format.format(new Date(2024, 0, 1 + index)))
+}
+
+function pdfCharts(
+  kind: ReportKind,
+  data: ReportPayload,
+  previous: ReportPayload | null,
+  ranges: { current: ReturnType<typeof periodRange>; previous: ReturnType<typeof previousRange> },
+  palette: string[],
+): PdfChart[] {
+  const [brand, second, ...others] = palette as [string, string, ...string[]]
+  const colorAt = (index: number) => palette[index % palette.length]!
+  const charts: PdfChart[] = []
+
+  const slices = (rows: { name: string; value: number }[], limit = 6) => {
+    const sorted = rows.filter((row) => row.value > 0).sort((a, b) => b.value - a.value)
+    const top = sorted.slice(0, limit)
+    const rest = sorted.slice(limit).reduce((sum, row) => sum + row.value, 0)
+    if (rest > 0) top.push({ name: t('reports.otherSlice', 'Other'), value: rest })
+    return top.map((row, index) => ({ ...row, color: colorAt(index) }))
+  }
+  const ranking = (rows: { name: string; value: number }[]) => rows.filter((row) => row.value > 0).sort((a, b) => b.value - a.value).slice(0, 8)
+
+  if (kind === 'sales') {
+    const points = (data.series ?? []).map((point) => ({ day: point.day, value: point.total_cents }))
+    const days = ranges.current ? fillDays(ranges.current, points) : points
+    if (days.length > 0) {
+      const values = days.map((day) => day.value)
+      charts.push({
+        type: 'bars',
+        title: t('reports.byDay', 'Sales by day'),
+        money: true,
+        labels: days.map((day) => formatDay(day.day)),
+        values,
+        color: brand,
+        barName: t('reports.sales', 'Sales'),
+        line: values.length > 2 ? { name: t('reports.movingAverage', '7-day average'), color: '#b45309', values: movingAverage(values, 7) } : undefined,
+        wide: true,
+      })
+
+      if (previous && ranges.previous) {
+        const before = fillDays(ranges.previous, (previous.series ?? []).map((point) => ({ day: point.day, value: point.total_cents })))
+        const now = cumulative(values)
+        const then = cumulative(before.map((day) => day.value))
+        charts.push({
+          type: 'trend',
+          title: t('reports.cumulative', 'Running total: this period vs the one before'),
+          money: true,
+          labels: days.map((day) => formatDay(day.day)),
+          series: [
+            { name: t('reports.thisPeriod', 'This period'), color: brand, values: now },
+            { name: t('reports.previousPeriod', 'Previous period'), color: '#94a3b8', values: now.map((_value, index) => then[Math.min(index, then.length - 1)] ?? 0) },
+          ],
+        })
+      }
+
+      const weekdays = weekdayTotals(days)
+      if (weekdays.some((value) => value > 0)) {
+        charts.push({ type: 'bars', title: t('reports.byWeekday', 'Which weekdays sell most'), money: true, labels: weekdayNames(), values: weekdays, color: second, barName: t('reports.sales', 'Sales') })
+      }
+    }
+    const types = slices((data.breakdown ?? []).map((row) => ({ name: docTypeLabel(row.key), value: row.total_cents })))
+    if (types.length > 0) charts.push({ type: 'donut', title: t('reports.byType', 'By document'), money: true, center: formatCents(data.kpis.total_cents ?? 0, currentCurrency), slices: types })
+    const status = slices((data.status ?? []).map((row) => ({ name: paymentLabel(row.key), value: row.count })))
+      .map((slice, index) => ({ ...slice, color: statusColor((data.status ?? []).find((row) => paymentLabel(row.key) === slice.name)?.key ?? '') || colorAt(index) }))
+    if (status.length > 0) charts.push({ type: 'donut', title: t('reports.byStatus', 'By payment status'), money: false, center: String(data.kpis.document_count ?? 0), slices: status })
+  } else if (kind === 'tax') {
+    const rows = data.rows ?? []
+    if (rows.length > 0) {
+      charts.push({
+        type: 'groups',
+        title: t('reports.byRate', 'By tax rate'),
+        money: true,
+        labels: rows.map((row) => `${asNumber(row.rate)}%`),
+        series: [
+          { name: t('reports.base', 'Base'), color: second, values: rows.map((row) => asNumber(row.base_cents)) },
+          { name: t('reports.taxAmount', 'Tax'), color: brand, values: rows.map((row) => asNumber(row.tax_cents)) },
+        ],
+      })
+      charts.push({ type: 'donut', title: t('reports.taxAmount', 'Tax'), money: true, center: formatCents(data.kpis.tax_cents ?? 0, currentCurrency), slices: slices(rows.map((row) => ({ name: `${asNumber(row.rate)}%`, value: asNumber(row.tax_cents) }))) })
+    }
+  } else if (kind === 'products') {
+    const rows = data.rows ?? []
+    charts.push({ type: 'rank', title: t('reports.topByQuantity', 'Top products by units sold'), money: false, color: brand, items: ranking(rows.map((row) => ({ name: asText(row.article), value: asNumber(row.quantity) }))) })
+    charts.push({ type: 'rank', title: t('reports.topByRevenue', 'Top products by revenue'), money: true, color: second, items: ranking(rows.map((row) => ({ name: asText(row.article), value: asNumber(row.total_cents) }))) })
+    charts.push({ type: 'donut', title: t('reports.share', 'Share'), money: true, center: formatCents(data.kpis.total_cents ?? 0, currentCurrency), slices: slices(rows.map((row) => ({ name: asText(row.article), value: asNumber(row.total_cents) }))) })
+  } else if (kind === 'outstanding') {
+    const rows = data.rows ?? []
+    const aging = agingBuckets(rows.map((row) => ({ days: asNumber(row.days_open), cents: asNumber(row.outstanding_cents) })))
+    charts.push({
+      type: 'bars',
+      title: t('reports.aging', 'How long it has been open'),
+      money: true,
+      labels: ['0-30', '31-60', '61-90', '90+'].map((label) => `${label} ${t('reports.days', 'days')}`),
+      values: aging,
+      color: '#d97706',
+      barName: t('payments.outstanding', 'Outstanding'),
+    })
+    charts.push({ type: 'rank', title: t('reports.topClients', 'Top clients'), money: true, color: brand, items: ranking(rows.reduce<{ name: string; value: number }[]>((list, row) => {
+      const name = asText(row.client_name)
+      const found = list.find((item) => item.name === name)
+      if (found) found.value += asNumber(row.outstanding_cents)
+      else list.push({ name, value: asNumber(row.outstanding_cents) })
+      return list
+    }, [])) })
+    charts.push({ type: 'donut', title: t('reports.byStatus', 'By payment status'), money: false, center: String(data.kpis.document_count ?? 0), slices: [
+      { name: t('reports.pending', 'Pending'), value: data.kpis.pending_count ?? 0, color: '#d97706' },
+      { name: t('reports.partial', 'Partial'), value: data.kpis.partial_count ?? 0, color: '#0284c7' },
+    ].filter((slice) => slice.value > 0) })
+  } else if (kind === 'payments') {
+    const rows = data.rows ?? []
+    const named = rows.map((row) => ({ name: row.method_name ? asText(row.method_name) : t('payments.noMethod', 'No method'), received: asNumber(row.received_cents), count: asNumber(row.document_count) }))
+    charts.push({ type: 'donut', title: t('reports.byMethod', 'By method'), money: true, center: formatCents(data.kpis.received_cents ?? 0, currentCurrency), slices: slices(named.map((row) => ({ name: row.name, value: row.received }))) })
+    charts.push({ type: 'rank', title: t('payments.received', 'Received'), money: true, color: brand, items: ranking(named.map((row) => ({ name: row.name, value: row.received }))) })
+    charts.push({ type: 'rank', title: t('reports.documents', 'Documents'), money: false, color: second, items: ranking(named.map((row) => ({ name: row.name, value: row.count }))) })
+  } else if (kind === 'stock') {
+    const rows = data.rows ?? []
+    charts.push({ type: 'donut', title: t('reports.stockBands', 'Stock health'), money: false, center: String(data.kpis.product_count ?? 0), slices: (data.breakdown ?? []).map((row) => ({ name: stockLabel(row.key), value: row.count, color: stockColor(row.key) })).filter((slice) => slice.value > 0) })
+    charts.push({ type: 'rank', title: t('reports.units', 'Units'), money: false, color: brand, items: ranking(rows.map((row) => ({ name: asText(row.article), value: asNumber(row.quantity) }))) })
+  } else if (kind === 'clients') {
+    const rows = data.rows ?? []
+    charts.push({ type: 'rank', title: t('reports.topClients', 'Top clients'), money: true, color: brand, items: ranking(rows.map((row) => ({ name: asText(row.client_name), value: asNumber(row.total_cents) }))) })
+    charts.push({ type: 'donut', title: t('reports.statusMix', 'Status mix'), money: true, center: formatCents(data.kpis.total_cents ?? 0, currentCurrency), slices: [
+      { name: t('reports.paid', 'Paid'), value: data.kpis.paid_cents ?? 0, color: '#059669' },
+      { name: t('payments.outstanding', 'Outstanding'), value: data.kpis.outstanding_cents ?? 0, color: '#d97706' },
+    ].filter((slice) => slice.value > 0) })
+  } else {
+    const rows = data.rows ?? []
+    const named = rows.map((row) => ({ name: row.supplier_name ? asText(row.supplier_name) : t('reports.noSupplier', 'No supplier'), value: asNumber(row.stock_value_cents), products: asNumber(row.product_count) }))
+    charts.push({ type: 'rank', title: t('reports.stockValue', 'Stock value'), money: true, color: brand, items: ranking(named.map((row) => ({ name: row.name, value: row.value }))) })
+    charts.push({ type: 'rank', title: t('reports.productsCount', 'Products'), money: false, color: second, items: ranking(named.map((row) => ({ name: row.name, value: row.products }))) })
+    charts.push({ type: 'donut', title: t('reports.share', 'Share'), money: true, center: formatCents(data.kpis.stock_value_cents ?? 0, currentCurrency), slices: slices(named.map((row) => ({ name: row.name, value: row.value }))) })
+  }
+
+  void others
+  return charts.filter((chart) => chart.type !== 'donut' || chart.slices.length > 0).filter((chart) => chart.type !== 'rank' || chart.items.length > 0)
+}
+
+/** The report as a PDF: headline numbers, the change against the period before, analytical charts and the full table. */
+async function exportPdfPayload(
+  kind: ReportKind,
+  data: ReportPayload,
+  currency: string,
+  companyName: string,
+  period: PaymentPeriod,
+  from: string,
+  to: string,
+): Promise<void> {
+  const cols = columnsFor(kind, currency, data)
+  const rows = tableRows(data)
+
+  const dated = usesPeriod(kind)
+  const current = dated ? periodRange(period, from, to) : null
+  const before = dated ? previousRange(period, from, to) : null
+
+  // The period before, asked from the server like the report itself. If it cannot be had, the PDF is made without it.
+  let previous: ReportPayload | null = null
+  if (before) {
+    try {
+      previous = await getReport(kind, { period: 'custom', from: before.from, to: before.to })
+    } catch {
+      previous = null
+    }
+  }
+
+  const brand = themeColor('--app-primary', '#1e3a8a')
+  const second = themeColor('--app-secondary', '#0369a1')
+  const palette = [brand, second, '#b45309', '#0369a1', '#6d28d9', '#be123c', '#334155', '#047857']
+
+  const metrics = COMPARE[kind] ?? []
+  const comparison: PdfComparison[] =
+    previous && before
+      ? metrics.map((metric) => {
+          const now = data.kpis[metric.key] ?? 0
+          const then = previous.kpis[metric.key] ?? 0
+          const write = (value: number) => (metric.money ? formatCents(value, currency) : String(value))
+          return { label: metric.label(), current: write(now), previous: write(then), change: pctChange(now, then), goodWhen: metric.goodWhen }
+        })
+      : []
+
+  const capped = rows.slice(0, 400)
+  const total = cols.some((col) => col.sum)
+    ? cols.map((col, index) => {
+        if (index === 0) return t('reports.total', 'Total')
+        if (!col.sum) return ''
+        const sum = capped.reduce((acc, row) => acc + (Number(col.excel(row)) || 0), 0)
+        return col.format === 'money' ? formatCents(Math.round(sum * 100), currency) : String(Math.round(sum * 100) / 100)
+      })
+    : undefined
+
+  const spec: ReportPdfSpec = {
+    filename: downloadFileName([companyName, kindLabel(kind), period === 'custom' && dated ? `${from} ${t('reportDownloads.to', 'to')} ${to}` : fileDate()], 'pdf'),
+    title: kindLabel(kind),
+    company: companyName,
+    periodText: periodText(kind, period, from, to),
+    generated: `${t('reports.generated', 'Generated')} ${formatDate(new Date())}`,
+    currency,
+    brand,
+    tiles: kpisFor(kind, data.kpis, currency).map((item) => ({ label: item.label, value: item.value, hint: item.hint })),
+    comparisonTitle: previous && before ? `${t('reports.vsPrevious', 'Compared with the period before')} (${formatDate(before.from)} – ${formatDate(before.to)})` : undefined,
+    comparisonHeaders: { metric: t('reports.metric', 'Metric'), current: t('reports.thisPeriod', 'This period'), previous: t('reports.previousPeriod', 'Previous period'), change: t('reports.change', 'Change') },
+    comparison,
+    chartsTitle: t('reports.analysis', 'Analysis'),
+    charts: pdfCharts(kind, data, previous, { current, previous: before }, palette),
+    table: {
+      title: rows.length > capped.length ? `${t('reports.details', 'Details')} (${capped.length}/${rows.length})` : t('reports.details', 'Details'),
+      columns: cols.map((col) => ({ header: col.header, align: col.align === 'right' ? 'right' : 'left' })),
+      rows: capped.map((row) => cols.map((col) => col.text(row))),
+      total,
+    },
+    footer: `${companyName} · ${kindLabel(kind)}`,
+    pageLabel: (page, count) => t('reports.pageOf', 'Page {page} of {total}', { page, total: count }),
+  }
+
+  await downloadReportPdf(spec)
+}
+
 function Reports() {
   const { session } = useAuth()
   const { push } = useToast()
@@ -594,6 +862,7 @@ function Reports() {
   const [period, setPeriod] = useState<PaymentPeriod>('month')
   const [from, setFrom] = useState(monthStartIso)
   const [to, setTo] = useState(localIso)
+  const [pdfBusy, setPdfBusy] = useState(false)
 
   const dated = usesPeriod(kind)
   const customReady = period !== 'custom' || (from !== '' && to !== '' && from <= to)
@@ -625,6 +894,7 @@ function Reports() {
             {t('reports.subtitle', 'Sales, tax, unpaid invoices, stock and clients for this company.')}
           </p>
         </div>
+        <div className="flex flex-wrap items-center gap-2">
         <button
           type="button"
           disabled={!data || isEmpty(data)}
@@ -639,6 +909,22 @@ function Reports() {
           <FileSpreadsheet className="h-4 w-4 text-brand-600" />
           {t('reports.export', 'Export Excel')}
         </button>
+        <button
+          type="button"
+          disabled={!data || isEmpty(data) || pdfBusy}
+          className={cn(headerButton, 'bg-brand-600 text-brand-on hover:bg-brand-500 disabled:cursor-not-allowed disabled:opacity-50')}
+          onClick={() => {
+            if (!data) return
+            setPdfBusy(true)
+            exportPdfPayload(kind, data, currency, session?.company?.name ?? '', period, from, to)
+              .catch((error) => push({ tone: 'danger', title: getErrorMessage(error) }))
+              .finally(() => setPdfBusy(false))
+          }}
+        >
+          <FileDown className="h-4 w-4" />
+          {pdfBusy ? t('reports.makingPdf', 'Making the PDF…') : t('reports.exportPdf', 'Export PDF')}
+        </button>
+        </div>
       </div>
 
       <div className="rounded-2xl border border-line/80 bg-card shadow-xs">

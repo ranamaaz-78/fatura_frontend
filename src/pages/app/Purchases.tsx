@@ -1,3 +1,9 @@
+/** "2026-10-28" as dd/mm/yyyy, without going through a time zone. */
+function day(value: string): string {
+  const [year, month, date] = value.split('-')
+  return `${date}/${month}/${year}`
+}
+
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Ban, CalendarDays, Download, PackageCheck, Plus, Search, ShoppingBag, Truck, Wallet, X } from 'lucide-react'
 import { useEffect, useState, type ReactNode } from 'react'
@@ -25,12 +31,6 @@ import type { Purchase, PurchaseStatus } from '../../types/purchases'
 import { PurchaseModal } from './PurchaseModal'
 
 const PER_PAGE = 10
-
-/** "2026-10-28" as dd/mm/yyyy, without going through a time zone. */
-function day(value: string): string {
-  const [year, month, date] = value.split('-')
-  return `${date}/${month}/${year}`
-}
 
 function Stat({ label, value, hint, tone, icon }: { label: string; value: ReactNode; hint: string; tone: string; icon: ReactNode }) {
   return (

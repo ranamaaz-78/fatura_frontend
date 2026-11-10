@@ -1,4 +1,5 @@
 import { t } from '../../i18n'
+import { PURCHASES_ENABLED } from '../../lib/features'
 import { DESKTOP_UI } from '../../lib/desktop'
 
 /**
@@ -14,7 +15,7 @@ export type TourStep = {
   body: string
 }
 
-export const TOUR_STEPS: TourStep[] = [
+const ALL_STEPS: TourStep[] = [
   {
     id: 'welcome',
     route: '/app/dashboard',
@@ -114,7 +115,7 @@ export const TOUR_STEPS: TourStep[] = [
     route: '/app/settings?tab=numbering',
     target: 'page',
     title: t('tour.settingsTitle', 'Settings'),
-    body: t('tour.settingsBody', 'The IVA rates, and the numbering of your documents: the letters in front of each number and where each month starts.'),
+    body: t('tour.settingsBody', 'The IVA rates, and how your invoices are numbered: automatic, or your own numbers continuing from the one you type.'),
   },
   {
     id: 'done',
@@ -124,3 +125,6 @@ export const TOUR_STEPS: TourStep[] = [
     body: t('tour.doneBody', 'That is the whole system. Keep practicing as long as you like: everything you add here is cleared tonight. When you are done, press Exit demo to go back to your own account.'),
   },
 ]
+
+/** The stops of the tour: the Purchases one only while that module is switched on. */
+export const TOUR_STEPS: TourStep[] = ALL_STEPS.filter((step) => PURCHASES_ENABLED || step.id !== 'purchases')

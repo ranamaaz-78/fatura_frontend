@@ -5,6 +5,7 @@ import { Button } from '../../components/ui/Button'
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { Input } from '../../components/ui/Input'
+import { Textarea } from '../../components/ui/Textarea'
 import { Modal } from '../../components/ui/Modal'
 import { useToast } from '../../components/ui/Toast'
 import { Toggle } from '../../components/ui/Toggle'
@@ -33,6 +34,7 @@ type Draft = {
   phone: string
   nif: string
   address: string
+  remarks: string
 }
 
 function taxId(customer: { nif: string | null; nie: string | null }): string {
@@ -41,7 +43,7 @@ function taxId(customer: { nif: string | null; nie: string | null }): string {
 
 type StatusFilter = 'all' | 'active' | 'inactive'
 
-const emptyDraft: Draft = { name: '', company_name: '', phone: '', nif: '', address: '' }
+const emptyDraft: Draft = { name: '', company_name: '', phone: '', nif: '', address: '', remarks: '' }
 
 function fromCustomer(customer: Customer): Draft {
   return {
@@ -50,6 +52,7 @@ function fromCustomer(customer: Customer): Draft {
     phone: customer.phone ?? '',
     nif: taxId(customer),
     address: customer.address ?? '',
+    remarks: customer.remarks ?? '',
   }
 }
 
@@ -120,6 +123,7 @@ function Customers() {
         nif: draft.nif.trim() || null,
         nie: null,
         address: draft.address.trim() || null,
+        remarks: draft.remarks.trim() || null,
       }
       return editing ? updateCustomer(editing.id, input) : createCustomer(input)
     },
@@ -301,6 +305,7 @@ function Customers() {
                 <span className="w-36">{t('clients.phone', 'Telephone')}</span>
                 <span className="w-40">{t('clients.taxId', 'N.I.F/N.I.E')}</span>
                 <span className="w-56 pr-4">{t('clients.address', 'Address')}</span>
+                <span className="w-52 pr-4">{t('clients.remarks', 'Remarks')}</span>
                 <span className="w-36">{t('clients.status', 'Status')}</span>
                 <span className="w-20 text-right">{t('products.actions', 'Actions')}</span>
               </div>
@@ -317,6 +322,9 @@ function Customers() {
                   <span className="w-40 truncate text-xs text-slate-600">{taxId(customer) || '—'}</span>
                   <span title={customer.address ?? undefined} className="w-56 truncate pr-4 text-xs text-slate-600">
                     {customer.address || '—'}
+                  </span>
+                  <span title={customer.remarks ?? undefined} className="w-52 truncate pr-4 text-xs text-slate-600">
+                    {customer.remarks || '—'}
                   </span>
                   <span className="w-36">
                     <ActiveSwitch
@@ -344,6 +352,7 @@ function Customers() {
                     {[customer.phone, taxId(customer)].filter(Boolean).join(' · ') || '—'}
                   </p>
                   {customer.address ? <p className="-mt-2 truncate text-[11px] text-slate-500">{customer.address}</p> : null}
+                  {customer.remarks ? <p className="line-clamp-2 text-[11px] text-slate-500 italic">{customer.remarks}</p> : null}
                   <ActiveSwitch
                     customer={customer}
                     disabled={togglingId === customer.id || !can('customers.update')}
@@ -379,6 +388,17 @@ function Customers() {
           <Input compact label={t('clients.phone', 'Telephone')} value={draft.phone} onChange={(event) => setDraft({ ...draft, phone: event.target.value })} />
           <Input compact label={t('clients.taxId', 'N.I.F/N.I.E')} value={draft.nif} onChange={(event) => setDraft({ ...draft, nif: event.target.value.toUpperCase() })} />
           <Input compact label={t('clients.address', 'Address')} maxLength={255} value={draft.address} onChange={(event) => setDraft({ ...draft, address: event.target.value })} />
+          <div className="sm:col-span-2">
+            <Textarea
+              compact
+              rows={3}
+              maxLength={2000}
+              label={t('clients.remarks', 'Remarks')}
+              hint={t('clients.remarksHint', 'A private note about this client. It is never printed on a document.')}
+              value={draft.remarks}
+              onChange={(event) => setDraft({ ...draft, remarks: event.target.value })}
+            />
+          </div>
         </div>
       </Modal>
 
