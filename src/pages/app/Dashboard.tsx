@@ -5,7 +5,7 @@ import {
   CreditCard,
   Percent,
   Plus,
-  Receipt,
+  ReceiptEuro as Receipt,
   TrendingUp,
 } from 'lucide-react'
 import type { ReactNode } from 'react'

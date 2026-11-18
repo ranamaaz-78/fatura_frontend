@@ -189,6 +189,8 @@ export type SessionPayload = {
   locale?: 'en' | 'es'
   /** Every "area.action" this person may use. The owner has them all. */
   permissions?: string[]
+  /** After how many minutes without activity the server signs this person out. */
+  idle_minutes?: number
   /** Whether the practice account is open (the super admin can close it). */
   demo_enabled?: boolean
   company: Company | null

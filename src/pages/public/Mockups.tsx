@@ -7,7 +7,7 @@ import {
   Lock,
   Package,
   Plus,
-  Receipt,
+  ReceiptEuro as Receipt,
   Users,
 } from 'lucide-react'
 import markImage from '../../assets/brand/mark.png'

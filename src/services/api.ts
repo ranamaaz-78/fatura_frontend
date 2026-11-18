@@ -49,7 +49,12 @@ api.interceptors.response.use(
       const status = error.response?.status
       const code = (error.response?.data as { code?: string } | undefined)?.code
 
-      if (status === 401) handlers.onUnauthenticated?.()
+      if (status === 401 && code === 'SESSION_IDLE') {
+        // The server signed this person out after 30 minutes without activity: back to the sign-in with the reason.
+        handlers.onBlocked?.((error.response?.data as { message?: string } | undefined)?.message ?? '')
+      } else if (status === 401) {
+        handlers.onUnauthenticated?.()
+      }
       if (status === 402 && code === 'SUBSCRIPTION_EXPIRED') handlers.onSubscriptionExpired?.()
       // A failed sign-in has its own message on the form; this is for someone already inside.
       const signingIn = String(error.config?.url ?? '').includes('/auth/login')

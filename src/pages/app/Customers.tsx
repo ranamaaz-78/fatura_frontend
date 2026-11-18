@@ -7,6 +7,8 @@ import { EmptyState } from '../../components/ui/EmptyState'
 import { Input } from '../../components/ui/Input'
 import { Textarea } from '../../components/ui/Textarea'
 import { Modal } from '../../components/ui/Modal'
+import { Pagination } from '../../components/ui/Pagination'
+import { usePageSize } from '../../components/ui/PageSizeSelect'
 import { useToast } from '../../components/ui/Toast'
 import { Toggle } from '../../components/ui/Toggle'
 import { Tooltip } from '../../components/ui/Tooltip'
@@ -32,6 +34,7 @@ type Draft = {
   name: string
   company_name: string
   phone: string
+  email: string
   nif: string
   address: string
   remarks: string
@@ -43,13 +46,14 @@ function taxId(customer: { nif: string | null; nie: string | null }): string {
 
 type StatusFilter = 'all' | 'active' | 'inactive'
 
-const emptyDraft: Draft = { name: '', company_name: '', phone: '', nif: '', address: '', remarks: '' }
+const emptyDraft: Draft = { name: '', company_name: '', phone: '', email: '', nif: '', address: '', remarks: '' }
 
 function fromCustomer(customer: Customer): Draft {
   return {
     name: customer.name,
     company_name: customer.company_name ?? '',
     phone: customer.phone ?? '',
+    email: customer.email ?? '',
     nif: taxId(customer),
     address: customer.address ?? '',
     remarks: customer.remarks ?? '',
@@ -97,6 +101,19 @@ function Customers() {
     return true
   })
 
+  // Ten, fifty, a hundred or all of them at a time (the list itself is loaded whole).
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = usePageSize('clients')
+  const pageCount = pageSize === 'all' ? 1 : Math.max(1, Math.ceil(rows.length / pageSize))
+  const currentPage = Math.min(page, pageCount)
+  const visible = pageSize === 'all' ? rows : rows.slice((currentPage - 1) * pageSize, currentPage * pageSize)
+  const firstShown = rows.length === 0 ? 0 : (pageSize === 'all' ? 0 : (currentPage - 1) * pageSize) + 1
+  const lastShown = firstShown + visible.length - 1
+
+  useEffect(() => {
+    setPage(1)
+  }, [debounced, status])
+
   async function refresh() {
     await queryClient.cancelQueries({ queryKey: ['app', 'customers'] })
     await queryClient.invalidateQueries({ queryKey: ['app', 'customers'] })
@@ -120,6 +137,7 @@ function Customers() {
         name: draft.name.trim(),
         company_name: draft.company_name.trim() || null,
         phone: draft.phone.trim() || null,
+        email: draft.email.trim() || null,
         nif: draft.nif.trim() || null,
         nie: null,
         address: draft.address.trim() || null,
@@ -303,13 +321,14 @@ function Customers() {
               <div className="flex items-center bg-slate-50 px-4 py-2.5 text-[11px] font-semibold tracking-[0.08em] text-slate-500 uppercase">
                 <span className="min-w-0 flex-1">{t('clients.name', 'Name')}</span>
                 <span className="w-36">{t('clients.phone', 'Telephone')}</span>
+                <span className="w-48 pr-3">{t('clients.email', 'Email')}</span>
                 <span className="w-40">{t('clients.taxId', 'N.I.F/N.I.E')}</span>
                 <span className="w-56 pr-4">{t('clients.address', 'Address')}</span>
                 <span className="w-52 pr-4">{t('clients.remarks', 'Remarks')}</span>
                 <span className="w-36">{t('clients.status', 'Status')}</span>
                 <span className="w-20 text-right">{t('products.actions', 'Actions')}</span>
               </div>
-              {rows.map((customer) => (
+              {visible.map((customer) => (
                 <div
                   key={customer.id}
                   className={cn(
@@ -319,6 +338,7 @@ function Customers() {
                 >
                   <Identity customer={customer} />
                   <span className="w-36 truncate text-xs text-slate-600">{customer.phone ?? '—'}</span>
+                  <span title={customer.email ?? undefined} className="w-48 truncate pr-3 text-xs text-slate-600">{customer.email || '—'}</span>
                   <span className="w-40 truncate text-xs text-slate-600">{taxId(customer) || '—'}</span>
                   <span title={customer.address ?? undefined} className="w-56 truncate pr-4 text-xs text-slate-600">
                     {customer.address || '—'}
@@ -340,7 +360,7 @@ function Customers() {
               ))}
             </div>
             <div className="divide-y divide-slate-100 md:hidden">
-              {rows.map((customer) => (
+              {visible.map((customer) => (
                 <div key={customer.id} className={cn('flex flex-col gap-3 p-4', !customer.is_active && 'bg-slate-50/80')}>
                   <div className="flex items-start gap-3">
                     <Identity customer={customer} />
@@ -349,7 +369,7 @@ function Customers() {
                     </div>
                   </div>
                   <p className="truncate text-[11px] text-slate-500">
-                    {[customer.phone, taxId(customer)].filter(Boolean).join(' · ') || '—'}
+                    {[customer.phone, customer.email, taxId(customer)].filter(Boolean).join(' · ') || '—'}
                   </p>
                   {customer.address ? <p className="-mt-2 truncate text-[11px] text-slate-500">{customer.address}</p> : null}
                   {customer.remarks ? <p className="line-clamp-2 text-[11px] text-slate-500 italic">{customer.remarks}</p> : null}
@@ -361,6 +381,17 @@ function Customers() {
                 </div>
               ))}
             </div>
+            <Pagination
+              page={currentPage}
+              pageCount={pageCount}
+              onPageChange={setPage}
+              summary={`${t('common.showing', 'Showing')} ${firstShown}-${lastShown} ${t('common.of', 'of')} ${rows.length} ${t('clients.countLabel', 'clients')}`}
+              pageSize={pageSize}
+              onPageSizeChange={(size) => {
+                setPageSize(size)
+                setPage(1)
+              }}
+            />
           </>
         )}
       </div>
@@ -386,6 +417,7 @@ function Customers() {
           <Input compact label={t('clients.name', 'Name')} required value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} />
           <Input compact label={t('clients.company', 'Company')} value={draft.company_name} onChange={(event) => setDraft({ ...draft, company_name: event.target.value })} />
           <Input compact label={t('clients.phone', 'Telephone')} value={draft.phone} onChange={(event) => setDraft({ ...draft, phone: event.target.value })} />
+          <Input compact type="email" maxLength={190} label={t('clients.email', 'Email')} value={draft.email} onChange={(event) => setDraft({ ...draft, email: event.target.value })} />
           <Input compact label={t('clients.taxId', 'N.I.F/N.I.E')} value={draft.nif} onChange={(event) => setDraft({ ...draft, nif: event.target.value.toUpperCase() })} />
           <Input compact label={t('clients.address', 'Address')} maxLength={255} value={draft.address} onChange={(event) => setDraft({ ...draft, address: event.target.value })} />
           <div className="sm:col-span-2">

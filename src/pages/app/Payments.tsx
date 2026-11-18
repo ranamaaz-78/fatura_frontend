@@ -1,5 +1,6 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { Banknote, CreditCard, Eye, FileClock, Search, Users } from 'lucide-react'
+import { PageSizeSelect, perPageOf, usePageSize, type PageSize } from '../../components/ui/PageSizeSelect'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../auth/AuthProvider'
@@ -18,7 +19,6 @@ import type { PaymentEntry, PaymentPeriod, PaymentStatusBadge, SaleType } from '
 import { rulesFor, typeLabel } from './documentTypes'
 import { PaymentMethodManagerModal } from './PaymentMethodManagerModal'
 
-const PER_PAGE = 15
 
 const headerButton =
   'inline-flex h-[38px] items-center gap-2 rounded-xl px-3.5 text-xs font-semibold transition-colors cursor-pointer'
@@ -98,6 +98,11 @@ function Payments() {
   const { session } = useAuth()
   const currency = session?.company?.currency ?? 'EUR'
   const [search, setSearch] = useState('')
+  const [pageSize, setPageSize] = usePageSize('payments', 10)
+  function changePageSize(size: PageSize) {
+    setPageSize(size)
+    setPage(1)
+  }
   const [debounced, setDebounced] = useState('')
   const [period, setPeriod] = useState<PaymentPeriod>('all')
   const [from, setFrom] = useState(monthStartIso)
@@ -123,11 +128,11 @@ function Payments() {
   const customReady = period !== 'custom' || (from !== '' && to !== '' && from <= to)
 
   const query = useQuery({
-    queryKey: ['app', 'payments', { page, search: debounced, period, from, to, status, methodId }],
+    queryKey: ['app', 'payments', { page, pageSize, search: debounced, period, from, to, status, methodId }],
     queryFn: () =>
       listPayments({
         page,
-        per_page: PER_PAGE,
+        per_page: perPageOf(pageSize),
         search: debounced || undefined,
         period: customReady ? period : 'all',
         from: period === 'custom' && customReady ? from : undefined,
@@ -409,7 +414,7 @@ function Payments() {
               ))}
             </div>
 
-            {meta && meta.last_page > 1 ? (
+            {meta && meta.total > 0 ? (
               <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 text-xs text-slate-500">
                 <span>
                   {t('common.showing', 'Showing')}{' '}
@@ -419,7 +424,8 @@ function Payments() {
                   {t('common.of', 'of')} <span className="text-slate-900">{meta.total}</span>{' '}
                   {t('payments.recorded', 'payments')}
                 </span>
-                <span className="flex items-center gap-1.5">
+                <PageSizeSelect value={pageSize} onChange={changePageSize} />
+                <span className={cn('flex items-center gap-1.5', meta.last_page <= 1 && 'hidden')}>
                   <button
                     type="button"
                     disabled={meta.current_page <= 1}

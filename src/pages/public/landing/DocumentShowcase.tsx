@@ -1,4 +1,4 @@
-import { Check, FileCheck2, FileText, Printer, Receipt, Truck, type LucideIcon } from 'lucide-react'
+import { Check, FileCheck2, FileText, Printer, ReceiptEuro as Receipt, Truck, type LucideIcon } from 'lucide-react'
 import { useLayoutEffect, useRef, useState } from 'react'
 import { t } from '../../../i18n'
 import { cn } from '../../../lib/cn'

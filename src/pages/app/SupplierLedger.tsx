@@ -1,6 +1,7 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Ban, BookOpen, CalendarDays, FileDown, FileSpreadsheet, HandCoins, ListChecks, Plus, Search, Trash2, Truck, Wallet, X } from 'lucide-react'
+import { Ban, BookOpen, CalendarDays, Eye, FileDown, Receipt, FileSpreadsheet, HandCoins, ListChecks, Plus, Search, Trash2, Truck, Wallet, X } from 'lucide-react'
 import { useEffect, useState, type ReactNode } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../auth/AuthProvider'
 import { usePermissions } from '../../auth/permissions'
 import { Button } from '../../components/ui/Button'
@@ -10,6 +11,7 @@ import { EmptyState } from '../../components/ui/EmptyState'
 import { Input } from '../../components/ui/Input'
 import { Modal } from '../../components/ui/Modal'
 import { Pagination } from '../../components/ui/Pagination'
+import { perPageOf, usePageSize } from '../../components/ui/PageSizeSelect'
 import { Select } from '../../components/ui/Select'
 import { Skeleton } from '../../components/ui/Skeleton'
 import { Textarea } from '../../components/ui/Textarea'
@@ -25,9 +27,10 @@ import { listSuppliers } from '../../services/suppliers'
 import type { LedgerEntry, LedgerStatus, PaymentStatus } from '../../types/ledger'
 import { LedgerEntryModal } from './LedgerEntryModal'
 import { LedgerPaymentModal } from './LedgerPaymentModal'
+import { useLedgerReceipts } from './ledgerReceipts'
+import { SlipPreview } from './SlipPreview'
 import { day, PaymentBadge } from './ledgerBits'
 
-const PER_PAGE = 10
 const EXCEL = 'Excel'
 
 function Stat({ label, value, hint, tone, icon }: { label: string; value: ReactNode; hint: string; tone: string; icon: ReactNode }) {
@@ -85,13 +88,17 @@ function SupplierLedger() {
   const [status, setStatus] = useState<LedgerStatus>('active')
   const [payment, setPayment] = useState<'all' | PaymentStatus>('all')
   const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = usePageSize('ledger')
   const [creating, setCreating] = useState(false)
-  const [openId, setOpenId] = useState<number | null>(null)
+  const [params, setParams] = useSearchParams()
+  // "…/app/ledger?open=12" (the link from a purchase) opens that entry straight away.
+  const [openId, setOpenId] = useState<number | null>(() => Number(params.get('open')) || null)
   const [statementOf, setStatementOf] = useState<number | null>(null)
   const [stFrom, setStFrom] = useState('')
   const [stTo, setStTo] = useState('')
   const [exporting, setExporting] = useState<string | null>(null)
   const [paying, setPaying] = useState(false)
+  const receipts = useLedgerReceipts()
   const [removing, setRemoving] = useState<number | null>(null)
   const [cancelling, setCancelling] = useState(false)
   const [reason, setReason] = useState('')
@@ -105,13 +112,18 @@ function SupplierLedger() {
     setPage(1)
   }, [debounced, supplierId, from, to, status, payment])
 
+  // The link has done its job once the entry is open: the address goes back to the plain page.
+  useEffect(() => {
+    if (params.get('open')) setParams({}, { replace: true })
+  }, [params, setParams])
+
   const suppliers = useQuery({ queryKey: ['app', 'suppliers', 'all', ''], queryFn: () => listSuppliers() })
   const query = useQuery({
-    queryKey: ['app', 'ledger', 'list', { search: debounced, supplierId, from, to, status, payment, page }],
+    queryKey: ['app', 'ledger', 'list', { search: debounced, supplierId, from, to, status, payment, page, pageSize }],
     queryFn: () =>
       listLedger({
         page,
-        per_page: PER_PAGE,
+        per_page: perPageOf(pageSize),
         search: debounced || undefined,
         supplier_id: supplierId ? Number(supplierId) : undefined,
         from: from || undefined,
@@ -410,9 +422,17 @@ function SupplierLedger() {
                         <td className="max-w-[320px] px-4 py-3">
                           <span className="block font-semibold text-ink">{row.supplier_name}</span>
                           <span className="block truncate text-[11px] text-ink-muted">{row.description}</span>
+                          {row.purchase_number ? <span className="mt-0.5 inline-block rounded-full bg-brand-50 px-2 py-0.5 text-[10px] font-semibold text-brand-600">{t('ledger.fromPurchase', 'From purchase {number}', { number: row.purchase_number })}</span> : null}
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap text-ink-muted">{row.reference ?? '—'}</td>
-                        <td className={cn('px-4 py-3 text-right font-bold text-ink', row.is_voided && 'line-through opacity-60')}>{formatCents(row.amount_cents, currency)}</td>
+                        <td className={cn('px-4 py-3 text-right font-bold text-ink', row.is_voided && 'line-through opacity-60')}>
+                          {formatCents(row.amount_cents, currency)}
+                          {row.iva ? (
+                            <span className="block text-[10px] font-medium whitespace-nowrap text-ink-muted">
+                              {t('ledger.ivaInside', 'incl. IVA {percent}%: {amount}', { percent: row.iva.percent, amount: formatCents(row.iva.iva_cents, currency) })}
+                            </span>
+                          ) : null}
+                        </td>
                         <td className="px-4 py-3 text-right text-emerald-700">{row.is_voided ? '—' : formatCents(row.paid_cents, currency)}</td>
                         <td className={cn('px-4 py-3 text-right font-semibold', row.owed_cents > 0 && !row.is_voided ? 'text-rose-700' : 'text-ink-muted')}>{row.is_voided ? '—' : formatCents(row.owed_cents, currency)}</td>
                         <td className="px-4 py-3 whitespace-nowrap text-ink-muted">{row.last_paid_on ? day(row.last_paid_on) : '—'}</td>
@@ -427,11 +447,16 @@ function SupplierLedger() {
                   </tbody>
                 </table>
               </div>
-              {meta && meta.last_page > 1 ? (
+              {meta && meta.total > 0 ? (
                 <Pagination
                   page={meta.current_page}
                   pageCount={meta.last_page}
                   onPageChange={setPage}
+                  pageSize={pageSize}
+                  onPageSizeChange={(size) => {
+                    setPageSize(size)
+                    setPage(1)
+                  }}
                   summary={`${t('common.showing', 'Showing')} ${(meta.current_page - 1) * meta.per_page + 1}-${(meta.current_page - 1) * meta.per_page + rows.length} ${t('common.of', 'of')} ${meta.total}`}
                 />
               ) : null}
@@ -442,6 +467,7 @@ function SupplierLedger() {
 
       <LedgerEntryModal open={creating} onClose={() => setCreating(false)} currency={currency} />
       <LedgerPaymentModal entry={paying && entry ? entry : null} currency={currency} onClose={() => setPaying(false)} />
+      <SlipPreview preview={receipts.preview} onClose={receipts.closePreview} />
 
       {/* One entry: what it was, the payments against it, and the buttons to pay or cancel. */}
       <Drawer open={openId !== null} onClose={() => setOpenId(null)} side="right" width="w-full max-w-[520px]">
@@ -476,8 +502,28 @@ function SupplierLedger() {
                 <div className="rounded-2xl border border-line p-4">
                   <p className="text-[11px] font-semibold tracking-[0.06em] text-ink-muted uppercase">{t('ledger.what', 'What came from the supplier')}</p>
                   <p className="mt-1 text-sm whitespace-pre-wrap text-ink">{entry.description}</p>
-                  <p className="mt-3 text-xs text-ink-muted">{t('ledger.amount', 'Amount')}</p>
+                  {entry.purchase_number ? <p className="mt-2 inline-block rounded-full bg-brand-50 px-2.5 py-0.5 text-[11px] font-semibold text-brand-600">{t('ledger.fromPurchase', 'From purchase {number}', { number: entry.purchase_number })}</p> : null}
+                  <p className="mt-3 text-xs text-ink-muted">{entry.iva ? t('ledger.amountWithIva', 'Amount (IVA included)') : t('ledger.amount', 'Amount')}</p>
                   <p className="text-2xl font-extrabold text-ink">{formatCents(entry.amount_cents, currency)}</p>
+                  {entry.iva ? (
+                    <dl className="mt-3 overflow-hidden rounded-xl border border-line text-xs">
+                      <div className="flex justify-between px-3 py-2">
+                        <dt className="text-ink-muted">{t('purchases.baseAmount', 'Base (before IVA)')}</dt>
+                        <dd className="font-semibold text-ink">{formatCents(entry.iva.base_cents, currency)}</dd>
+                      </div>
+                      <div className="flex justify-between border-t border-line px-3 py-2">
+                        <dt className="text-ink-muted">
+                          {t('purchases.ivaAmount', 'IVA')} {entry.iva.percent}%
+                          <span className="ml-1 text-[10px]">· {entry.iva.mode === 'included' ? t('ledger.ivaWasIncluded', 'was in the prices') : t('ledger.ivaWasAdded', 'added on top')}</span>
+                        </dt>
+                        <dd className="font-semibold text-ink">{formatCents(entry.iva.iva_cents, currency)}</dd>
+                      </div>
+                      <div className="flex justify-between border-t border-line bg-page px-3 py-2">
+                        <dt className="font-semibold text-ink">{t('purchases.totalWithIva', 'Total to pay')}</dt>
+                        <dd className="font-bold text-ink">{formatCents(entry.amount_cents, currency)}</dd>
+                      </div>
+                    </dl>
+                  ) : null}
                 </div>
 
                 <dl className="grid grid-cols-2 gap-3 text-xs">
@@ -514,6 +560,24 @@ function SupplierLedger() {
                             {row.note ? <span className="block truncate text-[11px] text-ink-muted">{row.note}</span> : null}
                           </span>
                           <span className="font-bold text-emerald-700">{formatCents(row.amount_cents, currency)}</span>
+                          <button
+                            type="button"
+                            title={t('ledger.viewReceipt', 'View receipt')}
+                            aria-label={t('ledger.viewReceipt', 'View receipt')}
+                            onClick={() => void receipts.viewReceipt(entry.id, row.id)}
+                            className="cursor-pointer rounded-lg p-1.5 text-ink-muted hover:bg-page hover:text-brand-600"
+                          >
+                            <Eye className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            title={t('ledger.downloadReceipt', 'Download receipt')}
+                            aria-label={t('ledger.downloadReceipt', 'Download receipt')}
+                            onClick={() => void receipts.receipt(entry.id, row.id)}
+                            className="cursor-pointer rounded-lg p-1.5 text-ink-muted hover:bg-page hover:text-brand-600"
+                          >
+                            <Receipt className="h-3.5 w-3.5" />
+                          </button>
                           {can('ledger.pay') ? (
                             <button
                               type="button"
@@ -536,6 +600,16 @@ function SupplierLedger() {
                         {t('ledger.owed', 'Still owed')}: <span className={cn('font-bold', entry.owed_cents > 0 ? 'text-rose-700' : 'text-ink')}>{formatCents(entry.owed_cents, currency)}</span>
                       </span>
                     </div>
+                    {(entry.payments ?? []).length > 0 ? (
+                      <div className="grid grid-cols-2 gap-2 border-t border-line px-3 py-3">
+                        <Button fullWidth variant="secondary" icon={<Eye className="h-4 w-4" />} onClick={() => void receipts.viewStatement(entry.id)}>
+                          {t('ledger.viewStatement', 'View statement')}
+                        </Button>
+                        <Button fullWidth variant="secondary" icon={<FileDown className="h-4 w-4" />} onClick={() => void receipts.statement(entry.id)}>
+                          {t('ledger.downloadStatementShort', 'Download PDF')}
+                        </Button>
+                      </div>
+                    ) : null}
                     {entry.owed_cents > 0 && can('ledger.pay') ? (
                       <div className="border-t border-line px-3 py-3">
                         <Button fullWidth icon={<HandCoins className="h-4 w-4" />} onClick={() => setPaying(true)}>
@@ -626,7 +700,7 @@ function SupplierLedger() {
               <Skeleton className="h-48 w-full" />
             ) : (
               <div className="flex flex-col gap-4">
-                <div className="grid grid-cols-2 gap-2 rounded-xl bg-page p-3 text-center sm:grid-cols-4">
+                <div className={cn('grid grid-cols-2 gap-2 rounded-xl bg-page p-3 text-center', (statement.data.iva_cents ?? 0) > 0 ? 'sm:grid-cols-5' : 'sm:grid-cols-4')}>
                   <div>
                     <p className="text-[11px] text-ink-muted">{t('ledger.opening', 'Opening balance')}</p>
                     <p className="text-sm font-bold text-ink">{formatCents(statement.data.opening_cents, currency)}</p>
@@ -635,6 +709,12 @@ function SupplierLedger() {
                     <p className="text-[11px] text-ink-muted">{t('ledger.bought', 'Bought')}</p>
                     <p className="text-sm font-bold text-ink">{formatCents(statement.data.bought_cents, currency)}</p>
                   </div>
+                  {(statement.data.iva_cents ?? 0) > 0 ? (
+                    <div>
+                      <p className="text-[11px] text-ink-muted">{t('ledger.ivaInBought', 'IVA in it')}</p>
+                      <p className="text-sm font-bold text-ink">{formatCents(statement.data.iva_cents ?? 0, currency)}</p>
+                    </div>
+                  ) : null}
                   <div>
                     <p className="text-[11px] text-ink-muted">{t('ledger.paid', 'Paid')}</p>
                     <p className="text-sm font-bold text-emerald-700">{formatCents(statement.data.paid_cents, currency)}</p>
@@ -681,6 +761,11 @@ function SupplierLedger() {
                             <td className="max-w-[240px] truncate px-3 py-2 text-ink-muted" title={move.details}>
                               {move.details}
                               {move.reference ? ` (${move.reference})` : ''}
+                              {(move.iva_cents ?? 0) > 0 ? (
+                                <span className="block text-[10px] text-ink-muted">
+                                  {t('ledger.ivaInside', 'incl. IVA {percent}%: {amount}', { percent: move.iva_percent ?? 0, amount: formatCents(move.iva_cents ?? 0, currency) })}
+                                </span>
+                              ) : null}
                             </td>
                             <td className="px-3 py-2 text-right text-ink">{move.bought_cents > 0 ? formatCents(move.bought_cents, currency) : ''}</td>
                             <td className="px-3 py-2 text-right text-emerald-700">{move.paid_cents > 0 ? formatCents(move.paid_cents, currency) : ''}</td>

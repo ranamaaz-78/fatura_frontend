@@ -66,7 +66,7 @@ export default function DeskDocumentDetail() {
   }
 
   const flags = documentFlags(document, can)
-  const { rules, display, voided, canVoid, canUpdate, canPay, quoteExpired, openQuote, quoteDays, canSettle, settlements, returns } = flags
+  const { rules, display, voided, deleted, canDelete, deleteBlocked, mayDelete, canRestore, canVoid, canUpdate, canPay, quoteExpired, openQuote, quoteDays, canSettle, settlements, returns } = flags
   const identity = identityFor(document.type)
   const Icon = identity.icon
   const credit = document.type === 'abono'
@@ -130,7 +130,7 @@ export default function DeskDocumentDetail() {
       )
     }
   }
-  if (document.can_invoice && can('invoices.create')) {
+  if (document.can_invoice && !deleted && can('invoices.create')) {
     primary.push(
       <ActionButton key="albaran-invoice" tone="primary" icon={FileOutput} busy={detail.invoiceFromAlbaran.isPending} onClick={() => detail.setAlbaranInvoiceOpen(true)}>
         {t('sales.convertInvoice', 'Convert to invoice')}
@@ -358,6 +358,38 @@ export default function DeskDocumentDetail() {
             </ol>
           </section>
 
+          {deleted ? (
+            <div className="rounded-xl border border-rose-500/30 bg-rose-500/8 px-4 py-3 text-[12px] text-rose-700 app-dark:text-rose-200">
+              <p className="font-semibold">{t('sales.deletedBanner', 'This document is deleted. It is not counted anywhere until you restore it.')}</p>
+              {document.deleted_at ? (
+                <p className="mt-1">
+                  {document.deleted_by_name ? `${document.deleted_by_name} · ` : ''}
+                  {new Date(document.deleted_at).toLocaleString(intlLocale())}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+          {canRestore ? (
+            <button
+              type="button"
+              disabled={detail.restoring.isPending}
+              onClick={() => detail.restoring.mutate()}
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-[13px] font-semibold text-brand-on transition hover:opacity-90 disabled:opacity-50"
+            >
+              {t('sales.restore', 'Restore')}
+            </button>
+          ) : null}
+          {mayDelete ? (
+            <button
+              type="button"
+              disabled={!canDelete || detail.deleting.isPending}
+              title={deleteBlocked ?? undefined}
+              onClick={() => detail.setDeleteOpen(true)}
+              className="flex w-full items-center justify-center gap-2 rounded-xl border border-rose-500/30 px-4 py-2.5 text-[13px] font-semibold text-rose-600 transition hover:bg-rose-500/10 disabled:cursor-not-allowed disabled:opacity-50 app-dark:text-rose-300"
+            >
+              {t('sales.delete', 'Delete')}
+            </button>
+          ) : null}
           {canVoid ? (
             <button
               type="button"

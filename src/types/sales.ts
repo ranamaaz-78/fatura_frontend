@@ -61,6 +61,7 @@ export type Customer = {
   name: string
   company_name: string | null
   phone: string | null
+  email?: string | null
   nif: string | null
   nie: string | null
   address: string | null
@@ -74,6 +75,7 @@ export type CustomerInput = {
   name: string
   company_name: string | null
   phone: string | null
+  email?: string | null
   nif: string | null
   nie: string | null
   address?: string | null
@@ -87,6 +89,10 @@ export type SaleLine = {
   position: number
   product_id: number | null
   article: string
+  /** The product's barcode: the SKU column of a printed document. */
+  barcode?: string | null
+  /** The product's brand: written with the description on a printed document. */
+  brand?: string | null
   description: string | null
   quantity: number
   unit_price: number
@@ -159,6 +165,14 @@ export type SaleDocument = {
   voided_at: string | null
   void_reason: string | null
   is_voided: boolean
+  /** Deleted documents live in the Deleted list until restored. */
+  is_deleted?: boolean
+  deleted_at?: string | null
+  deleted_by_name?: string | null
+  can_restore?: boolean
+  can_delete?: boolean
+  /** Why this document cannot be deleted (when it cannot). */
+  delete_blocked?: string | null
   converted_to_id: number | null
   converted_at: string | null
   is_converted: boolean
@@ -171,6 +185,7 @@ export type SaleDocument = {
   client_nif: string | null
   client_nie: string | null
   client_address: string | null
+  client_email?: string | null
   notes: string | null
   base_cents: number
   tax_cents: number
@@ -231,6 +246,7 @@ export type SaleInput = {
   client_nif: string | null
   client_nie: string | null
   client_address: string | null
+  client_email?: string | null
   lines: SaleLineInput[]
 }
 
@@ -239,6 +255,8 @@ export type SaleListParams = {
   type?: SaleType
   payment_status?: PaymentStatus
   display_status?: SaleDisplayStatus
+  /** Only the deleted documents (the Deleted list). */
+  trashed?: boolean
   page?: number
   per_page?: number
 }
@@ -246,7 +264,7 @@ export type SaleListParams = {
 export type SaleList = {
   items: SaleDocument[]
   meta: { current_page: number; last_page: number; per_page: number; total: number }
-  counts: { all: number; pending: number; paid: number; partial: number; voided: number }
+  counts: { all: number; pending: number; paid: number; partial: number; voided: number; trashed?: number }
   stats: {
     total_cents: number
     paid_count: number

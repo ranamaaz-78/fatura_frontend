@@ -6,7 +6,7 @@ import { ConfirmDialog } from '../../components/ui/ConfirmDialog'
 import { useToast } from '../../components/ui/Toast'
 import { t } from '../../i18n'
 import { getErrorMessage } from '../../services/api'
-import { cancelSaleReturn, convertSale, getSale, invoiceAlbaran, invoiceSettlement, returnSalePieces, settleSale, updateSalePayment, updateSaleSettlement, voidSale } from '../../services/sales'
+import { cancelSaleReturn, convertSale, deleteSale, getSale, invoiceAlbaran, invoiceSettlement, restoreSale, returnSalePieces, settleSale, updateSalePayment, updateSaleSettlement, voidSale } from '../../services/sales'
 import {
   isSaleConverted,
   isSaleExpired,
@@ -65,6 +65,7 @@ export function useDocumentDetail() {
   const [cancelling, setCancelling] = useState<SaleReturn | null>(null)
   const [editingSettlement, setEditingSettlement] = useState<SaleSettlement | null>(null)
   const [voidOpen, setVoidOpen] = useState(false)
+  const [deleteOpen, setDeleteOpen] = useState(false)
   const [whatsAppOpen, setWhatsAppOpen] = useState(false)
   const [convertTarget, setConvertTarget] = useState<SaleType | null>(null)
   const [celebrate, setCelebrate] = useState(false)
@@ -214,6 +215,38 @@ export function useDocumentDetail() {
     onError: (error) => push({ tone: 'danger', title: getErrorMessage(error) }),
   })
 
+  const refreshAfterDelete = () => {
+    void queryClient.invalidateQueries({ queryKey: ['app', 'sales'] })
+    void queryClient.invalidateQueries({ queryKey: ['app', 'sale'] })
+    void queryClient.invalidateQueries({ queryKey: ['app', 'products'] })
+    void queryClient.invalidateQueries({ queryKey: ['app', 'dashboard'] })
+    void queryClient.invalidateQueries({ queryKey: ['app', 'payments'] })
+  }
+
+  const deleting = useMutation({
+    mutationFn: () => deleteSale(documentId),
+    onSuccess: (document) => {
+      setDeleteOpen(false)
+      queryClient.setQueryData(['app', 'sale', documentId], document)
+      refreshAfterDelete()
+      push({ tone: 'success', title: t('sales.deleted', '{number} deleted. You can restore it from the Restore page.', { number: document.number }) })
+    },
+    onError: (error) => {
+      setDeleteOpen(false)
+      push({ tone: 'danger', title: getErrorMessage(error) })
+    },
+  })
+
+  const restoring = useMutation({
+    mutationFn: () => restoreSale(documentId),
+    onSuccess: (document) => {
+      queryClient.setQueryData(['app', 'sale', documentId], document)
+      refreshAfterDelete()
+      push({ tone: 'success', title: t('sales.restored', '{number} restored.', { number: document.number }) })
+    },
+    onError: (error) => push({ tone: 'danger', title: getErrorMessage(error) }),
+  })
+
   const converting = useMutation({
     mutationFn: ({
       target,
@@ -261,6 +294,8 @@ export function useDocumentDetail() {
     setEditingSettlement,
     voidOpen,
     setVoidOpen,
+    deleteOpen,
+    setDeleteOpen,
     whatsAppOpen,
     setWhatsAppOpen,
     convertTarget,
@@ -276,6 +311,8 @@ export function useDocumentDetail() {
     cancelReturn,
     editingQty,
     voiding,
+    deleting,
+    restoring,
     converting,
   }
 }
@@ -288,18 +325,24 @@ export function documentFlags(document: SaleDocument, can: (needed: string) => b
   const rules = rulesFor(document.type)
   const display = saleDisplayStatus(document)
   const voided = isSaleVoided(document)
-  const canVoid = canVoidType(document.type) && document.payment_status === 'paid' && !voided && can(docPermission(document.type, 'void'))
+  // Delete is allowed by the tick; the server says whether this document may be deleted right now (and why not).
+  const deleted = Boolean(document.is_deleted)
+  const mayDelete = can(docPermission(document.type, 'delete')) && !deleted && document.type !== 'abono'
+  const canDelete = mayDelete && document.can_delete !== false
+  const deleteBlocked = mayDelete && document.can_delete === false ? (document.delete_blocked ?? null) : null
+  const canRestore = deleted && can(docPermission(document.type, 'delete'))
+  const canVoid = !deleted && canVoidType(document.type) && document.payment_status === 'paid' && !voided && can(docPermission(document.type, 'void'))
   // A quotation can be edited while it is open, and a delivery note while it is unpaid; the rest are paid, returned or voided, not changed.
-  const canUpdate = can(docPermission(document.type, 'update'))
-  const canPay = can(docPermission(document.type, 'pay'))
+  const canUpdate = !deleted && can(docPermission(document.type, 'update'))
+  const canPay = !deleted && can(docPermission(document.type, 'pay'))
   const quoteExpired = document.type === 'quotation' && !isSaleConverted(document) && isSaleExpired(document)
-  const openQuote = document.type === 'quotation' && !isSaleConverted(document) && !quoteExpired
+  const openQuote = !deleted && document.type === 'quotation' && !isSaleConverted(document) && !quoteExpired
   const quoteDays = openQuote && document.expires_at ? quoteDaysLeft(document.expires_at) : null
   const canSettle = rules.settlesLines && document.payment_status !== 'paid' && canPay
   const settlements = document.settlements ?? []
   const returns = document.returns ?? []
 
-  return { issued, rules, display, voided, canVoid, canUpdate, canPay, quoteExpired, openQuote, quoteDays, canSettle, settlements, returns }
+  return { issued, rules, display, voided, deleted, canDelete, deleteBlocked, mayDelete, canRestore, canVoid, canUpdate, canPay, quoteExpired, openQuote, quoteDays, canSettle, settlements, returns }
 }
 
 /** Every dialog the document screen opens. Both the website and the Windows app show these same ones. */
@@ -323,6 +366,8 @@ export function DocumentDialogs({ detail, document }: { detail: DocumentDetail; 
     setEditingSettlement,
     voidOpen,
     setVoidOpen,
+    deleteOpen,
+    setDeleteOpen,
     whatsAppOpen,
     setWhatsAppOpen,
     convertTarget,
@@ -335,6 +380,7 @@ export function DocumentDialogs({ detail, document }: { detail: DocumentDetail; 
     cancelReturn,
     editingQty,
     voiding,
+    deleting,
     converting,
   } = detail
 
@@ -410,6 +456,16 @@ export function DocumentDialogs({ detail, document }: { detail: DocumentDetail; 
           loading={voiding.isPending}
           onClose={() => setVoidOpen(false)}
           onConfirm={(reason) => voiding.mutate(reason)}
+        />
+        <ConfirmDialog
+          open={deleteOpen}
+          loading={deleting.isPending}
+          tone="danger"
+          title={t('sales.deleteTitle', 'Delete {number}?', { number: document.number })}
+          description={t('sales.deleteBody', 'It leaves your lists and reports, and any stock it took comes back. Its number is never reused. You can restore it from the Restore page.')}
+          confirmLabel={t('sales.delete', 'Delete')}
+          onClose={() => setDeleteOpen(false)}
+          onConfirm={() => deleting.mutate()}
         />
         <ConvertQuoteModal
           open={convertTarget !== null}

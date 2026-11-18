@@ -1,3 +1,4 @@
+import { PageSizeSelect } from '../../components/ui/PageSizeSelect'
 import {
   Eye,
   FileCheck2,
@@ -5,7 +6,7 @@ import {
   FileText,
   ImageDown,
   Plus,
-  Receipt,
+  ReceiptEuro as Receipt,
   Search,
   Truck,
   Users,
@@ -24,6 +25,7 @@ import { formatCents } from '../../lib/money'
 import { isSaleExpired, isSaleVoided, quoteDaysLeft, saleDisplayStatus, type IssuableType, type SaleDisplayStatus, type SaleDocument } from '../../types/sales'
 import { rulesFor, typeLabel } from './documentTypes'
 import { listHint, paymentChipLabel, useDocumentList } from './useDocumentList'
+import { DeleteIcon, SelectBox, SelectionBar, useDocumentDeletion } from './documentDeletion'
 
 type Theme = {
   icon: LucideIcon
@@ -174,6 +176,8 @@ export function DocumentList({ type }: { type: IssuableType }) {
     setSearch,
     debounced,
     setPage,
+    pageSize,
+    changePageSize,
     exporting,
     exportRow,
     showsPaymentFilters,
@@ -189,6 +193,7 @@ export function DocumentList({ type }: { type: IssuableType }) {
     emptyBecauseSearch,
     emptyBecauseFilter,
   } = useDocumentList(type)
+  const del = useDocumentDeletion(rows, type)
   const theme = THEMES[type]
   const Icon = theme.icon
 
@@ -232,6 +237,7 @@ export function DocumentList({ type }: { type: IssuableType }) {
             <Eye className="h-4 w-4" />
           </button>
         </Tooltip>
+        {del.mayDelete ? <DeleteIcon document={document} onClick={() => del.ask([document.id])} className={cn(rowAction, 'hover:bg-rose-50')} /> : null}
       </>
     )
   }
@@ -434,14 +440,28 @@ export function DocumentList({ type }: { type: IssuableType }) {
           />
         ) : (
           <>
+            {del.mayDelete ? (
+              <SelectionBar
+                count={del.selected.length}
+                onAction={() => del.ask(del.selected)}
+                onClear={del.clear}
+                busy={del.busy}
+                actionLabel={t('sales.deleteSelected', 'Delete selected')}
+              />
+            ) : null}
             <div className="hidden md:block">
               <div className="flex items-center bg-slate-50 px-4 py-2.5 text-[11px] font-semibold tracking-[0.08em] text-slate-500 uppercase">
+                {del.mayDelete ? (
+                  <span className="mr-3 flex w-4 shrink-0">
+                    <SelectBox checked={del.allSelected} indeterminate={del.someSelected} onChange={del.toggleAll} label={t('sales.selectAll', 'Select all')} />
+                  </span>
+                ) : null}
                 <span className="min-w-0 flex-1">{t('sales.document', 'Document')}</span>
                 <span className="w-48">{t('sales.client', 'Client')}</span>
                 <span className="w-28">{t('sales.date', 'Date')}</span>
                 <span className="w-56">{t('sales.status', 'Status')}</span>
                 <span className="w-28 text-right">{t('sales.total', 'Total')}</span>
-                <span className="w-[110px] text-right">{t('common.actions', 'Actions')}</span>
+                <span className="w-[140px] text-right">{t('common.actions', 'Actions')}</span>
               </div>
               {rows.map((document) => (
                 <div
@@ -449,6 +469,11 @@ export function DocumentList({ type }: { type: IssuableType }) {
                   className="group relative flex items-center border-t border-slate-100 px-4 py-3.5 transition-colors hover:bg-page"
                 >
                   <span className={cn('absolute inset-y-3 left-0 w-0.5 rounded-full opacity-0 group-hover:opacity-100', theme.rowMark)} />
+                  {del.mayDelete ? (
+                    <span className="mr-3 flex w-4 shrink-0">
+                      <SelectBox checked={del.isSelected(document.id)} onChange={() => del.toggle(document.id)} label={`${t('sales.select', 'Select')} ${document.number}`} />
+                    </span>
+                  ) : null}
                   <span className="flex min-w-0 flex-1 items-center gap-3">
                     <span
                       className={cn(
@@ -476,7 +501,7 @@ export function DocumentList({ type }: { type: IssuableType }) {
                   <span className="w-28 text-right text-sm font-bold text-slate-900">
                     {formatCents(document.total_cents, currency)}
                   </span>
-                  <span className="flex w-[110px] justify-end gap-1">{actions(document)}</span>
+                  <span className="flex w-[140px] justify-end gap-1">{actions(document)}</span>
                 </div>
               ))}
             </div>
@@ -484,6 +509,11 @@ export function DocumentList({ type }: { type: IssuableType }) {
             <div className="divide-y divide-slate-100 md:hidden">
               {rows.map((document) => (
                 <div key={document.id} className="flex items-start gap-3 px-4 py-4">
+                  {del.mayDelete ? (
+                    <span className="mt-3 flex shrink-0">
+                      <SelectBox checked={del.isSelected(document.id)} onChange={() => del.toggle(document.id)} label={`${t('sales.select', 'Select')} ${document.number}`} />
+                    </span>
+                  ) : null}
                   <span
                     className={cn(
                       'mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[11px] font-bold',
@@ -515,7 +545,7 @@ export function DocumentList({ type }: { type: IssuableType }) {
               ))}
             </div>
 
-            {meta && meta.last_page > 1 ? (
+            {meta && meta.total > 0 ? (
               <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 text-xs text-slate-500">
                 <span>
                   {t('common.showing', 'Showing')}{' '}
@@ -525,7 +555,8 @@ export function DocumentList({ type }: { type: IssuableType }) {
                   {t('common.of', 'of')} <span className="text-slate-900">{meta.total}</span>{' '}
                   {t('sales.documents', 'documents')}
                 </span>
-                <span className="flex items-center gap-1.5">
+                <PageSizeSelect value={pageSize} onChange={changePageSize} />
+                <span className={cn('flex items-center gap-1.5', meta.last_page <= 1 && 'hidden')}>
                   <button
                     type="button"
                     disabled={meta.current_page <= 1}
@@ -566,6 +597,7 @@ export function DocumentList({ type }: { type: IssuableType }) {
           </>
         )}
       </div>
+      {del.dialog}
     </div>
   )
 }

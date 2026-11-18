@@ -1,4 +1,5 @@
-import { Camera, Check, Minus, Plus, Receipt, ScanLine, Search, ShieldCheck, Trash2, UserRound, X } from 'lucide-react'
+import { ProductModal } from './ProductModal'
+import { Camera, Check, Minus, Plus, ReceiptEuro as Receipt, ScanLine, Search, ShieldCheck, Trash2, UserRound, X } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Select } from '../../components/ui/Select'
 import { Tooltip } from '../../components/ui/Tooltip'
@@ -12,6 +13,7 @@ import { docPermission } from '../../auth/permissions'
 import { ISSUABLE_TYPES, typeLabel } from './documentTypes'
 import { isPastMonth, nowLocal, shortDate, snapIssueDate } from '../../lib/issueDate'
 import { DiscountEditor } from './DiscountEditor'
+import { QuantityField } from '../../components/ui/QuantityField'
 import { RecargoPicker } from './RecargoPicker'
 import { RecordPaymentModal } from './RecordPaymentModal'
 import { QUOTE_VALID_DAYS, initials, ivaOptions, useSaleComposer } from './useSaleComposer'
@@ -64,6 +66,8 @@ function InvoiceNew() {
     clientNif,
     setClientNif,
     clientAddress,
+    clientEmail,
+    setClientEmail,
     setClientAddress,
     productQuery,
     setProductQuery,
@@ -98,6 +102,12 @@ function InvoiceNew() {
     onPhoneChange,
     onPhoneKeyDown,
     onProductKeyDown,
+    activeMatch,
+    setActiveMatch,
+    newProduct,
+    setNewProduct,
+    openNewProduct,
+    onProductCreated,
     clearCustomer,
     piecesLeft,
     addProduct,
@@ -413,7 +423,20 @@ function InvoiceNew() {
               />
             </div>
 
-            <div className="sm:col-span-2">
+            <div>
+              <span className={clientLabel}>{t('sales.clientEmail', 'Email')}</span>
+              <input
+                type="email"
+                value={clientEmail}
+                onChange={(event) => setClientEmail(event.target.value)}
+                maxLength={190}
+                autoComplete="off"
+                placeholder={t('sales.clientEmailPlaceholder', 'name@example.com')}
+                className={clientField}
+              />
+            </div>
+
+            <div>
               <span className={clientLabel}>{t('sales.clientAddress', 'Address')}</span>
               <input
                 value={clientAddress}
@@ -468,9 +491,19 @@ function InvoiceNew() {
                 className="w-full rounded-xl border-2 border-brand-500/40 bg-card py-3 pr-3 pl-11 text-sm font-medium outline-none"
               />
             </span>
+            {can('products.create') ? (
+              <button
+                type="button"
+                onClick={openNewProduct}
+                className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-xl border-2 border-brand-500/40 bg-card px-4 text-xs font-semibold text-brand-600 hover:bg-brand-50"
+              >
+                <Plus className="h-4 w-4" />
+                {t('sales.addProduct', 'Add product')}
+              </button>
+            ) : null}
           </div>
           {dropdown && !camera && productQuery.trim() !== '' ? (
-            <div className="absolute top-full right-0 left-0 z-20 mt-1.5 overflow-hidden rounded-2xl border border-line bg-card shadow-xl">
+            <div className="absolute top-full right-0 left-0 z-20 mt-1.5 max-h-[340px] overflow-y-auto overscroll-contain rounded-2xl border border-line bg-card shadow-xl">
               {catalog.isPending ? (
                 <p className="px-4 py-3 text-xs text-slate-500">{t('sales.phoneSearching', 'Searching…')}</p>
               ) : productMatches.length === 0 ? (
@@ -480,16 +513,18 @@ function InvoiceNew() {
                   <button
                     key={product.id}
                     type="button"
+                    data-nav-active={index === activeMatch}
+                    onMouseEnter={() => setActiveMatch(index)}
                     onClick={() => addProduct(product)}
                     className={cn(
                       'flex w-full cursor-pointer items-center justify-between gap-4 border-b border-slate-100 px-3.5 py-3 text-left last:border-0 hover:bg-slate-50',
-                      index === 0 && optionOn,
+                      index === activeMatch && optionOn,
                     )}
                   >
                     <span className="min-w-0">
                       <span className="block truncate text-sm font-bold text-slate-900">{product.article}</span>
                       <span className="text-[11px] text-slate-500">
-                        {product.barcode} · IVA {product.iva_percent}%
+                        {[product.short_code, product.barcode].filter(Boolean).join(' · ')} · IVA {product.iva_percent}%
                       </span>
                     </span>
                     <span className="shrink-0 text-right">
@@ -570,7 +605,10 @@ function InvoiceNew() {
                   return (
                     <div key={line.key} className="flex items-center border-t border-slate-100 px-3 py-2.5">
                       <span className="w-10 text-center text-xs text-slate-400">{index + 1}</span>
-                      <span className="min-w-0 flex-1 truncate px-2 text-xs font-bold text-slate-900">{line.article}</span>
+                      <span className="min-w-0 flex-1 px-2">
+                        <span className="block truncate text-xs font-bold text-slate-900">{line.article}</span>
+                        {line.barcode ? <span className="block truncate text-[11px] tabular-nums text-slate-500">{line.barcode}</span> : null}
+                      </span>
                       {rules.showsAvailable ? (
                         <span className="flex w-40 flex-col items-start px-2">
                           {remaining === null || line.stock === null ? (
@@ -594,7 +632,13 @@ function InvoiceNew() {
                           <button type="button" onClick={() => changeQuantity(line, line.quantity - 1)} className="cursor-pointer p-1.5 text-slate-600">
                             <Minus className="h-3.5 w-3.5" />
                           </button>
-                          <span className="w-8 text-center text-xs font-bold">{line.quantity}</span>
+                          <QuantityField
+                            label={`${t('sales.quantity', 'Quantity')} ${line.article}`}
+                            value={line.quantity}
+                            max={line.stock !== null && rules.movesStock ? line.stock : null}
+                            onChange={(next) => changeQuantity(line, next)}
+                            className="w-11 bg-transparent text-center text-xs font-bold outline-none focus:bg-slate-50"
+                          />
                           <button
                             type="button"
                             disabled={atStock}
@@ -835,6 +879,7 @@ function InvoiceNew() {
         onClose={() => setMethodOpen(false)}
         onConfirm={confirmMethod}
       />
+      <ProductModal open={newProduct !== null} product={null} initial={newProduct ?? undefined} onSaved={onProductCreated} onClose={() => setNewProduct(null)} />
     </div>
   )
 }

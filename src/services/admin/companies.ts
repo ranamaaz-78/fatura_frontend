@@ -14,6 +14,7 @@ export function listCompanies(query: {
   subscription?: SubscriptionState
   search?: string
   page?: number
+  per_page?: number
 }): Promise<CompanyList> {
   return unwrap<CompanyList>(
     api.get('/admin/companies', {
@@ -22,6 +23,7 @@ export function listCompanies(query: {
         subscription: query.subscription,
         search: query.search || undefined,
         page: query.page,
+        per_page: query.per_page,
       },
     }),
   )

@@ -40,6 +40,7 @@ import InvoiceDetailPage from './pages/app/InvoiceDetail'
 import InvoiceNewPage from './pages/app/InvoiceNew'
 import InvoicesPage from './pages/app/Invoices'
 import PaymentsPage from './pages/app/Payments'
+import RestorePage from './pages/app/Restore'
 import PrintablesPage from './pages/app/Printables'
 import ProductImagesPage from './pages/app/ProductImages'
 import ProductsPage from './pages/app/Products'
@@ -186,6 +187,9 @@ function App() {
               </Route>
               <Route element={<RequirePermission ownerOnly />}>
                 <Route path="team" element={<TeamPage />} />
+              </Route>
+              <Route element={<RequirePermission permission="invoices.delete|delivery_notes.delete|quotes.delete|proformas.delete" />}>
+                <Route path="restore" element={<RestorePage />} />
               </Route>
               <Route path="settings" element={<SettingsPage />} />
             </Route>

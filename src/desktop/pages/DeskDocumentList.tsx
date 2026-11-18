@@ -7,6 +7,8 @@ import { cn } from '../../lib/cn'
 import { formatDate } from '../../lib/format'
 import { formatCents } from '../../lib/money'
 import { rulesFor, typeLabel } from '../../pages/app/documentTypes'
+import { DeleteIcon, SelectBox, SelectionBar, useDocumentDeletion } from '../../pages/app/documentDeletion'
+import { PageSizeSelect } from '../../components/ui/PageSizeSelect'
 import { listHint, paymentChipLabel, useDocumentList } from '../../pages/app/useDocumentList'
 import { isSaleExpired, isSaleVoided, quoteDaysLeft, saleDisplayStatus, type IssuableType, type SaleDisplayStatus, type SaleDocument } from '../../types/sales'
 import { initials } from '../shell/IconRail'
@@ -29,7 +31,8 @@ export default function DeskDocumentList({ type }: { type: IssuableType }) {
   const { can } = usePermissions()
   const navigate = useNavigate()
   const list = useDocumentList(type)
-  const { currency, rules, payment, setPayment, search, setSearch, debounced, setPage, exporting, exportRow, showsPaymentFilters, query, rows, meta, counts, stats } = list
+  const { currency, rules, payment, setPayment, search, setSearch, debounced, setPage, exporting, exportRow, query, rows, meta, counts, stats } = list
+  const del = useDocumentDeletion(rows, type)
   const identity = identityFor(type)
   const Icon = identity.icon
   const canCreate = can(docPermission(type, 'create'))
@@ -123,7 +126,7 @@ export default function DeskDocumentList({ type }: { type: IssuableType }) {
             <Kbd className="absolute top-1/2 right-3 -translate-y-1/2 text-ink-muted">Ctrl F</Kbd>
           </label>
 
-          {showsPaymentFilters ? (
+          {list.showsPaymentFilters ? (
             <div className="ml-auto flex rounded-xl bg-elevated p-1">
               {list.chips.map((chip) => {
                 const on = payment === chip.id
@@ -193,15 +196,29 @@ export default function DeskDocumentList({ type }: { type: IssuableType }) {
           />
         ) : (
           <>
+            {del.mayDelete ? (
+              <SelectionBar
+                count={del.selected.length}
+                onAction={() => del.ask(del.selected)}
+                onClear={del.clear}
+                busy={del.busy}
+                actionLabel={t('sales.deleteSelected', 'Delete selected')}
+              />
+            ) : null}
             <table className="w-full table-fixed border-separate border-spacing-0 text-left">
               <thead>
                 <tr className="text-[11px] font-bold tracking-[0.1em] text-ink-muted uppercase">
-                  <th className="w-[30%] py-2.5 pl-6 font-bold">{t('sales.document', 'Document')}</th>
+                  {del.mayDelete ? (
+                    <th className="w-[4%] py-2.5 pl-6">
+                      <SelectBox checked={del.allSelected} indeterminate={del.someSelected} onChange={del.toggleAll} label={t('sales.selectAll', 'Select all')} />
+                    </th>
+                  ) : null}
+                  <th className={cn('py-2.5 font-bold', del.mayDelete ? 'w-[27%] pl-2' : 'w-[30%] pl-6')}>{t('sales.document', 'Document')}</th>
                   <th className="w-[22%] py-2.5 font-bold">{t('sales.client', 'Client')}</th>
                   <th className="w-[11%] py-2.5 font-bold">{t('sales.date', 'Date')}</th>
                   <th className="w-[19%] py-2.5 font-bold">{t('sales.status', 'Status')}</th>
                   <th className="w-[10%] py-2.5 pr-4 text-right font-bold">{t('sales.total', 'Total')}</th>
-                  <th className="w-[8%] py-2.5 pr-5" aria-label={t('common.actions', 'Actions')} />
+                  <th className="w-[11%] py-2.5 pr-5" aria-label={t('common.actions', 'Actions')} />
                 </tr>
               </thead>
               <tbody>
@@ -214,13 +231,14 @@ export default function DeskDocumentList({ type }: { type: IssuableType }) {
                     busy={exporting?.id === document.id ? exporting.format : null}
                     onOpen={() => navigate(`${rules.listPath}/${document.id}`)}
                     onExport={(format) => void exportRow(document, format)}
+                    selection={del.mayDelete ? { checked: del.isSelected(document.id), onToggle: () => del.toggle(document.id), onDelete: () => del.ask([document.id]) } : null}
                   />
                 ))}
               </tbody>
             </table>
 
-            {meta && meta.last_page > 1 ? (
-              <div className="flex items-center justify-between gap-3 border-t border-line/70 px-6 py-3 text-[12px] text-ink-muted">
+            {meta && meta.total > 0 ? (
+              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line/70 px-6 py-3 text-[12px] text-ink-muted">
                 <span>
                   {t('common.showing', 'Showing')}{' '}
                   <span className="desk-num font-semibold text-ink">
@@ -228,7 +246,8 @@ export default function DeskDocumentList({ type }: { type: IssuableType }) {
                   </span>{' '}
                   {t('common.of', 'of')} <span className="desk-num font-semibold text-ink">{meta.total}</span> {t('sales.documents', 'documents')}
                 </span>
-                <span className="flex items-center gap-1">
+                <PageSizeSelect value={list.pageSize} onChange={list.changePageSize} />
+                <span className={cn('flex items-center gap-1', meta.last_page <= 1 && 'hidden')}>
                   <PageButton label={t('common.previous', 'Previous')} disabled={meta.current_page <= 1} onClick={() => setPage(meta.current_page - 1)}>
                     <ChevronLeft className="h-4 w-4" />
                   </PageButton>
@@ -255,6 +274,7 @@ export default function DeskDocumentList({ type }: { type: IssuableType }) {
           </>
         )}
       </section>
+      {del.dialog}
     </div>
   )
 }
@@ -266,6 +286,7 @@ function Row({
   busy,
   onOpen,
   onExport,
+  selection,
 }: {
   document: SaleDocument
   type: IssuableType
@@ -273,6 +294,7 @@ function Row({
   busy: 'png' | 'pdf' | null
   onOpen: () => void
   onExport: (format: 'png' | 'pdf') => void
+  selection: { checked: boolean; onToggle: () => void; onDelete: () => void } | null
 }) {
   // Older credit notes (abono) can sit in the invoice list; they keep their own colour.
   const identity = identityFor(document.type)
@@ -280,8 +302,14 @@ function Row({
 
   return (
     <tr onClick={onOpen} className="group cursor-pointer text-[13px] transition-colors hover:bg-elevated/70">
-      <td className="relative border-t border-line/60 py-3 pl-6">
-        <span className={cn('absolute inset-y-2 left-0 w-1 rounded-r-full opacity-0 transition group-hover:opacity-100', identity.accent)} />
+      {selection ? (
+        <td className="relative border-t border-line/60 py-3 pl-6">
+          <span className={cn('absolute inset-y-2 left-0 w-1 rounded-r-full opacity-0 transition group-hover:opacity-100', identity.accent)} />
+          <SelectBox checked={selection.checked} onChange={selection.onToggle} label={`${t('sales.select', 'Select')} ${document.number}`} />
+        </td>
+      ) : null}
+      <td className={cn('relative border-t border-line/60 py-3', selection ? 'pl-2' : 'pl-6')}>
+        {selection ? null : <span className={cn('absolute inset-y-2 left-0 w-1 rounded-r-full opacity-0 transition group-hover:opacity-100', identity.accent)} />}
         <span className="flex items-center gap-3">
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-brand-500/18 to-brand-600/8 text-[12px] font-bold text-brand-600 ring-1 ring-brand-600/15">
             {initials(document.client_name)}
@@ -314,6 +342,9 @@ function Row({
           <RowAction label={t('sales.downloadImage', 'Download as image')} busy={busy === 'png'} disabled={busy !== null} onClick={() => onExport('png')}>
             <ImageDown className="h-4 w-4" />
           </RowAction>
+          {selection ? (
+            <DeleteIcon document={document} onClick={selection.onDelete} className="flex h-8 w-8 items-center justify-center rounded-lg text-ink-muted opacity-60 transition group-hover:opacity-100 disabled:opacity-40" />
+          ) : null}
           <ArrowRight className="h-4 w-4 text-ink-muted opacity-0 transition group-hover:translate-x-0.5 group-hover:opacity-100" />
         </span>
       </td>

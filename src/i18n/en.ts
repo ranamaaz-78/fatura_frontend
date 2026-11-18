@@ -58,7 +58,7 @@ export const en: Record<string, string> = {
   'nav.group.analytics': 'Analytics and settings',
   'nav.group.platform': 'Platform',
   'nav.dashboard': 'Dashboard',
-  'nav.pos': 'POS / quick invoice',
+  'nav.pos': 'POS / quick delivery note',
   'nav.scan': 'Scan',
   'nav.invoices': 'Invoices',
   'nav.invoice': 'Invoice',

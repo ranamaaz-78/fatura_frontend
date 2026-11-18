@@ -12,7 +12,7 @@ import {
   PackageCheck,
   PackageMinus,
   PackageX,
-  Receipt,
+  ReceiptEuro as Receipt,
   Truck,
   type LucideIcon,
 } from 'lucide-react'

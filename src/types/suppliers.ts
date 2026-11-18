@@ -4,6 +4,7 @@ export type Supplier = {
   name: string
   company_name: string | null
   phone: string | null
+  email?: string | null
   nif: string | null
   nie: string | null
   is_active: boolean
@@ -14,6 +15,7 @@ export type SupplierInput = {
   name: string
   company_name: string | null
   phone: string | null
+  email?: string | null
   nif: string | null
   nie: string | null
 }

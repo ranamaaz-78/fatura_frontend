@@ -70,10 +70,14 @@ const fieldButton =
 export type ProductModalProps = {
   open: boolean
   product: Product | null
+  /** For a new product: values to start with (a barcode or short code typed at the counter that was not found). */
+  initial?: { barcode?: string; short_code?: string }
+  /** Called with the product once it is saved. */
+  onSaved?: (product: Product) => void
   onClose: () => void
 }
 
-export function ProductModal({ open, product, onClose }: ProductModalProps) {
+export function ProductModal({ open, product, initial, onSaved, onClose }: ProductModalProps) {
   const queryClient = useQueryClient()
   const { push } = useToast()
   const categories = useCategories()
@@ -94,10 +98,10 @@ export function ProductModal({ open, product, onClose }: ProductModalProps) {
 
   useEffect(() => {
     if (!open) return
-    setDraft(product ? toDraft(product) : BLANK)
+    setDraft(product ? toDraft(product) : { ...BLANK, barcode: initial?.barcode ?? '', short_code: initial?.short_code ?? '' })
     setErrors({})
     setNewCategory(null)
-  }, [open, product])
+  }, [open, product, initial])
 
   function set<K extends keyof Draft>(key: K, value: Draft[K]) {
     setDraft((current) => ({ ...current, [key]: value }))
@@ -136,13 +140,14 @@ export function ProductModal({ open, product, onClose }: ProductModalProps) {
 
   const saveMutation = useMutation({
     mutationFn: () => (product ? updateProduct(product.id, toInput()) : createProduct(toInput())),
-    onSuccess: () => {
+    onSuccess: (saved) => {
       void queryClient.invalidateQueries({ queryKey: ['app', 'products'] })
       void queryClient.invalidateQueries({ queryKey: categoriesKey })
       push({
         tone: 'success',
         title: product ? t('products.updated', 'Product updated.') : t('products.created', 'Product created.'),
       })
+      onSaved?.(saved)
       onClose()
     },
     onError: (caught) => {

@@ -13,6 +13,7 @@ export type ApplicationListQuery = {
   status?: ApplicationStatus | 'all'
   search?: string
   page?: number
+  per_page?: number
 }
 
 export type ApplicationList = {
@@ -28,6 +29,7 @@ export function listApplications(query: ApplicationListQuery): Promise<Applicati
         status: query.status === 'all' ? undefined : query.status,
         search: query.search || undefined,
         page: query.page,
+        per_page: query.per_page,
       },
     }),
   )

@@ -7,7 +7,7 @@ import {
   MonitorSmartphone,
   Package,
   PanelsTopLeft,
-  Receipt,
+  ReceiptEuro as Receipt,
   ScanLine,
   Search,
   Settings,

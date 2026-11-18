@@ -3,6 +3,8 @@ export type PurchaseLine = {
   id: number
   product_id: number | null
   article: string
+  /** The product's barcode, shown under the article. */
+  barcode?: string | null
   quantity: number
   unit_cost: number
   total_cents: number
@@ -18,14 +20,24 @@ export type Purchase = {
   purchased_on: string
   supplier_invoice_no: string | null
   notes: string | null
+  /** IVA on the whole purchase: none, excluded (added on top of the prices) or included (already in them). */
+  iva_mode?: 'none' | 'excluded' | 'included'
+  iva_percent?: number
+  base_cents?: number
+  iva_cents?: number
+  /** What is owed to the supplier, IVA included. */
   total_cents: number
   /** Only in the list. */
   items_count?: number
   is_voided: boolean
+  /** True while it can still be changed: not cancelled and nothing paid for it in Supplier Payments (when opened). */
+  can_edit?: boolean
   voided_at: string | null
   void_reason: string | null
   created_by_name?: string | null
   created_at: string | null
+  /** Where this purchase stands in Supplier Payments (only when it is opened). */
+  ledger_entry?: { id: number; number: string; paid_cents: number; owed_cents: number; payment_status: 'unpaid' | 'partial' | 'paid'; is_voided: boolean } | null
   /** Only when the purchase is opened. */
   lines?: PurchaseLine[]
 }
@@ -55,5 +67,8 @@ export type PurchaseInput = {
   purchased_on: string
   supplier_invoice_no: string | null
   notes: string | null
-  lines: { product_id: number; quantity: number; unit_cost: number }[]
+  iva_mode?: 'none' | 'excluded' | 'included'
+  iva_percent?: number
+  /** selling_price (cents) is sent only when the shop changed it with this delivery. */
+  lines: { product_id: number; quantity: number; unit_cost: number; selling_price?: number }[]
 }

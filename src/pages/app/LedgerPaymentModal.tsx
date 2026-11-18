@@ -13,11 +13,13 @@ import { addLedgerPayment } from '../../services/ledger'
 import { listPaymentMethods } from '../../services/paymentMethods'
 import type { LedgerEntry } from '../../types/ledger'
 import { today } from './ledgerBits'
+import { useLedgerReceipts } from './ledgerReceipts'
 
 /** Records one more payment to the supplier against an entry; the amount starts as everything that is still owed. */
 export function LedgerPaymentModal({ entry, currency, onClose }: { entry: LedgerEntry | null; currency: string; onClose: () => void }) {
   const { push } = useToast()
   const queryClient = useQueryClient()
+  const receipts = useLedgerReceipts()
   const [amount, setAmount] = useState('')
   const [date, setDate] = useState(today)
   const [methodId, setMethodId] = useState('')
@@ -45,9 +47,11 @@ export function LedgerPaymentModal({ entry, currency, onClose }: { entry: Ledger
 
   const save = useMutation({
     mutationFn: () => addLedgerPayment(entry!.id, { amount_cents: cents ?? 0, paid_on: date, payment_method_id: Number(methodId), note: note.trim() || null }),
-    onSuccess: () => {
+    onSuccess: (saved) => {
       onClose()
-      push({ tone: 'success', title: t('ledger.paymentSaved', 'Payment saved.') })
+      // The newest payment (the one just made) gets its receipt offered right away.
+      const newest = [...(saved.payments ?? [])].sort((a, b) => b.id - a.id)[0]
+      receipts.saved(t('ledger.paymentSaved', 'Payment saved.'), saved.id, newest?.id)
       void queryClient.invalidateQueries({ queryKey: ['app', 'ledger'] })
     },
     onError: (error) => {

@@ -1,5 +1,8 @@
 export type PaymentStatus = 'unpaid' | 'partial' | 'paid'
 
+/** IVA inside an entry: how it was written on the purchase (on top or inside the prices), its rate, the base and the tax. */
+export type LedgerIva = { mode: 'excluded' | 'included'; percent: number; base_cents: number; iva_cents: number }
+
 /** One payment made to the supplier against a ledger entry. */
 export type LedgerPayment = {
   id: number
@@ -21,6 +24,11 @@ export type LedgerEntry = {
   number: string
   supplier_id: number | null
   supplier_name: string
+  /** The purchase this entry was written from, when it came from one. */
+  purchase_id?: number | null
+  purchase_number?: string | null
+  /** The IVA inside the amount, when the entry came from a purchase written with IVA. */
+  iva?: LedgerIva | null
   /** YYYY-MM-DD */
   bill_date: string
   description: string
@@ -105,6 +113,9 @@ export type LedgerTransaction = {
   bought_cents: number
   paid_cents: number
   balance_cents: number
+  /** The IVA inside a purchase line (0 for payments and for entries without IVA). */
+  iva_cents?: number
+  iva_percent?: number | null
 }
 
 export type LedgerStatement = {
@@ -116,6 +127,8 @@ export type LedgerStatement = {
   bought_cents: number
   paid_cents: number
   closing_cents: number
+  /** The IVA inside what was bought in these dates. */
+  iva_cents?: number
   /** Everything owed to this supplier today, whatever the dates. */
   owed_cents: number
   transactions: LedgerTransaction[]

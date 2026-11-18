@@ -5,8 +5,9 @@ function day(value: string): string {
 }
 
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Ban, CalendarDays, Download, PackageCheck, Plus, Search, ShoppingBag, Truck, Wallet, X } from 'lucide-react'
+import { Ban, Pencil, BookOpen, CalendarDays, FileDown, FileSpreadsheet, PackageCheck, Plus, Search, ShoppingBag, Truck, Wallet, X } from 'lucide-react'
 import { useEffect, useState, type ReactNode } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../auth/AuthProvider'
 import { usePermissions } from '../../auth/permissions'
 import { Button } from '../../components/ui/Button'
@@ -15,6 +16,7 @@ import { EmptyState } from '../../components/ui/EmptyState'
 import { Input } from '../../components/ui/Input'
 import { Modal } from '../../components/ui/Modal'
 import { Pagination } from '../../components/ui/Pagination'
+import { perPageOf, usePageSize } from '../../components/ui/PageSizeSelect'
 import { Select } from '../../components/ui/Select'
 import { Skeleton } from '../../components/ui/Skeleton'
 import { Textarea } from '../../components/ui/Textarea'
@@ -24,13 +26,13 @@ import { cn } from '../../lib/cn'
 import { formatCents } from '../../lib/money'
 import { TONE_AMBER, TONE_GREEN, TONE_ROSE, TONE_VIOLET } from '../../lib/status'
 import { getErrorMessage } from '../../services/api'
-import { downloadPurchases } from '../../lib/exportPurchases'
+import { downloadPurchases, downloadPurchasesPdf } from '../../lib/exportPurchases'
 import { getPurchase, listAllPurchases, listPurchases, voidPurchase } from '../../services/purchases'
 import { listSuppliers } from '../../services/suppliers'
 import type { Purchase, PurchaseStatus } from '../../types/purchases'
+import { PaymentBadge } from './ledgerBits'
 import { PurchaseModal } from './PurchaseModal'
 
-const PER_PAGE = 10
 
 function Stat({ label, value, hint, tone, icon }: { label: string; value: ReactNode; hint: string; tone: string; icon: ReactNode }) {
   return (
@@ -48,6 +50,7 @@ function Stat({ label, value, hint, tone, icon }: { label: string; value: ReactN
 function Purchases() {
   const { session } = useAuth()
   const { can } = usePermissions()
+  const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { push } = useToast()
   const currency = session?.company?.currency ?? 'EUR'
@@ -59,11 +62,14 @@ function Purchases() {
   const [to, setTo] = useState('')
   const [status, setStatus] = useState<PurchaseStatus>('active')
   const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = usePageSize('purchases')
   const [creating, setCreating] = useState(false)
+  // A copy of the purchase taken when Edit is pressed, so a refresh in the background never resets the form.
+  const [editing, setEditing] = useState<Purchase | null>(null)
   const [openId, setOpenId] = useState<number | null>(null)
   const [cancelling, setCancelling] = useState(false)
   const [reason, setReason] = useState('')
-  const [exporting, setExporting] = useState(false)
+  const [exporting, setExporting] = useState<'xlsx' | 'pdf' | null>(null)
 
   useEffect(() => {
     const timer = window.setTimeout(() => setDebounced(search), 250)
@@ -76,11 +82,11 @@ function Purchases() {
 
   const suppliers = useQuery({ queryKey: ['app', 'suppliers', 'all', ''], queryFn: () => listSuppliers() })
   const query = useQuery({
-    queryKey: ['app', 'purchases', { search: debounced, supplierId, from, to, status, page }],
+    queryKey: ['app', 'purchases', { search: debounced, supplierId, from, to, status, page, pageSize }],
     queryFn: () =>
       listPurchases({
         page,
-        per_page: PER_PAGE,
+        per_page: perPageOf(pageSize),
         search: debounced || undefined,
         supplier_id: supplierId ? Number(supplierId) : undefined,
         from: from || undefined,
@@ -115,9 +121,9 @@ function Purchases() {
     onError: (error) => push({ tone: 'danger', title: getErrorMessage(error) }),
   })
 
-  /** What is on screen, every page of it, as an Excel sheet: the same search, supplier, dates and status. */
-  async function exportExcel() {
-    setExporting(true)
+  /** What is on screen, every page of it, as an Excel sheet or a PDF: the same search, supplier, dates and status. */
+  async function runExport(format: 'xlsx' | 'pdf') {
+    setExporting(format)
     try {
       const purchases = await listAllPurchases({
         search: debounced || undefined,
@@ -142,11 +148,18 @@ function Purchases() {
         .filter(Boolean)
         .join(', ')
 
-      await downloadPurchases(purchases, { companyName: session?.company?.name ?? '', currency, filters })
+      const context = { companyName: session?.company?.name ?? '', currency, filters }
+      if (format === 'xlsx') {
+        await downloadPurchases(purchases, context)
+      } else {
+        // The colour of the theme as #rrggbb: the PDF is drawn off screen, where theme variables are not known.
+        const value = getComputedStyle(document.documentElement).getPropertyValue('--app-primary').trim()
+        await downloadPurchasesPdf(purchases, { ...context, brand: /^#[0-9a-f]{6}$/i.test(value) ? value : '#1e3a8a' })
+      }
     } catch (error) {
       push({ tone: 'danger', title: getErrorMessage(error) })
     } finally {
-      setExporting(false)
+      setExporting(null)
     }
   }
 
@@ -171,8 +184,11 @@ function Purchases() {
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="secondary" icon={<Download className="h-4 w-4" />} loading={exporting} disabled={rows.length === 0} onClick={() => void exportExcel()}>
+          <Button variant="secondary" icon={<FileSpreadsheet className="h-4 w-4" />} loading={exporting === 'xlsx'} disabled={rows.length === 0 || exporting !== null} onClick={() => void runExport('xlsx')}>
             {t('purchases.export', 'Export to Excel')}
+          </Button>
+          <Button variant="secondary" icon={<FileDown className="h-4 w-4" />} loading={exporting === 'pdf'} disabled={rows.length === 0 || exporting !== null} onClick={() => void runExport('pdf')}>
+            {t('purchases.exportPdf', 'Export PDF')}
           </Button>
           {can('stock.create') ? (
             <Button icon={<Plus className="h-4 w-4" />} onClick={() => setCreating(true)}>
@@ -305,11 +321,16 @@ function Purchases() {
                 </tbody>
               </table>
             </div>
-            {meta && meta.last_page > 1 ? (
+            {meta && meta.total > 0 ? (
               <Pagination
                 page={meta.current_page}
                 pageCount={meta.last_page}
                 onPageChange={setPage}
+                pageSize={pageSize}
+                onPageSizeChange={(size) => {
+                  setPageSize(size)
+                  setPage(1)
+                }}
                 summary={`${t('common.showing', 'Showing')} ${(meta.current_page - 1) * meta.per_page + 1}-${(meta.current_page - 1) * meta.per_page + rows.length} ${t('common.of', 'of')} ${meta.total}`}
               />
             ) : null}
@@ -318,6 +339,7 @@ function Purchases() {
       </div>
 
       <PurchaseModal open={creating} onClose={() => setCreating(false)} currency={currency} />
+      <PurchaseModal open={editing !== null} purchase={editing} onClose={() => setEditing(null)} currency={currency} />
 
       <Drawer open={openId !== null} onClose={() => setOpenId(null)} side="right" width="w-full max-w-[520px]">
         <div className="flex h-full flex-col bg-card">
@@ -371,22 +393,69 @@ function Purchases() {
                   <div className="flex bg-page px-3 py-2 text-[11px] font-bold tracking-[0.06em] text-ink-muted uppercase">
                     <span className="min-w-0 flex-1">{t('sales.article', 'Article')}</span>
                     <span className="w-12 text-right">{t('purchases.qtyShort', 'Qty')}</span>
-                    <span className="w-20 text-right">{t('purchases.rateShort', 'Rate')}</span>
+                    <span className="w-20 text-right">{t('purchases.rateShort', 'Buy price')}</span>
                     <span className="w-24 text-right">{t('purchases.lineTotal', 'Total')}</span>
                   </div>
                   {(purchase.lines ?? []).map((line) => (
                     <div key={line.id} className="flex items-center border-t border-line px-3 py-2.5 text-xs">
-                      <span className="min-w-0 flex-1 truncate font-semibold text-ink">{line.article}</span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate font-semibold text-ink">{line.article}</span>
+                        {line.barcode ? <span className="block truncate text-[11px] tabular-nums text-ink-muted">{line.barcode}</span> : null}
+                      </span>
                       <span className="w-12 text-right text-ink">{line.quantity}</span>
                       <span className="w-20 text-right text-ink-muted">{formatCents(line.unit_cost, currency)}</span>
                       <span className="w-24 text-right font-bold text-ink">{formatCents(line.total_cents, currency)}</span>
                     </div>
                   ))}
+                  {purchase.iva_mode && purchase.iva_mode !== 'none' ? (
+                    <>
+                      <div className="flex justify-between border-t border-line px-3 py-2 text-xs">
+                        <span className="text-ink-muted">{t('purchases.baseAmount', 'Base (before IVA)')}</span>
+                        <span className="font-semibold text-ink">{formatCents(purchase.base_cents ?? 0, currency)}</span>
+                      </div>
+                      <div className="flex justify-between px-3 pb-2 text-xs">
+                        <span className="text-ink-muted">
+                          {t('purchases.ivaAmount', 'IVA')} {purchase.iva_percent}%
+                        </span>
+                        <span className="font-semibold text-ink">{formatCents(purchase.iva_cents ?? 0, currency)}</span>
+                      </div>
+                    </>
+                  ) : null}
                   <div className="flex items-baseline justify-between border-t border-line bg-page px-3 py-3">
-                    <span className="text-xs font-bold tracking-[0.06em] text-ink-muted uppercase">{t('purchases.total', 'Total')}</span>
+                    <span className="text-xs font-bold tracking-[0.06em] text-ink-muted uppercase">
+                      {purchase.iva_mode && purchase.iva_mode !== 'none' ? t('purchases.totalWithIva', 'Total to pay') : t('purchases.total', 'Total')}
+                    </span>
                     <span className="text-lg font-extrabold text-ink">{formatCents(purchase.total_cents, currency)}</span>
                   </div>
                 </div>
+
+                {purchase.ledger_entry && !purchase.is_voided ? (
+                  <div className="rounded-2xl border border-line p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="flex items-center gap-2 text-xs font-bold tracking-[0.06em] text-ink-muted uppercase">
+                        <BookOpen className="h-4 w-4" />
+                        {t('nav.ledger', 'Supplier Payments')}
+                      </span>
+                      <PaymentBadge status={purchase.ledger_entry.payment_status} />
+                    </div>
+                    <p className="mt-2 text-xs text-ink-muted">
+                      {t('purchases.inLedger', 'Written down as {number}. What is owed to the supplier and the payments are kept there.', { number: purchase.ledger_entry.number })}
+                    </p>
+                    <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
+                      <span className="text-ink-muted">
+                        {t('ledger.paid', 'Paid')}: <span className="font-bold text-emerald-700">{formatCents(purchase.ledger_entry.paid_cents, currency)}</span>
+                      </span>
+                      <span className="text-right text-ink-muted">
+                        {t('ledger.owed', 'Still owed')}: <span className={cn('font-bold', purchase.ledger_entry.owed_cents > 0 ? 'text-rose-700' : 'text-ink')}>{formatCents(purchase.ledger_entry.owed_cents, currency)}</span>
+                      </span>
+                    </div>
+                    {can('ledger.view') ? (
+                      <Button className="mt-3" variant="secondary" fullWidth icon={<BookOpen className="h-4 w-4" />} onClick={() => navigate(`/app/ledger?open=${purchase.ledger_entry!.id}`)}>
+                        {t('purchases.openInLedger', 'Open in Supplier Payments')}
+                      </Button>
+                    ) : null}
+                  </div>
+                ) : null}
 
                 {purchase.notes ? (
                   <div>
@@ -398,6 +467,14 @@ function Purchases() {
             )}
           </div>
 
+          {purchase && !purchase.is_voided && can('stock.create') ? (
+            <div className="border-t border-line px-5 pt-3">
+              <Button variant="secondary" fullWidth icon={<Pencil className="h-4 w-4" />} disabled={!purchase.can_edit} onClick={() => setEditing(purchase)}>
+                {t('purchases.edit', 'Edit this purchase')}
+              </Button>
+              {!purchase.can_edit ? <p className="mt-1.5 text-center text-[11px] text-ink-muted">{t('purchases.editLocked', 'Something was already paid for it in Supplier Payments, so it can no longer be changed.')}</p> : null}
+            </div>
+          ) : null}
           {purchase && !purchase.is_voided && can('stock.void') ? (
             <div className="border-t border-line px-5 py-3">
               <Button variant="danger" fullWidth icon={<Ban className="h-4 w-4" />} onClick={() => setCancelling(true)}>
@@ -413,7 +490,7 @@ function Purchases() {
         onClose={() => setCancelling(false)}
         maxWidth="md"
         title={t('purchases.cancelTitle', 'Why is this purchase being cancelled?')}
-        subtitle={t('purchases.cancelSubtitle', 'The pieces are taken back out of your stock. If some were already sold, it cannot be cancelled.')}
+        subtitle={t('purchases.cancelSubtitle', 'The pieces are taken back out of your stock and its entry in Supplier Payments is cancelled too. If some were already sold, or payments were made against it, it cannot be cancelled.')}
         footer={
           <>
             <Button variant="secondary" onClick={() => setCancelling(false)}>

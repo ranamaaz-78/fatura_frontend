@@ -4,6 +4,7 @@ export type ReportKind =
   | 'sales'
   | 'tax'
   | 'products'
+  | 'sold'
   | 'outstanding'
   | 'payments'
   | 'stock'
@@ -54,6 +55,7 @@ export const REPORT_KINDS: ReportKind[] = [
   'sales',
   'tax',
   'products',
+  'sold',
   'outstanding',
   'payments',
   'stock',

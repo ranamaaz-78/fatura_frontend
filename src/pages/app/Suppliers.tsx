@@ -6,6 +6,8 @@ import { ConfirmDialog } from '../../components/ui/ConfirmDialog'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { Input } from '../../components/ui/Input'
 import { Modal } from '../../components/ui/Modal'
+import { Pagination } from '../../components/ui/Pagination'
+import { usePageSize } from '../../components/ui/PageSizeSelect'
 import { useToast } from '../../components/ui/Toast'
 import { Toggle } from '../../components/ui/Toggle'
 import { Tooltip } from '../../components/ui/Tooltip'
@@ -31,6 +33,7 @@ type Draft = {
   name: string
   company_name: string
   phone: string
+  email: string
   nif: string
 }
 
@@ -40,13 +43,14 @@ function taxId(supplier: { nif: string | null; nie: string | null }): string {
 
 type StatusFilter = 'all' | 'active' | 'inactive'
 
-const emptyDraft: Draft = { name: '', company_name: '', phone: '', nif: '' }
+const emptyDraft: Draft = { name: '', company_name: '', phone: '', email: '', nif: '' }
 
 function fromSupplier(supplier: Supplier): Draft {
   return {
     name: supplier.name,
     company_name: supplier.company_name ?? '',
     phone: supplier.phone ?? '',
+    email: supplier.email ?? '',
     nif: taxId(supplier),
   }
 }
@@ -92,6 +96,19 @@ function Suppliers() {
     return true
   })
 
+  // Ten, fifty, a hundred or all of them at a time (the list itself is loaded whole).
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = usePageSize('suppliers')
+  const pageCount = pageSize === 'all' ? 1 : Math.max(1, Math.ceil(rows.length / pageSize))
+  const currentPage = Math.min(page, pageCount)
+  const visible = pageSize === 'all' ? rows : rows.slice((currentPage - 1) * pageSize, currentPage * pageSize)
+  const firstShown = rows.length === 0 ? 0 : (pageSize === 'all' ? 0 : (currentPage - 1) * pageSize) + 1
+  const lastShown = firstShown + visible.length - 1
+
+  useEffect(() => {
+    setPage(1)
+  }, [debounced, status])
+
   async function refresh() {
     await queryClient.cancelQueries({ queryKey: ['app', 'suppliers'] })
     await queryClient.invalidateQueries({ queryKey: ['app', 'suppliers'] })
@@ -115,6 +132,7 @@ function Suppliers() {
         name: draft.name.trim(),
         company_name: draft.company_name.trim() || null,
         phone: draft.phone.trim() || null,
+        email: draft.email.trim() || null,
         nif: draft.nif.trim() || null,
         nie: null,
       }
@@ -297,11 +315,12 @@ function Suppliers() {
               <div className="flex items-center bg-slate-50 px-4 py-2.5 text-[11px] font-semibold tracking-[0.08em] text-slate-500 uppercase">
                 <span className="min-w-0 flex-1">{t('suppliers.name', 'Name')}</span>
                 <span className="w-36">{t('suppliers.phone', 'Telephone')}</span>
+                <span className="w-48 pr-3">{t('suppliers.email', 'Email')}</span>
                 <span className="w-40">{t('suppliers.taxId', 'N.I.F/N.I.E')}</span>
                 <span className="w-36">{t('suppliers.status', 'Status')}</span>
                 <span className="w-20 text-right">{t('products.actions', 'Actions')}</span>
               </div>
-              {rows.map((supplier) => (
+              {visible.map((supplier) => (
                 <div
                   key={supplier.id}
                   className={cn(
@@ -311,6 +330,7 @@ function Suppliers() {
                 >
                   <Identity supplier={supplier} />
                   <span className="w-36 truncate text-xs text-slate-600">{supplier.phone ?? '—'}</span>
+                  <span title={supplier.email ?? undefined} className="w-48 truncate pr-3 text-xs text-slate-600">{supplier.email || '—'}</span>
                   <span className="w-40 truncate text-xs text-slate-600">{taxId(supplier) || '—'}</span>
                   <span className="w-36">
                     <ActiveSwitch
@@ -326,7 +346,7 @@ function Suppliers() {
               ))}
             </div>
             <div className="divide-y divide-slate-100 md:hidden">
-              {rows.map((supplier) => (
+              {visible.map((supplier) => (
                 <div key={supplier.id} className={cn('flex flex-col gap-3 p-4', !supplier.is_active && 'bg-slate-50/80')}>
                   <div className="flex items-start gap-3">
                     <Identity supplier={supplier} />
@@ -335,7 +355,7 @@ function Suppliers() {
                     </div>
                   </div>
                   <p className="truncate text-[11px] text-slate-500">
-                    {[supplier.phone, taxId(supplier)].filter(Boolean).join(' · ') || '—'}
+                    {[supplier.phone, supplier.email, taxId(supplier)].filter(Boolean).join(' · ') || '—'}
                   </p>
                   <ActiveSwitch
                     supplier={supplier}
@@ -345,6 +365,17 @@ function Suppliers() {
                 </div>
               ))}
             </div>
+            <Pagination
+              page={currentPage}
+              pageCount={pageCount}
+              onPageChange={setPage}
+              summary={`${t('common.showing', 'Showing')} ${firstShown}-${lastShown} ${t('common.of', 'of')} ${rows.length} ${t('suppliers.countLabel', 'suppliers')}`}
+              pageSize={pageSize}
+              onPageSizeChange={(size) => {
+                setPageSize(size)
+                setPage(1)
+              }}
+            />
           </>
         )}
       </div>
@@ -370,6 +401,7 @@ function Suppliers() {
           <Input compact label={t('suppliers.name', 'Name')} required value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} />
           <Input compact label={t('suppliers.company', 'Company')} value={draft.company_name} onChange={(event) => setDraft({ ...draft, company_name: event.target.value })} />
           <Input compact label={t('suppliers.phone', 'Telephone')} value={draft.phone} onChange={(event) => setDraft({ ...draft, phone: event.target.value })} />
+          <Input compact type="email" maxLength={190} label={t('suppliers.email', 'Email')} value={draft.email} onChange={(event) => setDraft({ ...draft, email: event.target.value })} />
           <Input compact label={t('suppliers.taxId', 'N.I.F/N.I.E')} value={draft.nif} onChange={(event) => setDraft({ ...draft, nif: event.target.value.toUpperCase() })} />
         </div>
       </Modal>

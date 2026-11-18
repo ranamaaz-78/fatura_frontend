@@ -21,6 +21,7 @@ import { Avatar } from '../../components/ui/Avatar'
 import { Badge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog'
+import { perPageOf, usePageSize } from '../../components/ui/PageSizeSelect'
 import { DataTable, type DataTableColumn } from '../../components/ui/DataTable'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { IconButton } from '../../components/ui/IconButton'
@@ -116,19 +117,21 @@ function AdminCompanies() {
   const [tab, setTab] = useState<TabId>('all')
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = usePageSize('admin-companies', 10)
   const [renewing, setRenewing] = useState<Company | null>(null)
   const [suspending, setSuspending] = useState<Company | null>(null)
   const [cancelling, setCancelling] = useState<Company | null>(null)
   const [importing, setImporting] = useState<Company | null>(null)
 
   const query = useQuery({
-    queryKey: ['admin', 'companies', tab, search, page],
+    queryKey: ['admin', 'companies', tab, search, page, pageSize],
     queryFn: () =>
       listCompanies({
         status: tab === 'suspended' ? 'suspended' : undefined,
         subscription: tab === 'all' || tab === 'suspended' ? undefined : tab,
         search,
         page,
+        per_page: perPageOf(pageSize),
       }),
   })
 
@@ -340,6 +343,11 @@ function AdminCompanies() {
         page={meta?.current_page}
         pageCount={meta?.last_page}
         onPageChange={setPage}
+        pageSize={pageSize}
+        onPageSizeChange={(size) => {
+          setPageSize(size)
+          setPage(1)
+        }}
         summary={meta ? t('common.total_count', '{count} total', { count: meta.total }) : undefined}
         rowActionsVisible
         empty={

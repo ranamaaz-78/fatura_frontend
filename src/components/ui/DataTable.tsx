@@ -1,6 +1,7 @@
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { cn } from '../../lib/cn'
+import type { PageSize } from './PageSizeSelect'
 import { Pagination } from './Pagination'
 import { SearchInput } from './SearchInput'
 import { SkeletonTable } from './Skeleton'
@@ -36,6 +37,8 @@ export type DataTableProps<T> = {
   pageCount?: number
   onPageChange?: (page: number) => void
   summary?: string
+  pageSize?: PageSize
+  onPageSizeChange?: (size: PageSize) => void
 }
 
 export function DataTable<T>({
@@ -58,6 +61,8 @@ export function DataTable<T>({
   pageCount,
   onPageChange,
   summary,
+  pageSize,
+  onPageSizeChange,
 }: DataTableProps<T>) {
   return (
     <div className="bg-card rounded-2xl border border-line/80 shadow-xs">
@@ -191,6 +196,8 @@ export function DataTable<T>({
             pageCount={pageCount}
             onPageChange={onPageChange}
             summary={summary}
+            pageSize={pageSize}
+            onPageSizeChange={onPageSizeChange}
           />
         </div>
       ) : null}

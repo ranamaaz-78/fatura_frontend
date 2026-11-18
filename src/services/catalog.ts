@@ -107,6 +107,11 @@ export function deleteProduct(id: number): Promise<unknown> {
   return unwrap(api.delete(`/app/products/${id}`))
 }
 
+/** Deletes the ticked products in one go; says how many went. */
+export function deleteProducts(ids: number[]): Promise<{ deleted: number }> {
+  return unwrap<{ deleted: number }>(api.post('/app/products/bulk-delete', { ids }))
+}
+
 export function generateBarcode(): Promise<{ barcode: string }> {
   return unwrap<{ barcode: string }>(api.post('/app/products/barcode'))
 }

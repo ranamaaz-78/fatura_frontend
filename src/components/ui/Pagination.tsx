@@ -1,21 +1,26 @@
 import { t } from '../../i18n'
 import { cn } from '../../lib/cn'
 import { Button } from './Button'
+import { PageSizeSelect, type PageSize } from './PageSizeSelect'
 
 export type PaginationProps = {
   page: number
   pageCount: number
   onPageChange: (page: number) => void
   summary?: string
+  /** The page size chooser (10 · 50 · 100 · All): shown when both are given. */
+  pageSize?: PageSize
+  onPageSizeChange?: (size: PageSize) => void
 }
 
-export function Pagination({ page, pageCount, onPageChange, summary }: PaginationProps) {
+export function Pagination({ page, pageCount, onPageChange, summary, pageSize, onPageSizeChange }: PaginationProps) {
   const pages = Array.from({ length: pageCount }, (_, index) => index + 1)
 
   return (
-    <div className="flex items-center justify-between px-4 py-3 text-xs text-ink-muted">
+    <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 text-xs text-ink-muted">
       <p>{summary}</p>
-      <div className="flex items-center gap-1">
+      {pageSize !== undefined && onPageSizeChange ? <PageSizeSelect value={pageSize} onChange={onPageSizeChange} /> : null}
+      <div className={cn('flex items-center gap-1', pageCount <= 1 && 'hidden')}>
         <Button
           variant="ghost"
           size="sm"

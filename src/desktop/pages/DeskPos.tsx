@@ -1,3 +1,4 @@
+import { ProductModal } from '../../pages/app/ProductModal'
 import { Camera, Check, Minus, PackageSearch, Plus, ScanLine, Search, ShieldCheck, ShoppingBasket, Trash2, UserRound, X } from 'lucide-react'
 import { useEffect, useRef, type ReactNode, type RefObject } from 'react'
 import { Link } from 'react-router-dom'
@@ -13,6 +14,7 @@ import { RecargoPicker } from '../../pages/app/RecargoPicker'
 import { RecordPaymentModal } from '../../pages/app/RecordPaymentModal'
 import { QUOTE_VALID_DAYS, initials, ivaOptions, useSaleComposer, type DraftLine, type SaleComposer } from '../../pages/app/useSaleComposer'
 import { getErrorMessage } from '../../services/api'
+import { QuantityField } from '../../components/ui/QuantityField'
 import { identityFor } from '../ui/docIdentity'
 import { Kbd, Shimmer, deskButtonClass } from '../ui/kit'
 
@@ -238,7 +240,7 @@ function Header({ sale }: { sale: SaleComposer }) {
 
 /** The scanner bar: type or scan, Enter adds the first match. */
 function Scanner({ sale, inputRef }: { sale: SaleComposer; inputRef: RefObject<HTMLInputElement | null> }) {
-  const { productQuery, setProductQuery, dropdown, setDropdown, camera, setCamera, catalog, productMatches, addProduct, piecesLeft, onProductKeyDown, currency } = sale
+  const { productQuery, setProductQuery, dropdown, setDropdown, camera, setCamera, catalog, productMatches, addProduct, piecesLeft, onProductKeyDown, currency, can, activeMatch, setActiveMatch, newProduct, setNewProduct, openNewProduct, onProductCreated } = sale
   const open = dropdown && !camera && productQuery.trim() !== ''
 
   return (
@@ -271,6 +273,12 @@ function Scanner({ sale, inputRef }: { sale: SaleComposer; inputRef: RefObject<H
           <Camera className="h-4 w-4" />
           {t('sales.camera', 'Scan code')}
         </button>
+        {can('products.create') ? (
+          <button type="button" onClick={openNewProduct} className={deskButtonClass('ghost', 'h-12 px-4')}>
+            <Plus className="h-4 w-4" />
+            {t('sales.addProduct', 'Add product')}
+          </button>
+        ) : null}
       </div>
 
       {open ? (
@@ -290,10 +298,12 @@ function Scanner({ sale, inputRef }: { sale: SaleComposer; inputRef: RefObject<H
                   <button
                     key={product.id}
                     type="button"
+                    data-nav-active={index === activeMatch}
+                    onMouseEnter={() => setActiveMatch(index)}
                     onClick={() => addProduct(product)}
                     className={cn(
                       'flex items-center gap-3 rounded-xl px-3 py-2.5 text-left transition',
-                      index === 0 ? 'bg-brand-600/10 ring-1 ring-brand-600/30' : 'hover:bg-elevated',
+                      index === activeMatch ? 'bg-brand-600/10 ring-1 ring-brand-600/30' : 'hover:bg-elevated',
                     )}
                   >
                     <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-elevated text-[11px] font-bold text-ink-muted">
@@ -302,7 +312,7 @@ function Scanner({ sale, inputRef }: { sale: SaleComposer; inputRef: RefObject<H
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-[13px] font-bold text-ink">{product.article}</span>
                       <span className="desk-num block truncate text-[11px] text-ink-muted">
-                        {product.barcode} · IVA {product.iva_percent}%
+                        {[product.short_code, product.barcode].filter(Boolean).join(' · ')} · IVA {product.iva_percent}%
                       </span>
                     </span>
                     <span className="shrink-0 text-right">
@@ -318,6 +328,7 @@ function Scanner({ sale, inputRef }: { sale: SaleComposer; inputRef: RefObject<H
           )}
         </div>
       ) : null}
+      <ProductModal open={newProduct !== null} product={null} initial={newProduct ?? undefined} onSaved={onProductCreated} onClose={() => setNewProduct(null)} />
     </section>
   )
 }
@@ -413,6 +424,7 @@ function LineRow({ sale, line, index, columns }: { sale: SaleComposer; line: Dra
       <span className="desk-num text-center text-[12px] font-semibold text-ink-muted">{index + 1}</span>
       <span className="min-w-0">
         <span className="block truncate text-[13px] font-bold text-ink">{line.article}</span>
+        {line.barcode ? <span className="desk-num block truncate text-[11px] text-ink-muted">{line.barcode}</span> : null}
         {line.description ? <span className="block truncate text-[11px] text-ink-muted">{line.description}</span> : null}
       </span>
       {rules.showsAvailable ? (
@@ -436,7 +448,13 @@ function LineRow({ sale, line, index, columns }: { sale: SaleComposer; line: Dra
           <button type="button" aria-label="−" onClick={() => changeQuantity(line, line.quantity - 1)} className="flex h-8 w-8 items-center justify-center rounded-lg text-ink transition hover:bg-card">
             <Minus className="h-3.5 w-3.5" />
           </button>
-          <span className="desk-num w-9 text-center text-[14px] font-extrabold text-ink">{line.quantity}</span>
+          <QuantityField
+            label={`${t('sales.quantity', 'Quantity')} ${line.article}`}
+            value={line.quantity}
+            max={line.stock !== null && rules.movesStock ? line.stock : null}
+            onChange={(next) => changeQuantity(line, next)}
+            className="desk-num w-12 rounded-md bg-transparent text-center text-[14px] font-extrabold text-ink outline-none focus:bg-card"
+          />
           <button
             type="button"
             aria-label="+"
@@ -544,6 +562,8 @@ function ClientCard({ sale }: { sale: SaleComposer }) {
     clientNif,
     setClientNif,
     clientAddress,
+    clientEmail,
+    setClientEmail,
     setClientAddress,
     phoneNeedle,
     customers,
@@ -631,6 +651,18 @@ function ClientCard({ sale }: { sale: SaleComposer }) {
             <input value={clientNif} onChange={(event) => setClientNif(event.target.value.toUpperCase())} autoComplete="off" className={cn(clientField, 'uppercase')} />
           </Field>
         </div>
+        <div className="grid grid-cols-2 gap-3">
+        <Field label={t('sales.clientEmail', 'Email')}>
+          <input
+            type="email"
+            value={clientEmail}
+            onChange={(event) => setClientEmail(event.target.value)}
+            maxLength={190}
+            autoComplete="off"
+            placeholder={t('sales.clientEmailPlaceholder', 'name@example.com')}
+            className={clientField}
+          />
+        </Field>
         <Field label={t('sales.clientAddress', 'Address')}>
           <input
             value={clientAddress}
@@ -641,6 +673,7 @@ function ClientCard({ sale }: { sale: SaleComposer }) {
             className={clientField}
           />
         </Field>
+        </div>
       </div>
     </section>
   )

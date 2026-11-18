@@ -7,11 +7,11 @@ import { downloadSaleDocumentSheet } from '../../lib/exportSaleSheet'
 import { getErrorMessage } from '../../services/api'
 import { getSale, listSales } from '../../services/sales'
 import type { IssuableType, SaleDisplayStatus, SaleDocument } from '../../types/sales'
+import { perPageOf, usePageSize, type PageSize } from '../../components/ui/PageSizeSelect'
 import { rulesFor } from './documentTypes'
 
 export type PaymentFilter = SaleDisplayStatus | 'all'
 
-export const PER_PAGE = 8
 
 const emptyCounts = { all: 0, pending: 0, paid: 0, partial: 0, voided: 0 }
 const emptyStats = {
@@ -74,15 +74,22 @@ export function useDocumentList(type: IssuableType) {
     setPage(1)
   }, [debounced])
 
+  // How many rows to show (10 · 50 · 100 · all), remembered for every document list.
+  const [pageSize, setPageSize] = usePageSize('documents', 10)
+  function changePageSize(size: PageSize) {
+    setPageSize(size)
+    setPage(1)
+  }
+
   const query = useQuery({
-    queryKey: ['app', 'sales', { type, search: debounced, display_status: displayStatus, page }],
+    queryKey: ['app', 'sales', { type, search: debounced, display_status: displayStatus, page, pageSize }],
     queryFn: () =>
       listSales({
         type,
         search: debounced || undefined,
         display_status: displayStatus,
         page,
-        per_page: PER_PAGE,
+        per_page: perPageOf(pageSize),
       }),
     placeholderData: keepPreviousData,
   })
@@ -138,6 +145,8 @@ export function useDocumentList(type: IssuableType) {
     setSearch,
     debounced,
     setPage,
+    pageSize,
+    changePageSize,
     exporting,
     exportRow,
     showsPaymentFilters,

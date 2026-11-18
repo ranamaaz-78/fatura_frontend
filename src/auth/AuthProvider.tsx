@@ -35,6 +35,19 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
+/** How long someone may do nothing before they are signed out when the server does not say (it does, with the session). */
+const DEFAULT_IDLE_MINUTES = 30
+const ACTIVITY_KEY = 'last_activity'
+const ACTIVITY_EVENTS = ['pointerdown', 'pointermove', 'keydown', 'wheel', 'touchstart', 'scroll'] as const
+
+function readActivity(): number {
+  try {
+    return Number(window.localStorage.getItem(ACTIVITY_KEY)) || Date.now()
+  } catch {
+    return Date.now()
+  }
+}
+
 export function homeFor(role: string | undefined): string {
   return role === 'super_admin' ? '/admin/dashboard' : '/app/dashboard'
 }
@@ -51,7 +64,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const roleRef = useRef<string | undefined>(undefined)
 
   const clear = useCallback(() => {
+    // Leaving the demo's token behind would make the next sign-in look like a demo visit.
+    endDemoVisit()
     setAuthToken(null)
+    try {
+      window.localStorage.removeItem(ACTIVITY_KEY)
+    } catch {
+      /* nothing to forget */
+    }
     setSession(null)
     setStatus('guest')
     queryClient.clear()
@@ -166,6 +186,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return
     }
 
+    // Signing out by hand: the Windows app forgets the remembered password (the email stays).
+    void window.desktop?.credentials?.clearPassword()
+
     try {
       await logoutRequest()
     } catch {
@@ -176,6 +199,74 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [clear, exitDemo, navigate])
 
   roleRef.current = session?.role
+  const idleMinutes = session?.idle_minutes && session.idle_minutes > 0 ? session.idle_minutes : DEFAULT_IDLE_MINUTES
+
+  // Thirty minutes without touching the screen: signed out, wherever the person is. The time of the last touch is
+  // shared by every tab and window, so working in one keeps the others alive, and a laptop that slept is checked on waking.
+  useEffect(() => {
+    if (status !== 'authenticated') return
+
+    const stamp = () => {
+      try {
+        window.localStorage.setItem(ACTIVITY_KEY, String(Date.now()))
+      } catch {
+        /* private window: the check then only counts from this tab */
+      }
+    }
+
+    let leaving = false
+    const idleOut = async () => {
+      if (leaving) return
+      leaving = true
+      setLoginNotice(t('auth.idleLogout', 'You were signed out after {minutes} minutes without activity. Please sign in again.', { minutes: idleMinutes }))
+      try {
+        await logoutRequest()
+      } catch {
+        // A token the server already dropped is as good as signed out.
+      }
+      clear()
+      navigate('/login', { replace: true })
+    }
+
+    const check = () => {
+      if (Date.now() - readActivity() >= idleMinutes * 60_000) void idleOut()
+    }
+
+    // Opening the page after a long absence counts as being away; opening it fresh counts as a touch.
+    check()
+    if (!leaving) stamp()
+
+    let lastWrite = Date.now()
+    const touched = () => {
+      const now = Date.now()
+      if (now - lastWrite > 5000) {
+        lastWrite = now
+        stamp()
+      }
+    }
+
+    // Signed out in another tab: this one follows.
+    const otherTab = (event: StorageEvent) => {
+      if (event.key === 'token' && event.newValue === null) {
+        clear()
+        navigate('/login', { replace: true })
+      }
+    }
+
+    for (const name of ACTIVITY_EVENTS) window.addEventListener(name, touched, { passive: true })
+    window.addEventListener('focus', check)
+    window.addEventListener('storage', otherTab)
+    document.addEventListener('visibilitychange', check)
+    const timer = window.setInterval(check, 15_000)
+
+    return () => {
+      for (const name of ACTIVITY_EVENTS) window.removeEventListener(name, touched)
+      window.removeEventListener('focus', check)
+      window.removeEventListener('storage', otherTab)
+      document.removeEventListener('visibilitychange', check)
+      window.clearInterval(timer)
+    }
+  }, [clear, idleMinutes, navigate, status])
 
   const value = useMemo(
     () => ({ session, status, login, adoptSession, logout, refresh, enterDemo, exitDemo }),

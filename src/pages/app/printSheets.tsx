@@ -460,6 +460,7 @@ function ItemsTable({
       <table className={cn('w-full table-fixed border-collapse text-[11.5px]', `${D}text-[11px]`)}>
         <colgroup>
           <col style={{ width: style.pad ? 40 : 28 }} />
+          <col style={{ width: style.pad ? 124 : 112 }} />
           <col />
           {columns.map((column) => (
             <col key={column.key} style={{ width: column.width }} />
@@ -467,7 +468,7 @@ function ItemsTable({
         </colgroup>
         <thead>
           <tr className={style.head}>
-            {['#', td('sales.description', 'Description')].map((label) => (
+            {['#', td('sales.sku', 'SKU'), td('sales.description', 'Description')].map((label) => (
               <th key={label} className={cn('text-left text-[9.5px] font-semibold tracking-[0.08em] uppercase', style.th, edge)}>
                 {label}
               </th>
@@ -484,15 +485,17 @@ function ItemsTable({
         </thead>
         <tbody>
           {lines.map((line, index) => {
-            const detail = line.description ?? ''
+            // The brand of the product goes first in the description: "Philips · Denim Jeans Blue".
+            const detail = [line.brand?.trim(), line.description?.trim()].filter(Boolean).join(' · ')
             const cell = cn('py-2.5 align-top', `${D}py-[5px]`, edge, style.td)
             return (
               <tr key={line.position} className={style.row(index)}>
                 <td className={cn(cell, 'text-[#94a3b8] tabular-nums')}>{line.position}</td>
+                <td className={cn(cell, 'pr-3 text-[10.5px] whitespace-nowrap text-[#334155] tabular-nums')}>{line.barcode ?? ''}</td>
                 <td className={cn(cell, 'pr-5')}>
-                  <span className={cn('block font-medium text-[#0f172a]', `${D}inline`)}>{line.article}</span>
+                  <span className={cn('block font-medium break-words text-[#0f172a]', `${D}inline`)}>{line.article}</span>
                   {detail ? (
-                    <span className={cn('mt-0.5 block text-[10px] whitespace-nowrap text-[#94a3b8]', `${D}mt-0 ${D}ml-2 ${D}inline`)}>
+                    <span className={cn('mt-0.5 block text-[10px] leading-snug break-words text-[#475569]', `${D}mt-0 ${D}ml-2 ${D}inline`)}>
                       {detail}
                     </span>
                   ) : null}

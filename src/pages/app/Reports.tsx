@@ -6,9 +6,10 @@ import {
   FileDown,
   FileSpreadsheet,
   Layers,
+  PackageCheck,
   Package,
   Percent,
-  Receipt,
+  ReceiptEuro as Receipt,
   TrendingUp,
   Truck,
   Users,
@@ -67,6 +68,7 @@ const KIND_META: Record<ReportKind, { icon: LucideIcon }> = {
   sales: { icon: TrendingUp },
   tax: { icon: Percent },
   products: { icon: Package },
+  sold: { icon: PackageCheck },
   outstanding: { icon: FileClock },
   payments: { icon: Banknote },
   stock: { icon: Layers },
@@ -116,6 +118,7 @@ function kindLabel(kind: ReportKind): string {
     sales: t('reports.sales', 'Sales'),
     tax: t('reports.tax', 'Tax (IVA)'),
     products: t('reports.products', 'Best sellers'),
+    sold: t('reports.sold', 'Products sold'),
     outstanding: t('reports.outstanding', 'Outstanding'),
     payments: t('reports.payments', 'Payments by method'),
     stock: t('reports.stock', 'Stock value'),
@@ -301,6 +304,50 @@ function columnsFor(kind: ReportKind, currency: string, data: ReportPayload): Co
         money('total_cents', t('reports.total', 'Total')),
         shareCol('quantity', kpis.quantity ?? 0, t('reports.share', 'Share')),
       ]
+    case 'sold':
+      return [
+        {
+          key: 'barcode',
+          header: t('products.barcode', 'Bar code'),
+          text: (row) => asText(row.barcode),
+          excel: (row) => asText(row.barcode),
+          node: (row) => <span className="tabular-nums text-slate-600">{asText(row.barcode) || '—'}</span>,
+        },
+        {
+          key: 'article',
+          header: t('sales.article', 'Article'),
+          text: (row) => asText(row.article),
+          excel: (row) => asText(row.article),
+          node: (row) => <span className="block truncate font-semibold text-slate-900">{asText(row.article)}</span>,
+        },
+        {
+          key: 'brand',
+          header: t('products.brand', 'Brand'),
+          hideOnPhone: true,
+          text: (row) => asText(row.brand),
+          excel: (row) => asText(row.brand),
+        },
+        countCol('quantity', t('reports.quantitySold', 'Sold')),
+        countCol('document_count', t('reports.onDocuments', 'On documents'), false),
+        {
+          key: 'avg_price_cents',
+          header: t('reports.avgPrice', 'Average price'),
+          align: 'right',
+          text: (row) => formatCents(asNumber(row.avg_price_cents), currentCurrency),
+          excel: (row) => centsToExcelAmount(asNumber(row.avg_price_cents)),
+          format: 'money',
+        },
+        money('base_cents', t('reports.base', 'Base')),
+        money('total_cents', t('reports.total', 'Total')),
+        {
+          key: 'stock',
+          header: t('reports.stockLeft', 'Stock left'),
+          align: 'right',
+          text: (row) => (row.stock === null ? '—' : String(asNumber(row.stock))),
+          excel: (row) => (row.stock === null ? null : asNumber(row.stock)),
+          format: 'count',
+        },
+      ]
     case 'outstanding':
       return [
         {
@@ -456,6 +503,13 @@ function kpisFor(kind: ReportKind, kpis: ReportKpis, currency: string): Tile[] {
         tile(t('reports.quantity', 'Quantity'), count('quantity'), t('reports.units', 'Units'), 'blue', <Layers className="h-5 w-5" />),
         tile(t('reports.total', 'Total'), money('total_cents'), t('reports.sales', 'Sales'), 'green', <Banknote className="h-5 w-5" />),
       ]
+    case 'sold':
+      return [
+        tile(t('reports.productsCount', 'Products'), count('product_count'), t('reports.sold', 'Products sold'), 'slate', <PackageCheck className="h-5 w-5" />),
+        tile(t('reports.quantitySold', 'Sold'), count('quantity'), t('reports.units', 'Units'), 'blue', <Layers className="h-5 w-5" />),
+        tile(t('reports.base', 'Base'), money('base_cents'), t('reports.sales', 'Sales'), 'slate', <Receipt className="h-5 w-5" />),
+        tile(t('reports.total', 'Total'), money('total_cents'), t('reports.sales', 'Sales'), 'green', <Banknote className="h-5 w-5" />),
+      ]
     case 'outstanding':
       return [
         tile(t('reports.documents', 'Documents'), count('document_count'), t('sales.stillOpen', 'still open'), 'slate', <Receipt className="h-5 w-5" />),
@@ -542,6 +596,9 @@ function summaryRows(kind: ReportKind, data: ReportPayload, currency: string) {
   })
 }
 
+/** How wide each column of the Products sold PDF is: the article gets the room, the numbers only what they need. */
+const SOLD_PDF_WEIGHTS: Record<string, number> = { barcode: 1.5, article: 3, brand: 1.4, quantity: 0.9, document_count: 1, avg_price_cents: 1.2, base_cents: 1.2, total_cents: 1.2, stock: 0.9 }
+
 async function exportPayload(
   kind: ReportKind,
   data: ReportPayload,
@@ -616,6 +673,11 @@ const COMPARE: Partial<Record<ReportKind, CompareMetric[]>> = {
   products: [
     { key: 'quantity', label: () => t('reports.quantity', 'Quantity'), money: false },
     { key: 'total_cents', label: () => t('reports.total', 'Total'), money: true },
+  ],
+  sold: [
+    { key: 'quantity', label: () => t('reports.quantitySold', 'Sold'), money: false },
+    { key: 'total_cents', label: () => t('reports.total', 'Total'), money: true },
+    { key: 'product_count', label: () => t('reports.productsCount', 'Products'), money: false },
   ],
   outstanding: [
     { key: 'outstanding_cents', label: () => t('payments.outstanding', 'Outstanding'), money: true, goodWhen: 'down' },
@@ -718,7 +780,7 @@ function pdfCharts(
       })
       charts.push({ type: 'donut', title: t('reports.taxAmount', 'Tax'), money: true, center: formatCents(data.kpis.tax_cents ?? 0, currentCurrency), slices: slices(rows.map((row) => ({ name: `${asNumber(row.rate)}%`, value: asNumber(row.tax_cents) }))) })
     }
-  } else if (kind === 'products') {
+  } else if (kind === 'products' || kind === 'sold') {
     const rows = data.rows ?? []
     charts.push({ type: 'rank', title: t('reports.topByQuantity', 'Top products by units sold'), money: false, color: brand, items: ranking(rows.map((row) => ({ name: asText(row.article), value: asNumber(row.quantity) }))) })
     charts.push({ type: 'rank', title: t('reports.topByRevenue', 'Top products by revenue'), money: true, color: second, items: ranking(rows.map((row) => ({ name: asText(row.article), value: asNumber(row.total_cents) }))) })
@@ -790,7 +852,9 @@ async function exportPdfPayload(
 
   const dated = usesPeriod(kind)
   const current = dated ? periodRange(period, from, to) : null
-  const before = dated ? previousRange(period, from, to) : null
+  // Products sold is the Excel file as a PDF: its summary and its table, with no graphs and no comparison.
+  const plain = kind === 'sold'
+  const before = dated && !plain ? previousRange(period, from, to) : null
 
   // The period before, asked from the server like the report itself. If it cannot be had, the PDF is made without it.
   let previous: ReportPayload | null = null
@@ -817,7 +881,8 @@ async function exportPdfPayload(
         })
       : []
 
-  const capped = rows.slice(0, 400)
+  // Products sold is the full list, exactly as in the Excel file: every product, no cap.
+  const capped = kind === 'sold' ? rows : rows.slice(0, 400)
   const total = cols.some((col) => col.sum)
     ? cols.map((col, index) => {
         if (index === 0) return t('reports.total', 'Total')
@@ -840,10 +905,10 @@ async function exportPdfPayload(
     comparisonHeaders: { metric: t('reports.metric', 'Metric'), current: t('reports.thisPeriod', 'This period'), previous: t('reports.previousPeriod', 'Previous period'), change: t('reports.change', 'Change') },
     comparison,
     chartsTitle: t('reports.analysis', 'Analysis'),
-    charts: pdfCharts(kind, data, previous, { current, previous: before }, palette),
+    charts: plain ? [] : pdfCharts(kind, data, previous, { current, previous: before }, palette),
     table: {
       title: rows.length > capped.length ? `${t('reports.details', 'Details')} (${capped.length}/${rows.length})` : t('reports.details', 'Details'),
-      columns: cols.map((col) => ({ header: col.header, align: col.align === 'right' ? 'right' : 'left' })),
+      columns: cols.map((col) => ({ header: col.header, align: col.align === 'right' ? 'right' : 'left', weight: kind === 'sold' ? SOLD_PDF_WEIGHTS[col.key] : undefined })),
       rows: capped.map((row) => cols.map((col) => col.text(row))),
       total,
     },
@@ -1192,7 +1257,7 @@ function Charts({ kind, data, currency }: { kind: ReportKind; data: ReportPayloa
     )
   }
 
-  if (kind === 'products') {
+  if (kind === 'products' || kind === 'sold') {
     const bars = (data.rows ?? []).slice(0, 8).map((row) => ({
       name: asText(row.article),
       count: asNumber(row.quantity),

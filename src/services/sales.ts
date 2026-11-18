@@ -116,6 +116,30 @@ export function updateSaleSettlement(
   return unwrap<SaleDocument>(api.patch(`/app/sales/${id}/settlements/${settlementId}`, input))
 }
 
+export function deleteSale(id: number): Promise<SaleDocument> {
+  return unwrap<SaleDocument>(api.delete(`/app/sales/${id}`))
+}
+
+export function restoreSale(id: number): Promise<SaleDocument> {
+  return unwrap<SaleDocument>(api.post(`/app/sales/${id}/restore`))
+}
+
+export type BulkResult = { done: number[]; failed: { id: number; number: string | null; reason: string }[] }
+
+/** Deletes many documents at once; the ones that cannot be deleted come back in `failed` with the reason. */
+export function bulkDeleteSales(ids: number[]): Promise<BulkResult> {
+  return unwrap<BulkResult>(api.post('/app/sales/bulk-delete', { ids }))
+}
+
+export function bulkRestoreSales(ids: number[]): Promise<BulkResult> {
+  return unwrap<BulkResult>(api.post('/app/sales/bulk-restore', { ids }))
+}
+
+/** How many deleted documents there are of each kind (the Restore page's tabs). */
+export function getTrashCounts(): Promise<Record<'factura' | 'albaran' | 'quotation' | 'proforma', number>> {
+  return unwrap(api.get('/app/sales/trash-counts'))
+}
+
 export function voidSale(id: number, reason: string): Promise<SaleDocument> {
   return unwrap<SaleDocument>(api.post(`/app/sales/${id}/void`, { reason }))
 }

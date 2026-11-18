@@ -19,6 +19,14 @@ interface Window {
     openExternal: (url: string) => void;
     /** Older builds of the app do not pass it. */
     version?: string;
+    /** "Remember me" on the sign-in screen (1.2.15 and later): email and password kept on this computer, encrypted by Windows. */
+    credentials?: {
+      get: () => Promise<{ available: boolean; email: string; password: string } | null>;
+      save: (email: string, password: string) => Promise<boolean>;
+      /** Signing out by hand: the password is forgotten, the email stays. */
+      clearPassword: () => Promise<boolean>;
+      forget: () => Promise<boolean>;
+    };
     /** The app updating itself (1.2.0 and later). */
     updates?: {
       status: () => Promise<DesktopUpdateStatus | null>;

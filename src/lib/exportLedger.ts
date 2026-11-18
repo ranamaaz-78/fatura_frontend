@@ -127,6 +127,7 @@ export function exportLedgerEntries(format: LedgerExportFormat, entries: LedgerE
       summary: [
         { label: t('ledger.statEntries', 'Entries'), value: live.length, format: 'count' },
         { label: t('ledger.bought', 'Bought'), value: bought, format: 'money' },
+        { label: t('ledger.ivaInBought', 'IVA in it'), value: live.reduce((sum, entry) => sum + (entry.iva?.iva_cents ?? 0), 0), format: 'money' },
         { label: t('ledger.paid', 'Paid'), value: paid, format: 'money' },
         { label: t('ledger.owed', 'Still owed'), value: bought - paid, format: 'money' },
       ],
@@ -136,6 +137,9 @@ export function exportLedgerEntries(format: LedgerExportFormat, entries: LedgerE
         { header: t('ledger.supplier', 'Supplier'), format: 'text' },
         { header: t('ledger.description', 'What came from the supplier'), format: 'text' },
         { header: t('ledger.refShort', 'Invoice no.'), format: 'text' },
+        { header: t('purchases.baseAmount', 'Base (before IVA)'), format: 'money', sum: true },
+        { header: t('ledger.ivaPercentShort', 'IVA %'), format: 'text' },
+        { header: t('purchases.ivaAmount', 'IVA'), format: 'money', sum: true },
         { header: t('ledger.amount', 'Amount'), format: 'money', sum: true },
         { header: t('ledger.paid', 'Paid'), format: 'money', sum: true },
         { header: t('ledger.balance', 'Balance'), format: 'money', sum: true },
@@ -150,6 +154,9 @@ export function exportLedgerEntries(format: LedgerExportFormat, entries: LedgerE
         entry.supplier_name,
         entry.description,
         entry.reference ?? '',
+        entry.is_voided ? 0 : (entry.iva?.base_cents ?? entry.amount_cents),
+        entry.iva ? `${entry.iva.percent}%` : '',
+        entry.is_voided ? 0 : (entry.iva?.iva_cents ?? 0),
         entry.is_voided ? 0 : entry.amount_cents,
         entry.is_voided ? 0 : entry.paid_cents,
         entry.is_voided ? 0 : entry.owed_cents,
@@ -223,13 +230,14 @@ export function exportLedgerStatement(format: LedgerExportFormat, statement: Led
   const period = statement.from || statement.to ? `${statement.from ? showDate(statement.from) : '…'} → ${statement.to ? showDate(statement.to) : '…'}` : t('ledger.allTime', 'All entries')
 
   const rows: Cell[][] = [
-    ...(statement.from ? [[showDate(statement.from), t('ledger.opening', 'Opening balance'), '', '', null, null, statement.opening_cents]] : []),
+    ...(statement.from ? [[showDate(statement.from), t('ledger.opening', 'Opening balance'), '', '', null, null, null, statement.opening_cents]] : []),
     ...statement.transactions.map((move): Cell[] => [
       showDate(move.date),
       move.type === 'bill' ? t('ledger.typeBill', 'Purchase') : t('ledger.typePayment', 'Payment'),
       move.number,
       [move.details, move.reference ? `(${move.reference})` : ''].filter(Boolean).join(' '),
       move.bought_cents > 0 ? move.bought_cents : null,
+      (move.iva_cents ?? 0) > 0 ? (move.iva_cents as number) : null,
       move.paid_cents > 0 ? move.paid_cents : null,
       move.balance_cents,
     ]),
@@ -248,6 +256,7 @@ export function exportLedgerStatement(format: LedgerExportFormat, statement: Led
       summary: [
         { label: t('ledger.opening', 'Opening balance'), value: statement.opening_cents, format: 'money' },
         { label: t('ledger.bought', 'Bought'), value: statement.bought_cents, format: 'money' },
+        { label: t('ledger.ivaInBought', 'IVA in it'), value: statement.iva_cents ?? 0, format: 'money' },
         { label: t('ledger.paid', 'Paid'), value: statement.paid_cents, format: 'money' },
         { label: t('ledger.closing', 'Closing balance'), value: statement.closing_cents, format: 'money' },
       ],
@@ -257,6 +266,7 @@ export function exportLedgerStatement(format: LedgerExportFormat, statement: Led
         { header: t('ledger.number', 'Number'), format: 'text' },
         { header: t('ledger.details', 'Details'), format: 'text' },
         { header: t('ledger.bought', 'Bought'), format: 'money', sum: true },
+        { header: t('purchases.ivaAmount', 'IVA'), format: 'money', sum: true },
         { header: t('ledger.paid', 'Paid'), format: 'money', sum: true },
         { header: t('ledger.balance', 'Balance'), format: 'money' },
       ],

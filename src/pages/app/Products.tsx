@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useAuth } from '../../auth/AuthProvider'
+import { PageSizeSelect, perPageOf, usePageSize, type PageSize } from '../../components/ui/PageSizeSelect'
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { ProtectedImage } from '../../components/ui/ProtectedImage'
@@ -30,7 +31,7 @@ import { downloadProductDemoSheet } from '../../lib/productDemoSheet'
 import { TONE_AMBER, TONE_GREEN, TONE_PRIMARY, TONE_ROSE } from '../../lib/status'
 import { formatCents } from '../../lib/money'
 import { getErrorMessage } from '../../services/api'
-import { deleteProduct, listProducts } from '../../services/catalog'
+import { deleteProduct, deleteProducts, listProducts } from '../../services/catalog'
 import type { Product, ProductImage, ProductStockFilter } from '../../types/catalog'
 import { CategoryManagerModal, useCategories } from './CategoryManagerModal'
 import { useProductImageLookup } from './productImageLookup'
@@ -40,7 +41,6 @@ import { ProductDrawer } from './ProductDrawer'
 import { ProductImportModal } from './ProductImportModal'
 import { ProductModal } from './ProductModal'
 
-const PER_PAGE = 8
 
 /** The design gives each thumbnail one of four inks; the id keeps it stable. */
 const THUMB_INKS = ['#1e3a6e', '#004ac6', '#334155', '#007d55']
@@ -141,6 +141,11 @@ function Products() {
   const [categoryId, setCategoryId] = useState('')
   const [page, setPage] = useState(1)
   const [selected, setSelected] = useState<number[]>([])
+  const [pageSize, setPageSize] = usePageSize('products', 10)
+  function changePageSize(size: PageSize) {
+    setPageSize(size)
+    setPage(1)
+  }
 
   const [editing, setEditing] = useState<Product | null>(null)
   const [productOpen, setProductOpen] = useState(false)
@@ -151,6 +156,7 @@ function Products() {
   const [queueOpen, setQueueOpen] = useState(false)
   const [printFromQueue, setPrintFromQueue] = useState(false)
   const [deleting, setDeleting] = useState<Product | null>(null)
+  const [bulkDeleting, setBulkDeleting] = useState(false)
   const [viewing, setViewing] = useState<Product | null>(null)
 
   useEffect(() => {
@@ -165,11 +171,11 @@ function Products() {
   const findImage = useProductImageLookup()
 
   const query = useQuery({
-    queryKey: ['app', 'products', { page, search: debounced, stock, categoryId }],
+    queryKey: ['app', 'products', { page, pageSize, search: debounced, stock, categoryId }],
     queryFn: () =>
       listProducts({
         page,
-        per_page: PER_PAGE,
+        per_page: perPageOf(pageSize),
         search: debounced || undefined,
         stock,
         category_id: categoryId === '' ? undefined : Number(categoryId),
@@ -187,6 +193,18 @@ function Products() {
       void queryClient.invalidateQueries({ queryKey: ['app', 'categories'] })
       push({ tone: 'success', title: t('products.deleted', 'Product deleted.') })
       setDeleting(null)
+    },
+    onError: (caught) => push({ tone: 'danger', title: getErrorMessage(caught) }),
+  })
+
+  const bulkDelete = useMutation({
+    mutationFn: () => deleteProducts(selected),
+    onSuccess: (result) => {
+      void queryClient.invalidateQueries({ queryKey: ['app', 'products'] })
+      void queryClient.invalidateQueries({ queryKey: ['app', 'categories'] })
+      push({ tone: 'success', title: t('products.bulkDeleted', '{count} products deleted.', { count: result.deleted }) })
+      setBulkDeleting(false)
+      setSelected([])
     },
     onError: (caught) => push({ tone: 'danger', title: getErrorMessage(caught) }),
   })
@@ -348,6 +366,16 @@ function Products() {
             <Printer className="h-4 w-4 text-brand-600" />
             {t('labels.printLabels', 'Print labels')}
           </button>
+          {can('products.delete') && selected.length > 0 ? (
+            <button
+              type="button"
+              className={cn(headerButton, 'bg-rose-50 text-rose-700 hover:bg-rose-100')}
+              onClick={() => setBulkDeleting(true)}
+            >
+              <Trash2 className="h-4 w-4" />
+              {t('products.deleteSelected', 'Delete selected ({count})', { count: selected.length })}
+            </button>
+          ) : null}
           {can('products.create') ? (
           <button
             type="button"
@@ -414,7 +442,7 @@ function Products() {
               type="text"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder={t('products.searchPlaceholder', 'Search name, brand or barcode')}
+              placeholder={t('products.searchPlaceholder', 'Search name, brand, short code or barcode')}
               className="h-[38px] w-full rounded-xl border border-line bg-card pr-3 pl-8.5 text-[13px] outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-600/20"
             />
           </span>
@@ -523,7 +551,8 @@ function Products() {
                         <button
                           type="button"
                           onClick={() => setViewing(product)}
-                          className="block max-w-full cursor-pointer truncate text-left text-[13px] font-semibold text-slate-900 hover:text-brand-600"
+                          title={product.article}
+                          className="line-clamp-2 block max-w-full cursor-pointer text-left text-[13px] leading-snug font-semibold break-words text-slate-900 hover:text-brand-600"
                         >
                           {product.article}
                         </button>
@@ -586,7 +615,7 @@ function Products() {
                     className="mt-1 h-[15px] w-[15px] shrink-0 accent-brand-600"
                   />
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-[13px] font-semibold text-slate-900">{product.article}</p>
+                    <p title={product.article} className="line-clamp-2 text-[13px] leading-snug font-semibold break-words text-slate-900">{product.article}</p>
                     <p className="truncate text-[11px] text-slate-500">{product.barcode}</p>
                     <div className="mt-2 flex flex-wrap items-center gap-2">
                       {product.category ? (
@@ -612,7 +641,7 @@ function Products() {
               ))}
             </div>
 
-            {meta ? (
+            {meta && meta.total > 0 ? (
               <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 text-xs text-slate-500">
                 <span>
                   {t('common.showing', 'Showing')}{' '}
@@ -622,7 +651,8 @@ function Products() {
                   {t('common.of', 'of')} <span className="text-slate-900">{meta.total}</span>{' '}
                   {t('products.countLabel', 'products')}
                 </span>
-                <span className="flex items-center gap-1.5">
+                <PageSizeSelect value={pageSize} onChange={changePageSize} />
+                <span className={cn('flex items-center gap-1.5', meta.last_page <= 1 && 'hidden')}>
                   <button
                     type="button"
                     disabled={meta.current_page <= 1}
@@ -713,6 +743,15 @@ function Products() {
           setViewing(null)
           setDeleting(product)
         }}
+      />
+      <ConfirmDialog
+        open={bulkDeleting}
+        onClose={() => setBulkDeleting(false)}
+        onConfirm={() => bulkDelete.mutate()}
+        loading={bulkDelete.isPending}
+        title={t('products.bulkDeleteTitle', 'Delete {count} products?', { count: selected.length })}
+        description={t('products.bulkDeleteHint', 'The ticked products will be removed from your catalog. This cannot be undone.')}
+        confirmLabel={t('common.delete', 'Delete')}
       />
       <ConfirmDialog
         open={deleting !== null}

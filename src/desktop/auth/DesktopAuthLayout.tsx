@@ -1,4 +1,4 @@
-import { Check, FileCheck2, FileText, MessageCircle, Receipt, Truck, type LucideIcon } from 'lucide-react'
+import { Check, FileCheck2, FileText, MessageCircle, ReceiptEuro as Receipt, Truck, type LucideIcon } from 'lucide-react'
 import { Outlet } from 'react-router-dom'
 import { Logo } from '../../components/brand/Logo'
 import { LanguageSwitcher } from '../../components/ui/LanguageSwitcher'

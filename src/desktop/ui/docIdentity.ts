@@ -1,4 +1,4 @@
-import { FileCheck2, FileMinus2, FileText, Receipt, Truck, type LucideIcon } from 'lucide-react'
+import { FileCheck2, FileMinus2, FileText, ReceiptEuro as Receipt, Truck, type LucideIcon } from 'lucide-react'
 import type { SaleType } from '../../types/sales'
 
 export type DocIdentity = {

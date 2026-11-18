@@ -1,4 +1,4 @@
-import { FileCheck2, FileText, Receipt, Truck, type LucideIcon } from 'lucide-react'
+import { FileCheck2, FileText, ReceiptEuro as Receipt, Truck, type LucideIcon } from 'lucide-react'
 import { ADMIN_NAV, APP_NAV, type NavGroup } from '../../components/layout/nav'
 import { t } from '../../i18n'
 import type { IssuableType } from '../../types/sales'
@@ -18,7 +18,7 @@ export function crumbFor(pathname: string, admin: boolean): Crumb {
     return { group: t('nav.quotes', 'Quotes'), page: t('sales.editQuote', 'Edit quotation') }
   }
 
-  // The longest match wins, so /app/invoices/12 is "Invoices" and not "POS / quick invoice".
+  // The longest match wins, so /app/invoices/12 is "Invoices" and not "POS / quick delivery note".
   let best: { crumb: Crumb; length: number } | null = null
   for (const group of groups) {
     for (const item of group.items) {

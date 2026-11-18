@@ -40,6 +40,7 @@ function InvoiceDetail() {
     setCancelling,
     setEditingSettlement,
     setVoidOpen,
+    setDeleteOpen,
     setWhatsAppOpen,
     setConvertTarget,
     celebrate,
@@ -53,6 +54,8 @@ function InvoiceDetail() {
     cancelReturn,
     editingQty,
     voiding,
+    deleting,
+    restoring,
     converting,
   } = detail
 
@@ -62,7 +65,7 @@ function InvoiceDetail() {
     return <div className="h-64 animate-pulse rounded-2xl bg-page" />
   }
 
-  const { issued, rules, display, voided, canVoid, canUpdate, canPay, quoteExpired, openQuote, quoteDays, canSettle, settlements, returns } = documentFlags(document, can)
+  const { issued, rules, display, voided, deleted, canDelete, deleteBlocked, mayDelete, canRestore, canVoid, canUpdate, canPay, quoteExpired, openQuote, quoteDays, canSettle, settlements, returns } = documentFlags(document, can)
 
   return (
     <div className="flex flex-col gap-6 print:contents">
@@ -184,7 +187,7 @@ function InvoiceDetail() {
               ) : null}
             </>
           ) : null}
-          {document.can_invoice && can('invoices.create') ? (
+          {document.can_invoice && !deleted && can('invoices.create') ? (
             <button
               type="button"
               disabled={invoiceFromAlbaran.isPending}
@@ -202,6 +205,27 @@ function InvoiceDetail() {
               className="inline-flex h-10 cursor-pointer items-center rounded-xl bg-rose-600 px-4 text-xs font-semibold text-white disabled:opacity-60"
             >
               {t('sales.void', 'Void')}
+            </button>
+          ) : null}
+          {mayDelete ? (
+            <button
+              type="button"
+              disabled={!canDelete || deleting.isPending}
+              title={deleteBlocked ?? undefined}
+              onClick={() => setDeleteOpen(true)}
+              className="inline-flex h-10 cursor-pointer items-center rounded-xl border border-rose-300 bg-card px-4 text-xs font-semibold text-rose-600 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {t('sales.delete', 'Delete')}
+            </button>
+          ) : null}
+          {canRestore ? (
+            <button
+              type="button"
+              disabled={restoring.isPending}
+              onClick={() => restoring.mutate()}
+              className="inline-flex h-10 cursor-pointer items-center rounded-xl bg-brand-600 px-4 text-xs font-semibold text-brand-on disabled:opacity-60"
+            >
+              {restoring.isPending ? t('sales.savingPayment', 'Saving...') : t('sales.restore', 'Restore')}
             </button>
           ) : null}
           {canSettle ? (
@@ -409,6 +433,20 @@ function InvoiceDetail() {
               )
             })}
           </ul>
+        </div>
+      ) : null}
+
+      {deleted ? (
+        <div className="no-print rounded-2xl border border-rose-200 bg-rose-50 px-5 py-3 text-sm text-rose-900">
+          <p className="font-semibold">
+            {t('sales.deletedBanner', 'This document is deleted. It is not counted anywhere until you restore it.')}
+          </p>
+          {document.deleted_at ? (
+            <p className="mt-1 text-xs">
+              {document.deleted_by_name ? `${document.deleted_by_name} · ` : ''}
+              {formatDate(document.deleted_at)}
+            </p>
+          ) : null}
         </div>
       ) : null}
 

@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { z } from 'zod'
@@ -8,6 +8,7 @@ import { PublicInput, PublicSubmit } from '../../components/ui/PublicField'
 import { useToast } from '../../components/ui/Toast'
 import { homeFor, useAuth } from '../../auth/AuthProvider'
 import { t } from '../../i18n'
+import { isDesktop } from '../../lib/desktop'
 import { takeLoginNotice } from '../../lib/loginNotice'
 import { getErrorMessage, mapValidationErrors } from '../../services/api'
 
@@ -26,17 +27,37 @@ function Login() {
   const location = useLocation()
   const { push } = useToast()
   const from = (location.state as { from?: string } | null)?.from
+  // "Remember me" exists only in the Windows app, where the system can keep the password encrypted.
+  const [canRemember, setCanRemember] = useState(false)
+  const [remember, setRemember] = useState(false)
 
   const {
     register,
     handleSubmit,
     setError,
+    setValue,
     formState: { errors },
   } = useForm<LoginForm>({ resolver: zodResolver(schema) })
 
+  // What was remembered last time comes back into the form.
+  useEffect(() => {
+    if (!isDesktop) return
+    void window.desktop?.credentials?.get().then((saved) => {
+      if (!saved?.available) return
+      setCanRemember(true)
+      if (saved.email) {
+        setValue('email', saved.email)
+        setRemember(true)
+      }
+      if (saved.password) setValue('password', saved.password)
+    })
+  }, [setValue])
+
   const mutation = useMutation({
     mutationFn: (values: LoginForm) => login(values.email, values.password),
-    onSuccess: (result) => {
+    onSuccess: (result, values) => {
+      // Signed in: keep the email and password for next time, or forget them, as the box says.
+      if (canRemember) void (remember ? window.desktop?.credentials?.save(values.email, values.password) : window.desktop?.credentials?.forget())
       navigate(from ?? homeFor(result.role), { replace: true })
     },
     onError: (error) => {
@@ -86,6 +107,21 @@ function Login() {
           {...register('password')}
         />
       </div>
+
+      {canRemember ? (
+        <label className="mt-4 flex cursor-pointer items-start gap-2.5 text-sm text-[#0b1c30]">
+          <input
+            type="checkbox"
+            checked={remember}
+            onChange={(event) => setRemember(event.target.checked)}
+            className="mt-0.5 h-4 w-4 cursor-pointer rounded border-[#c3c6d7] accent-[#004ac6]"
+          />
+          <span>
+            <span className="font-semibold">{t('auth.remember', 'Remember me on this computer')}</span>
+            <span className="block text-xs text-[#434655]">{t('auth.rememberHint', 'Your email and password are kept encrypted on this computer, only in the Windows app.')}</span>
+          </span>
+        </label>
+      ) : null}
 
       <PublicSubmit className="mt-6 w-full" disabled={mutation.isPending}>
         {mutation.isPending ? t('auth.signingIn', 'Signing in') : t('auth.login', 'Log in')}

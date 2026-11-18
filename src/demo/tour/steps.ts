@@ -94,7 +94,7 @@ const ALL_STEPS: TourStep[] = [
     route: '/app/purchases',
     target: 'nav:/app/purchases',
     title: t('tour.purchasesTitle', 'Purchases'),
-    body: t('tour.purchasesBody', 'Record what you buy from your suppliers: which products, how many and at what price. Saving it adds the pieces to your stock by itself.'),
+    body: t('tour.purchasesBody', 'Record what you buy from your suppliers: which products, how many and at what price. Saving it adds the pieces to your stock and writes what you owe the supplier in Supplier Payments.'),
   },
   {
     id: 'reports',

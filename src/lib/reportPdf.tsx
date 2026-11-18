@@ -29,7 +29,7 @@ export type PdfChart =
 
 export type PdfTable = {
   title: string
-  columns: { header: string; align: 'left' | 'right' }[]
+  columns: { header: string; align: 'left' | 'right'; /** How wide this column is next to the others (default 1, the first 2.2). */ weight?: number }[]
   rows: string[][]
   total?: string[]
 }
@@ -350,7 +350,7 @@ function layoutPages(spec: ReportPdfSpec): Block[][] {
   // The table, as many rows to a page as fit, the heading repeated on every page.
   if (spec.table && spec.table.rows.length > 0) {
     const table = spec.table
-    const widths = table.columns.map((_column, index) => (index === 0 ? 2.2 : 1))
+    const widths = table.columns.map((column, index) => column.weight ?? (index === 0 ? 2.2 : 1))
     const widthTotal = widths.reduce((sum, value) => sum + value, 0)
     const cell = (value: string, index: number, bold = false) => (
       <span key={index} style={{ flex: widths[index]! / widthTotal, minWidth: 0, textAlign: table.columns[index]!.align, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontWeight: bold ? 800 : 400, padding: '0 4px' }}>

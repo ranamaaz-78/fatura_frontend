@@ -19,6 +19,7 @@ import { Link } from 'react-router-dom'
 import { Avatar } from '../../components/ui/Avatar'
 import { Badge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
+import { perPageOf, usePageSize } from '../../components/ui/PageSizeSelect'
 import { DataTable, type DataTableColumn } from '../../components/ui/DataTable'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { IconButton } from '../../components/ui/IconButton'
@@ -79,14 +80,15 @@ function AdminApplications() {
   const [tab, setTab] = useState<TabId>('new')
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = usePageSize('admin-applications', 10)
   const [selected, setSelected] = useState<number | null>(null)
   const [converting, setConverting] = useState<Application | null>(null)
   const [rejecting, setRejecting] = useState<Application | null>(null)
   const [reason, setReason] = useState('')
 
   const query = useQuery({
-    queryKey: ['admin', 'applications', tab, search, page],
-    queryFn: () => listApplications({ status: tab, search, page }),
+    queryKey: ['admin', 'applications', tab, search, page, pageSize],
+    queryFn: () => listApplications({ status: tab, search, page, per_page: perPageOf(pageSize) }),
   })
 
   const counts = query.data?.counts
@@ -312,6 +314,11 @@ function AdminApplications() {
         page={meta?.current_page}
         pageCount={meta?.last_page}
         onPageChange={setPage}
+        pageSize={pageSize}
+        onPageSizeChange={(size) => {
+          setPageSize(size)
+          setPage(1)
+        }}
         summary={meta ? t('common.total_count', '{count} total', { count: meta.total }) : undefined}
         rowActionsVisible
         empty={

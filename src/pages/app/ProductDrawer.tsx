@@ -84,7 +84,7 @@ export function ProductDrawer({ product, currency, onClose, onEdit, onPrint, onD
           <p className="text-[11px] tracking-wider text-slate-500 uppercase">
             {t('products.detail', 'Product')}
           </p>
-          <h2 className="truncate text-lg font-bold text-slate-900">{current?.article ?? '—'}</h2>
+          <h2 title={current?.article ?? undefined} className="line-clamp-2 text-lg leading-snug font-bold break-words text-slate-900">{current?.article ?? '—'}</h2>
         </div>
           <IconButton label={t('common.close', 'Close')} tooltipAlign="end" onClick={onClose}>
           <X className="h-5 w-5" />

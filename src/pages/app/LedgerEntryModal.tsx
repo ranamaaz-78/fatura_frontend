@@ -16,6 +16,7 @@ import { createLedgerEntry } from '../../services/ledger'
 import { listPaymentMethods } from '../../services/paymentMethods'
 import { listSuppliers } from '../../services/suppliers'
 import { today } from './ledgerBits'
+import { useLedgerReceipts } from './ledgerReceipts'
 
 type PaidChoice = 'none' | 'half' | 'all' | 'custom'
 
@@ -27,6 +28,7 @@ const labelClass = 'mb-1.5 block text-xs font-semibold text-ink'
  */
 export function LedgerEntryModal({ open, onClose, currency }: { open: boolean; onClose: () => void; currency: string }) {
   const { push } = useToast()
+  const receipts = useLedgerReceipts()
   const queryClient = useQueryClient()
   const [supplierId, setSupplierId] = useState('')
   const [date, setDate] = useState(today)
@@ -80,9 +82,11 @@ export function LedgerEntryModal({ open, onClose, currency }: { open: boolean; o
         paid_cents: paidNow > 0 ? paidNow : undefined,
         payment_method_id: paidNow > 0 ? Number(methodId) : undefined,
       }),
-    onSuccess: () => {
+    onSuccess: (saved) => {
       onClose()
-      push({ tone: 'success', title: t('ledger.saved', 'Entry saved.') })
+      // Written already (partly) paid: that first payment gets its receipt offered right away.
+      const first = [...(saved.payments ?? [])].sort((a, b) => a.id - b.id)[0]
+      receipts.saved(t('ledger.saved', 'Entry saved.'), saved.id, first?.id)
       void queryClient.invalidateQueries({ queryKey: ['app', 'ledger'] })
     },
     onError: (error) => {

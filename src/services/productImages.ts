@@ -47,6 +47,11 @@ export function renameProductImage(uuid: string, name: string): Promise<ProductI
   return unwrap<ProductImage>(api.patch(`/app/product-images/${uuid}`, { name }))
 }
 
+/** Deletes many images (and their files) at once. */
+export function bulkDeleteProductImages(uuids: string[]): Promise<{ done: string[]; failed: { uuid: string; name: string }[] }> {
+  return unwrap(api.post('/app/product-images/bulk-delete', { uuids }))
+}
+
 export function deleteProductImage(uuid: string): Promise<unknown> {
   return unwrap(api.delete(`/app/product-images/${uuid}`))
 }

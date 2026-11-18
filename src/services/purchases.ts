@@ -14,6 +14,11 @@ export function createPurchase(input: PurchaseInput): Promise<Purchase> {
   return unwrap<Purchase>(api.post('/app/purchases', input))
 }
 
+/** Changes a purchase (only while nothing is paid for it in Supplier Payments). */
+export function updatePurchase(id: number, input: PurchaseInput): Promise<Purchase> {
+  return unwrap<Purchase>(api.patch(`/app/purchases/${id}`, input))
+}
+
 export function voidPurchase(id: number, reason: string): Promise<Purchase> {
   return unwrap<Purchase>(api.post(`/app/purchases/${id}/void`, { reason }))
 }

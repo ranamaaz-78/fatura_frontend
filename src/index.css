@@ -227,6 +227,10 @@ html[data-app-mode='dark'] *::-webkit-scrollbar-thumb:hover,
 
   .no-print, aside, header, nav, button, .modal-backdrop { display: none !important; }
 
+  /* The app's own header is hidden above, but a printed sheet has a header of its own (the letterhead, the title, the
+     number and date): that one always prints. */
+  #printable-invoice header { display: flex !important; }
+
   .print-break-inside-avoid { break-inside: avoid !important; page-break-inside: avoid !important; }
   .print-break-after { break-after: page !important; page-break-after: always !important; }
 }

@@ -4,7 +4,7 @@ import {
   Package,
   Pencil,
   Plus,
-  Receipt,
+  ReceiptEuro as Receipt,
   Trash2,
   TrendingUp,
 } from 'lucide-react'

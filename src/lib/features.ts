@@ -3,5 +3,5 @@
  * brings the screen, the menu item and the tour step back.
  */
 
-/** The Purchases module (record a delivery from a supplier; the stock goes up). Held back for the next release. */
-export const PURCHASES_ENABLED = false
+/** The Purchases module (record a delivery from a supplier; the stock goes up). Switched on again: each purchase is also written down in Supplier Payments. */
+export const PURCHASES_ENABLED = true

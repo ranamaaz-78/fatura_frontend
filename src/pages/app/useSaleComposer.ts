@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState, type KeyboardEvent } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../auth/AuthProvider'
 import { docPermission, usePermissions } from '../../auth/permissions'
+import { useResultNav } from '../../lib/useResultNav'
 import { useToast } from '../../components/ui/Toast'
 import { t } from '../../i18n'
 import { nowLocal, snapIssueDate, withOffset } from '../../lib/issueDate'
@@ -20,6 +21,8 @@ export type DraftLine = {
   key: string
   product_id: number | null
   article: string
+  /** The product's barcode, shown under the article on the line. */
+  barcode: string
   description: string
   quantity: number
   unitPrice: string
@@ -51,6 +54,7 @@ function linesFromDocument(document: SaleDocument, products: Product[], held: Re
       key: crypto.randomUUID(),
       product_id: line.product_id,
       article: line.article,
+      barcode: product?.barcode ?? line.barcode ?? '',
       description: line.description ?? '',
       quantity: line.quantity,
       unitPrice: centsToInput(line.unit_price),
@@ -59,6 +63,16 @@ function linesFromDocument(document: SaleDocument, products: Product[], held: Re
       stock: product ? product.quantity + (held[product.id] ?? 0) : null,
     }
   })
+}
+
+/**
+ * What a typed or scanned code is for a new product: a run of digits (6 or more) is a barcode, any other single word is a
+ * short code. Text with spaces is a name search, so nothing is prefilled from it.
+ */
+export function codeFromQuery(query: string): { barcode?: string; short_code?: string } {
+  const code = query.trim()
+  if (code === '' || /\s/.test(code)) return {}
+  return /^\d{6,}$/.test(code) ? { barcode: code } : { short_code: code }
 }
 
 export function initials(name: string): string {
@@ -76,9 +90,11 @@ export function productRank(product: Product, query: string): number {
   const barcode = product.barcode.toLowerCase()
   const article = product.article.toLowerCase()
   const brand = (product.brand ?? '').toLowerCase()
-  if (barcode === query) return 0
-  if (barcode.startsWith(query) || article.startsWith(query)) return 1
-  if (article.includes(query) || barcode.includes(query) || brand.includes(query)) return 2
+  const shortCode = (product.short_code ?? '').toLowerCase()
+  // A scanned barcode or a typed short code that is exactly the product's comes first.
+  if (barcode === query || (shortCode !== '' && shortCode === query)) return 0
+  if (barcode.startsWith(query) || article.startsWith(query) || (shortCode !== '' && shortCode.startsWith(query))) return 1
+  if (article.includes(query) || barcode.includes(query) || brand.includes(query) || (shortCode !== '' && shortCode.includes(query))) return 2
   return 99
 }
 
@@ -135,8 +151,11 @@ export function useSaleComposer() {
   const [clientPhone, setClientPhone] = useState('')
   const [clientNif, setClientNif] = useState('')
   const [clientAddress, setClientAddress] = useState('')
+  const [clientEmail, setClientEmail] = useState('')
 
   const [productQuery, setProductQuery] = useState('')
+  // The "Add product" window opened from the counter, and what it starts with (the code that was not found).
+  const [newProduct, setNewProduct] = useState<{ barcode?: string; short_code?: string } | null>(null)
   const [dropdown, setDropdown] = useState(false)
   const [camera, setCamera] = useState(false)
   const [lines, setLines] = useState<DraftLine[]>([])
@@ -206,7 +225,7 @@ export function useSaleComposer() {
   const selectedCustomer = customerId === null ? null : ((customers.data ?? []).find((customer) => customer.id === customerId) ?? null)
   const hasClientData =
     customerId !== null ||
-    [clientPhone, clientName, clientCompany, clientNif, clientAddress].some((value) => value.trim() !== '')
+    [clientPhone, clientName, clientCompany, clientNif, clientAddress, clientEmail].some((value) => value.trim() !== '')
 
   const phoneNeedle = digits(clientPhone)
   const phoneMatches = useMemo(() => {
@@ -232,9 +251,12 @@ export function useSaleComposer() {
       .map((product) => ({ product, rank: productRank(product, query) }))
       .filter((row) => row.rank < 99)
       .sort((a, b) => a.rank - b.rank || a.product.article.localeCompare(b.product.article))
-      .slice(0, 8)
+      .slice(0, 40)
       .map((row) => row.product)
   }, [catalog.data, productQuery])
+
+  // Up and Down walk the results; Enter takes the highlighted one.
+  const matchNav = useResultNav(productMatches.length, productQuery)
 
   // What a line is worth once this document's own tax and discount rules apply.
   const lineMath = useMemo(() => {
@@ -352,6 +374,7 @@ export function useSaleComposer() {
     setClientPhone(document.client_phone ?? '')
     setClientNif(document.client_nif ?? '')
     setClientAddress(document.client_address ?? '')
+    setClientEmail(document.client_email ?? '')
     setLines(linesFromDocument(document, catalog.data ?? [], heldNow))
     setHydrated(true)
   }, [catalog.data, existing.data, hydrated, navigate])
@@ -399,6 +422,7 @@ export function useSaleComposer() {
     setClientPhone(customer.phone ?? '')
     setClientNif(customer.nif || customer.nie || '')
     setClientAddress(customer.address ?? '')
+    setClientEmail(customer.email ?? '')
   }
 
   function onPhoneChange(value: string) {
@@ -412,10 +436,26 @@ export function useSaleComposer() {
     pickCustomer(phoneMatches[0]!)
   }
 
+  function openNewProduct() {
+    setDropdown(false)
+    setNewProduct(codeFromQuery(productQuery))
+  }
+
+  /** A product made at the counter goes straight onto the sale when it can be sold. */
+  function onProductCreated(product: Product) {
+    setNewProduct(null)
+    if (rules.movesStock && product.quantity <= 0) {
+      setProductQuery('')
+      return
+    }
+    addProduct(product)
+  }
+
   function onProductKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    if (matchNav.onNavKey(event)) return
     if (event.key !== 'Enter' || productMatches.length === 0) return
     event.preventDefault()
-    addProduct(productMatches[0]!)
+    addProduct(productMatches[matchNav.active] ?? productMatches[0]!)
   }
 
   function clearCustomer() {
@@ -425,6 +465,7 @@ export function useSaleComposer() {
     setClientPhone('')
     setClientNif('')
     setClientAddress('')
+    setClientEmail('')
   }
 
   function piecesLeft(productId: number, stock: number): number {
@@ -452,6 +493,7 @@ export function useSaleComposer() {
               key: crypto.randomUUID(),
               product_id: product.id,
               article: product.article,
+              barcode: product.barcode ?? '',
               description: product.description ?? '',
               quantity: 1,
               // A proforma starts at the catalog price too; the agreed price is typed over it when it differs.
@@ -536,6 +578,7 @@ export function useSaleComposer() {
       client_nif: clientNif.trim() || null,
       client_nie: null,
       client_address: clientAddress.trim() || null,
+      client_email: clientEmail.trim() || null,
       discount_type: discountCents > 0 ? discountKind : null,
       discount_value:
         discountCents > 0 ? (discountKind === 'amount' ? Math.round(typedDiscount * 100) : typedDiscount) : null,
@@ -618,6 +661,8 @@ export function useSaleComposer() {
     setClientNif,
     clientAddress,
     setClientAddress,
+    clientEmail,
+    setClientEmail,
     productQuery,
     setProductQuery,
     dropdown,
@@ -655,6 +700,12 @@ export function useSaleComposer() {
     onPhoneChange,
     onPhoneKeyDown,
     onProductKeyDown,
+    activeMatch: matchNav.active,
+    setActiveMatch: matchNav.setActive,
+    newProduct,
+    setNewProduct,
+    openNewProduct,
+    onProductCreated,
     clearCustomer,
     piecesLeft,
     addProduct,
