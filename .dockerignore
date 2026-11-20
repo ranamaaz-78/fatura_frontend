@@ -1,0 +1,12 @@
+.git
+node_modules
+dist
+dist-desktop
+dist-ssr
+android
+.env
+.env.*
+!.env.example
+*.log
+.vscode
+.idea
