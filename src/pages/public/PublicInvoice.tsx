@@ -21,7 +21,9 @@ export default function PublicInvoicePage() {
   const data = query.data
 
   const frame = useRef<HTMLDivElement>(null)
+  const sheet = useRef<HTMLDivElement>(null)
   const [scale, setScale] = useState(1)
+  const [sheetHeight, setSheetHeight] = useState(SHEET_HEIGHT)
 
   useLayoutEffect(() => {
     function fit() {
@@ -30,7 +32,13 @@ export default function PublicInvoicePage() {
     }
     fit()
     window.addEventListener('resize', fit)
-    return () => window.removeEventListener('resize', fit)
+    // A long invoice is several A4 sheets: the box is as tall as they are.
+    const observer = new ResizeObserver(() => setSheetHeight(sheet.current?.offsetHeight || SHEET_HEIGHT))
+    if (sheet.current) observer.observe(sheet.current)
+    return () => {
+      window.removeEventListener('resize', fit)
+      observer.disconnect()
+    }
   }, [data])
 
   useEffect(() => {
@@ -63,8 +71,9 @@ export default function PublicInvoicePage() {
           </p>
         ) : (
           <div ref={frame} className="mx-auto w-full max-w-[794px]">
-            <div style={{ height: SHEET_HEIGHT * scale }} className="relative print:!h-auto">
+            <div style={{ height: sheetHeight * scale }} className="relative print:!h-auto">
               <div
+                ref={sheet}
                 style={{ width: SHEET_WIDTH, transform: `scale(${scale})`, transformOrigin: 'top left' }}
                 className="absolute top-0 left-0 print:!static print:!transform-none"
               >

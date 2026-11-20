@@ -1,5 +1,6 @@
 import { ProductModal } from './ProductModal'
 import { Camera, Check, Minus, Plus, ReceiptEuro as Receipt, ScanLine, Search, ShieldCheck, Trash2, UserRound, X } from 'lucide-react'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Select } from '../../components/ui/Select'
 import { Tooltip } from '../../components/ui/Tooltip'
@@ -89,6 +90,11 @@ function InvoiceNew() {
     hasClientData,
     phoneNeedle,
     phoneMatches,
+    phoneActive,
+    setPhoneActive,
+    nameMatches,
+    nameActive,
+    setNameActive,
     productMatches,
     lineMath,
     discountError,
@@ -101,6 +107,7 @@ function InvoiceNew() {
     pickCustomer,
     onPhoneChange,
     onPhoneKeyDown,
+    onNameKeyDown,
     onProductKeyDown,
     activeMatch,
     setActiveMatch,
@@ -117,6 +124,8 @@ function InvoiceNew() {
     confirmMethod,
     issueLabel,
   } = useSaleComposer()
+  // The saved clients that match the typed name show only while that field has the cursor.
+  const [nameFocused, setNameFocused] = useState(false)
 
   if (editing && existing.isError) {
     return (
@@ -363,15 +372,17 @@ function InvoiceNew() {
                 />
               </span>
               {customerId === null && phoneMatches.length > 0 ? (
-                <div className="absolute top-full left-0 z-20 mt-1.5 w-[min(24rem,calc(100vw-2.5rem))] overflow-hidden rounded-xl border border-line bg-card shadow-lg">
+                <div className="absolute top-full left-0 z-20 mt-1.5 max-h-72 w-[min(24rem,calc(100vw-2.5rem))] overflow-y-auto rounded-xl border border-line bg-card shadow-lg">
                   {phoneMatches.map((customer, index) => (
                     <button
                       key={customer.id}
                       type="button"
+                      data-nav-active={index === phoneActive ? 'true' : undefined}
+                      onMouseEnter={() => setPhoneActive(index)}
                       onClick={() => pickCustomer(customer)}
                       className={cn(
-                        'flex w-full cursor-pointer items-center gap-3 border-b border-slate-100 px-3 py-2.5 text-left last:border-0 hover:bg-slate-50',
-                        index === 0 && optionOn,
+                        'flex w-full cursor-pointer items-center gap-3 border-b border-slate-100 px-3 py-2.5 text-left last:border-0',
+                        index === phoneActive && optionOn,
                       )}
                     >
                       <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-50 text-[11px] font-bold text-brand-600">
@@ -390,17 +401,54 @@ function InvoiceNew() {
               ) : null}
             </div>
 
-            <div>
+            <div className="relative">
               <span className={clientLabel}>
                 {t('sales.clientName', 'Name')}
                 <span className="ml-0.5 text-rose-500">*</span>
               </span>
-              <input
-                value={clientName}
-                onChange={(event) => setClientName(event.target.value)}
-                autoComplete="off"
-                className={cn(clientField, 'font-semibold')}
-              />
+              <span className="relative block">
+                <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <input
+                  value={clientName}
+                  onChange={(event) => setClientName(event.target.value)}
+                  onKeyDown={onNameKeyDown}
+                  onFocus={() => setNameFocused(true)}
+                  onBlur={() => setNameFocused(false)}
+                  autoComplete="off"
+                  placeholder={t('sales.nameSearch', 'Name, or search a saved client')}
+                  className={cn(clientField, 'pl-9 font-semibold')}
+                />
+              </span>
+              {nameFocused && customerId === null && nameMatches.length > 0 ? (
+                <div className="absolute top-full left-0 z-20 mt-1.5 max-h-72 w-[min(24rem,calc(100vw-2.5rem))] overflow-y-auto rounded-xl border border-line bg-card shadow-lg">
+                  {nameMatches.map((customer, index) => (
+                    <button
+                      key={customer.id}
+                      type="button"
+                      // Keeps the cursor in the field, so the list is still there when the click lands.
+                      onMouseDown={(event) => event.preventDefault()}
+                      data-nav-active={index === nameActive ? 'true' : undefined}
+                      onMouseEnter={() => setNameActive(index)}
+                      onClick={() => pickCustomer(customer)}
+                      className={cn(
+                        'flex w-full cursor-pointer items-center gap-3 border-b border-slate-100 px-3 py-2.5 text-left last:border-0',
+                        index === nameActive && optionOn,
+                      )}
+                    >
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-50 text-[11px] font-bold text-brand-600">
+                        {customer.name.slice(0, 2).toUpperCase()}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-xs font-bold text-slate-900">{customer.name}</span>
+                        <span className="block truncate text-[11px] text-slate-500">
+                          {[customer.company_name, customer.phone, customer.nif || customer.nie].filter(Boolean).join(' · ')}
+                        </span>
+                      </span>
+                      <span className="shrink-0 text-[10px] font-semibold text-slate-400">{customer.code}</span>
+                    </button>
+                  ))}
+                </div>
+              ) : null}
             </div>
 
             <div>

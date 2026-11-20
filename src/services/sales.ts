@@ -1,3 +1,4 @@
+import type { ContactImportRow } from '../lib/contactImport'
 import type {
   Customer,
   CustomerInput,
@@ -25,6 +26,10 @@ export function listCustomers(search?: string): Promise<Customer[]> {
 
 export function listActiveCustomers(): Promise<Customer[]> {
   return unwrap<Customer[]>(api.get('/app/customers', { params: { status: 'active', limit: 500 } }))
+}
+
+export function importCustomers(rows: ContactImportRow[]): Promise<{ created: number }> {
+  return unwrap<{ created: number }>(api.post('/app/customers/import', { rows }))
 }
 
 export function createCustomer(input: CustomerInput): Promise<Customer> {

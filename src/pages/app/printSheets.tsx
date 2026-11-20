@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { QRCodeSVG } from 'qrcode.react'
-import { Fragment, useEffect, type ReactNode } from 'react'
+import { Fragment, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { td } from '../../i18n'
 import { cn } from '../../lib/cn'
 import { formatDate } from '../../lib/format'
@@ -22,11 +22,27 @@ export type PrintSheetProps = {
   logoSrc?: string | null
 }
 
+/**
+ * One A4 page of a document that runs over several. A document that fits one page has no part and is drawn whole.
+ * The first page carries the letterhead and the client, the last carries the totals, notes and signature, and every
+ * page in between is the table alone under a slim title bar.
+ */
+export type SheetPart = {
+  rows: SaleLine[]
+  first: boolean
+  last: boolean
+  page: number
+  pages: number
+  /** A hidden copy that is only measured, never shown. */
+  probe?: boolean
+}
+
 type SheetProps = PrintSheetProps & {
   lines: SaleLine[]
   issued: string
   theme: PrintTemplate
   logoSrc: string | null
+  part?: SheetPart
 }
 
 /*
@@ -188,6 +204,7 @@ function SheetFrame({
   lineCount,
   denseAfter = DENSE_AFTER,
   row = false,
+  part,
   className,
 }: {
   children: ReactNode
@@ -202,14 +219,18 @@ function SheetFrame({
   denseAfter?: number
   /** Lay the sheet out side by side (a side panel) instead of top to bottom. */
   row?: boolean
+  part?: SheetPart
   className?: string
 }) {
   return (
     <article
-      id="printable-invoice"
       data-dense={lineCount > denseAfter}
+      data-page={part?.page}
       style={printSheetStyle(theme.primary_color, theme.font_key)}
-      className="group relative mx-auto box-border h-[1123px] w-[794px] overflow-hidden bg-white text-[#0f172a] shadow-[0_1px_4px_rgba(15,23,42,0.08)] ring-1 ring-slate-200/80 print:fixed print:inset-0 print:mx-0 print:h-full print:w-full print:shadow-none print:ring-0"
+      className={cn(
+        'print-sheet group relative mx-auto box-border w-[794px] overflow-hidden bg-white text-[#0f172a] shadow-[0_1px_4px_rgba(15,23,42,0.08)] ring-1 ring-slate-200/80 print:mx-0 print:shadow-none print:ring-0',
+        part?.probe ? '' : 'h-[1123px]',
+      )}
     >
       {voided ? (
         <span
@@ -457,7 +478,7 @@ function ItemsTable({
 
   return (
     <div className={cn(style.wrap, className)}>
-      <table className={cn('w-full table-fixed border-collapse text-[11.5px]', `${D}text-[11px]`)}>
+      <table data-items className={cn('w-full table-fixed border-collapse text-[11.5px]', `${D}text-[11px]`)}>
         <colgroup>
           <col style={{ width: style.pad ? 40 : 28 }} />
           <col style={{ width: style.pad ? 124 : 112 }} />
@@ -602,11 +623,24 @@ function SignatureRow({ dashed = false, className }: { dashed?: boolean; classNa
   )
 }
 
-function PageMark({ document }: { document: SaleDocument }) {
+function PageMark({ document, part }: { document: SaleDocument; part?: SheetPart }) {
   return (
     <span className="shrink-0 tabular-nums">
-      {document.number} · {td('sales.pageOne', 'Page 1 of 1')}
+      {document.number} ·{' '}
+      {part ? td('sales.pageOf', 'Page {page} of {total}', { page: part.page, total: part.pages }) : td('sales.pageOne', 'Page 1 of 1')}
     </span>
+  )
+}
+
+/** The top of a second page and the ones after it: what this is and which page, then straight on with the table. */
+function ContinuationBar({ title, document, part }: { title: string; document: SaleDocument; part: SheetPart }) {
+  return (
+    <header className="flex items-baseline justify-between gap-6 border-b border-[#e2e8f0] pb-3">
+      <span className="text-[17px] font-semibold tracking-[-0.01em] text-[var(--print-accent)]">{title}</span>
+      <span className="text-[11px] font-medium text-[#64748b] tabular-nums">
+        {document.number} · {td('sales.pageOf', 'Page {page} of {total}', { page: part.page, total: part.pages })}
+      </span>
+    </header>
   )
 }
 
@@ -631,7 +665,10 @@ function VerifyBlock({ document }: { document: SaleDocument }) {
   )
 }
 
-function InvoiceSheet({ document, company, currency, lines, issued, theme, logoSrc }: SheetProps) {
+function InvoiceSheet({ document, company, currency, lines, issued, theme, logoSrc, part }: SheetProps) {
+  const rows = part?.rows ?? lines
+  const first = part?.first ?? true
+  const last = part?.last ?? true
   const display = saleDisplayStatus(document)
   const place = companyPlace(company)
   const contact = companyContact(company)
@@ -651,9 +688,11 @@ function InvoiceSheet({ document, company, currency, lines, issued, theme, logoS
   ]
 
   return (
-    <SheetFrame demo={Boolean(company?.is_demo)} theme={theme} voided={display === 'voided'} lineCount={lines.length} className={cn('px-14 pt-14 pb-10', `${D}pt-11 ${D}pb-8`)}>
+    <SheetFrame demo={Boolean(company?.is_demo)} theme={theme} voided={display === 'voided'} lineCount={lines.length} part={part} className={cn('px-14 pt-14 pb-10', `${D}pt-11 ${D}pb-8`)}>
       <span aria-hidden="true" className="absolute inset-x-0 top-0 h-[5px] bg-[var(--print-accent)]" />
 
+      {first ? (
+        <>
       <header className="flex items-start justify-between gap-10">
         <div className={cn('flex min-w-0 gap-4', theme.show_logo && logoSrc ? 'flex-col items-start gap-2.5' : 'items-start')}>
           <LogoMark company={company} logoSrc={logoSrc} show={theme.show_logo} imageSize={lines.length > 8 ? 54 : 68} />
@@ -696,8 +735,14 @@ function InvoiceSheet({ document, company, currency, lines, issued, theme, logoS
         />
       </section>
 
-      <ItemsTable lines={lines} columns={columns} variant="rule" className={cn('mt-10', `${D}mt-7`)} />
+        </>
+      ) : (
+        <ContinuationBar title={td('sales.invoiceTitle', 'Invoice')} document={document} part={part!} />
+      )}
+      <ItemsTable lines={rows} columns={columns} variant="rule" className={first ? cn('mt-10', `${D}mt-7`) : 'mt-5'} />
 
+      {last ? (
+        <>
       <section className={cn('mt-8 flex items-start justify-between gap-10', `${D}mt-5`)}>
         <TaxSummary lines={lines} currency={currency} />
         <div className="w-[280px] shrink-0 text-[11.5px]">
@@ -724,11 +769,14 @@ function InvoiceSheet({ document, company, currency, lines, issued, theme, logoS
 
       <NotesAndTerms notes={document.notes} terms={theme.footer_notes} />
       {theme.show_signature ? <SignatureRow /> : null}
+        </>
+      ) : null}
 
       <footer className="mt-auto flex items-end justify-between gap-8 pt-4 text-[9.5px] leading-[1.6] text-[#94a3b8]">
         <span className="min-w-0">{[company?.name, contact].filter(Boolean).join(' · ')}</span>
         <div className="flex shrink-0 flex-col items-end gap-2">
-          <VerifyBlock document={document} />
+          {last ? <VerifyBlock document={document} /> : null}
+          {part ? <PageMark document={document} part={part} /> : null}
         </div>
       </footer>
     </SheetFrame>
@@ -737,7 +785,10 @@ function InvoiceSheet({ document, company, currency, lines, issued, theme, logoS
 
 /* ------------------------------------------------------------------ Quotation: open and airy */
 
-function QuotationSheet({ document, company, currency, lines, issued, theme, logoSrc }: SheetProps) {
+function QuotationSheet({ document, company, currency, lines, issued, theme, logoSrc, part }: SheetProps) {
+  const rows = part?.rows ?? lines
+  const first = part?.first ?? true
+  const last = part?.last ?? true
   const place = companyPlace(company)
   const contact = companyContact(company)
 
@@ -765,7 +816,9 @@ function QuotationSheet({ document, company, currency, lines, issued, theme, log
   ]
 
   return (
-    <SheetFrame demo={Boolean(company?.is_demo)} theme={theme} voided={false} expired={Boolean(document.is_expired)} lineCount={lines.length} denseAfter={5} className={cn('px-14 pt-12 pb-10', `${D}pt-9 ${D}pb-8`)}>
+    <SheetFrame demo={Boolean(company?.is_demo)} theme={theme} voided={false} expired={Boolean(document.is_expired)} lineCount={lines.length} denseAfter={5} part={part} className={cn('px-14 pt-12 pb-10', `${D}pt-9 ${D}pb-8`)}>
+      {first ? (
+        <>
       <header className="flex items-center justify-between gap-10">
         {theme.show_logo ? (
           <LogoMark company={company} logoSrc={logoSrc} show size={lines.length > 5 ? 46 : 60} imageSize={lines.length > 5 ? 58 : 76} />
@@ -822,8 +875,14 @@ function QuotationSheet({ document, company, currency, lines, issued, theme, log
         </div>
       </section>
 
-      <ItemsTable lines={lines} columns={columns} variant="soft" className={cn('mt-7', `${D}mt-5`)} />
+        </>
+      ) : (
+        <ContinuationBar title={td('sales.quotationTitle', 'Quotation')} document={document} part={part!} />
+      )}
+      <ItemsTable lines={rows} columns={columns} variant="soft" className={first ? cn('mt-7', `${D}mt-5`) : 'mt-5'} />
 
+      {last ? (
+        <>
       <section className={cn('mt-5 flex justify-end', `${D}mt-3`)}>
         <div className="w-[290px] text-[11.5px]">
           <TotalRows
@@ -850,12 +909,14 @@ function QuotationSheet({ document, company, currency, lines, issued, theme, log
         className={cn('mt-8', `${D}mt-5`)}
       />
       {theme.show_signature ? <SignatureRow /> : null}
+        </>
+      ) : null}
 
       <footer className="mt-auto flex items-end justify-between gap-8 border-t border-[#e2e8f0] pt-4 text-[9.5px] text-[#94a3b8]">
         <span className="font-medium text-[#64748b]">
           {td('sales.quotationFooter', 'This is a quotation, not a tax invoice.')}
         </span>
-        <PageMark document={document} />
+        <PageMark document={document} part={part} />
       </footer>
     </SheetFrame>
   )
@@ -863,7 +924,10 @@ function QuotationSheet({ document, company, currency, lines, issued, theme, log
 
 /* ------------------------------------------------------------------ Proforma: the invoice's layout, without tax */
 
-function ProformaSheet({ document, company, currency, lines, issued, theme, logoSrc }: SheetProps) {
+function ProformaSheet({ document, company, currency, lines, issued, theme, logoSrc, part }: SheetProps) {
+  const rows = part?.rows ?? lines
+  const first = part?.first ?? true
+  const last = part?.last ?? true
   const display = saleDisplayStatus(document)
   const returned = document.returned_cents ?? 0
   const settled = Math.min(document.settled_cents ?? 0, Math.max(0, document.total_cents - returned))
@@ -885,9 +949,11 @@ function ProformaSheet({ document, company, currency, lines, issued, theme, logo
   ]
 
   return (
-    <SheetFrame demo={Boolean(company?.is_demo)} theme={theme} voided={display === 'voided'} lineCount={lines.length} className={cn('px-14 pt-14 pb-10', `${D}pt-11 ${D}pb-8`)}>
+    <SheetFrame demo={Boolean(company?.is_demo)} theme={theme} voided={display === 'voided'} lineCount={lines.length} part={part} className={cn('px-14 pt-14 pb-10', `${D}pt-11 ${D}pb-8`)}>
       <span aria-hidden="true" className="absolute inset-x-0 top-0 h-[5px] bg-[var(--print-accent)]" />
 
+      {first ? (
+        <>
       <header className="flex items-start justify-between gap-10">
         <div className={cn('flex min-w-0 gap-4', theme.show_logo && logoSrc ? 'flex-col items-start gap-2.5' : 'items-start')}>
           <LogoMark company={company} logoSrc={logoSrc} show={theme.show_logo} imageSize={lines.length > 8 ? 54 : 68} />
@@ -931,8 +997,14 @@ function ProformaSheet({ document, company, currency, lines, issued, theme, logo
         />
       </section>
 
-      <ItemsTable lines={lines} columns={columns} variant="rule" className={cn('mt-10', `${D}mt-7`)} />
+        </>
+      ) : (
+        <ContinuationBar title={td('sales.proformaTitle', 'Proforma')} document={document} part={part!} />
+      )}
+      <ItemsTable lines={rows} columns={columns} variant="rule" className={first ? cn('mt-10', `${D}mt-7`) : 'mt-5'} />
 
+      {last ? (
+        <>
       <section className={cn('mt-8 flex items-start justify-between gap-10', `${D}mt-5`)}>
         <p className="m-0 max-w-[300px] text-[10px] leading-[1.7] text-[#94a3b8]">
           {td(
@@ -966,10 +1038,12 @@ function ProformaSheet({ document, company, currency, lines, issued, theme, logo
 
       <NotesAndTerms notes={document.notes} terms={theme.footer_notes} />
       {theme.show_signature ? <SignatureRow /> : null}
+        </>
+      ) : null}
 
       <footer className="mt-auto flex items-end justify-between gap-8 border-t border-[#e2e8f0] pt-4 text-[9.5px] leading-[1.6] text-[#94a3b8]">
         <span className="min-w-0">{[company?.name, contact].filter(Boolean).join(' · ')}</span>
-        <PageMark document={document} />
+        <PageMark document={document} part={part} />
       </footer>
     </SheetFrame>
   )
@@ -978,7 +1052,10 @@ function ProformaSheet({ document, company, currency, lines, issued, theme, logo
 /* ------------------------------------------------------------------ Albarán: a plain delivery slip */
 
 /** Deliberately carries nothing of the issuing company: no name, address, email or logo. */
-function AlbaranSheet({ document, company, currency, lines, issued, theme }: SheetProps) {
+function AlbaranSheet({ document, company, currency, lines, issued, theme, part }: SheetProps) {
+  const rows = part?.rows ?? lines
+  const first = part?.first ?? true
+  const last = part?.last ?? true
   const heading = td('sales.typeAlbaran', 'Delivery note')
   const display = saleDisplayStatus(document)
   const units = lines.reduce((sum, line) => sum + line.quantity, 0)
@@ -1012,7 +1089,9 @@ function AlbaranSheet({ document, company, currency, lines, issued, theme }: She
   )
 
   return (
-    <SheetFrame demo={Boolean(company?.is_demo)} theme={theme} voided={display === 'voided'} lineCount={lines.length} className={cn('px-14 pt-14 pb-10', `${D}pt-11 ${D}pb-8`)}>
+    <SheetFrame demo={Boolean(company?.is_demo)} theme={theme} voided={display === 'voided'} lineCount={lines.length} part={part} className={cn('px-14 pt-14 pb-10', `${D}pt-11 ${D}pb-8`)}>
+      {first ? (
+        <>
       <header className="flex items-start justify-between gap-8">
         <div>
           {/* One line whatever the language: "ALBARÁN" is short, "DELIVERY NOTE" is not, so the longer one is set smaller. */}
@@ -1050,8 +1129,14 @@ function AlbaranSheet({ document, company, currency, lines, issued, theme }: She
         </div>
       </section>
 
-      <ItemsTable lines={lines} columns={columns} variant="slip" className={cn('mt-9', `${D}mt-6`)} />
+        </>
+      ) : (
+        <ContinuationBar title={heading} document={document} part={part!} />
+      )}
+      <ItemsTable lines={rows} columns={columns} variant="slip" className={first ? cn('mt-9', `${D}mt-6`) : 'mt-5'} />
 
+      {last ? (
+        <>
       <section className={cn('mt-6 flex items-start justify-between gap-10', `${D}mt-4`)}>
         <p className="m-0 text-[11px] text-[#475569]">
           <span className="font-bold text-[#0f172a] tabular-nums">{qtyText(units)}</span>{' '}
@@ -1069,15 +1154,123 @@ function AlbaranSheet({ document, company, currency, lines, issued, theme }: She
 
       <NotesAndTerms notes={document.notes} terms={theme.footer_notes} className={cn('mt-9', `${D}mt-6`)} />
       {theme.show_signature ? <SignatureRow dashed /> : null}
+        </>
+      ) : null}
 
       <footer className="mt-auto flex items-center justify-between gap-6 border-t-2 border-dashed border-[#94a3b8] pt-3 text-[9.5px] text-[#94a3b8]">
         <span>{td('sales.albaranFooter', 'Keep this slip with the goods.')}</span>
-        <PageMark document={document} />
+        <PageMark document={document} part={part} />
       </footer>
     </SheetFrame>
   )
 }
 
+/* ------------------------------------------------------------------ Pages */
+
+const PAGE_HEIGHT = 1123
+const PAGE_WIDTH = 794
+/** A little room left on every page, so a font that loads a moment late cannot push the last row off it. */
+const PAGE_SAFETY = 8
+/** Documents with up to this many lines always fit one page: they are not measured. */
+const MEASURE_ABOVE = 5
+
+/** What was measured on the hidden copies of a document, in A4 pixels. */
+type Measure = {
+  /** Space above the first row on the first page: the letterhead, the client and the table heading. */
+  head: number
+  /** Height of every row. */
+  rows: number[]
+  /** Space under the last row on the last page: the totals, notes, signature and footer. */
+  tail: number
+  /** Space above the first row on a later page. */
+  contHead: number
+  /** Space under the last row on a page that is not the last: the footer. */
+  contTail: number
+}
+
+/**
+ * How many rows go on each page. One page when everything fits; otherwise the pages are filled in order, and the last
+ * one must also have room for the totals, so a row moves over to it when they would not fit.
+ */
+export function planPages(m: Measure): number[] {
+  const total = m.rows.reduce((sum, height) => sum + height, 0)
+  if (m.rows.length === 0 || m.head + total + m.tail <= PAGE_HEIGHT - 2) return [m.rows.length]
+
+  const chunks: number[][] = []
+  let current: number[] = []
+  let used = m.head
+
+  m.rows.forEach((height, index) => {
+    if (current.length > 0 && used + height > PAGE_HEIGHT - m.contTail - PAGE_SAFETY) {
+      chunks.push(current)
+      current = []
+      used = m.contHead
+    }
+    current.push(index)
+    used += height
+  })
+  chunks.push(current)
+
+  const lastFits = () => {
+    const last = chunks[chunks.length - 1]
+    const start = chunks.length === 1 ? m.head : m.contHead
+    return start + last.reduce((sum, index) => sum + m.rows[index], 0) + m.tail + PAGE_SAFETY <= PAGE_HEIGHT
+  }
+
+  while (!lastFits()) {
+    const last = chunks[chunks.length - 1]
+    if (last.length <= 1) break
+    chunks.push([last.pop() as number])
+  }
+
+  return chunks.map((chunk) => chunk.length)
+}
+
+/** Reads the two hidden copies: the whole document, and a later page with one row. Sizes are divided by any zoom on the page. */
+function measureSheets(full: HTMLElement, later: HTMLElement): Measure | null {
+  const zoom = full.getBoundingClientRect().width / full.offsetWidth || 1
+  const box = (element: Element) => {
+    const rect = element.getBoundingClientRect()
+    return { top: rect.top / zoom, bottom: rect.bottom / zoom }
+  }
+  const rowsOf = (sheet: HTMLElement) => [...sheet.querySelectorAll('[data-items] tbody tr')]
+
+  const rows = rowsOf(full)
+  const laterRows = rowsOf(later)
+  if (rows.length === 0 || laterRows.length === 0) return null
+
+  const top = box(full).top
+  const tops = rows.map((row) => box(row).top - top)
+  const bottoms = rows.map((row) => box(row).bottom - top)
+  const laterTop = box(later).top
+  const laterRow = box(laterRows[0])
+
+  return {
+    head: tops[0],
+    rows: tops.map((rowTop, index) => (tops[index + 1] ?? bottoms[index]) - rowTop),
+    tail: box(full).bottom - top - bottoms[bottoms.length - 1],
+    contHead: laterRow.top - laterTop,
+    contTail: box(later).bottom - laterRow.bottom,
+  }
+}
+
+function SheetOf(props: SheetProps) {
+  switch (props.document.type) {
+    case 'albaran':
+      return <AlbaranSheet {...props} />
+    case 'quotation':
+      return <QuotationSheet {...props} />
+    case 'proforma':
+      return <ProformaSheet {...props} />
+    default:
+      return <InvoiceSheet {...props} />
+  }
+}
+
+/**
+ * The document as one A4 sheet, or as as many as its lines need. The sheets sit in one box (#printable-invoice) that
+ * is what gets printed, saved as a picture or turned into a PDF; it says data-ready once the pages are worked out.
+ */
 export function PrintSheetView({
   document,
   company,
@@ -1093,18 +1286,72 @@ export function PrintSheetView({
 }) {
   const lines = document.lines ?? []
   const issued = formatDate(document.issued_at)
-  const props = { document, company, currency, lines, issued, theme, logoSrc }
+  const props: SheetProps = { document, company, currency, lines, issued, theme, logoSrc }
+  const measured = lines.length > MEASURE_ABOVE
 
-  switch (document.type) {
-    case 'albaran':
-      return <AlbaranSheet {...props} />
-    case 'quotation':
-      return <QuotationSheet {...props} />
-    case 'proforma':
-      return <ProformaSheet {...props} />
-    default:
-      return <InvoiceSheet {...props} />
-  }
+  const fullRef = useRef<HTMLDivElement>(null)
+  const laterRef = useRef<HTMLDivElement>(null)
+  const [plan, setPlan] = useState<{ counts: number[]; ready: boolean }>({ counts: [lines.length], ready: !measured })
+  const [, setTick] = useState(0)
+
+  // A font or a logo that arrives late changes the heights: measure again.
+  useEffect(() => {
+    if (!measured) return
+    let live = true
+    void window.document.fonts?.ready.then(() => {
+      if (live) setTick((tick) => tick + 1)
+    })
+    return () => {
+      live = false
+    }
+  }, [measured])
+
+  // After every draw; it sets state only when the pages come out differently, so it settles.
+  useLayoutEffect(() => {
+    let next = { counts: [lines.length], ready: true }
+
+    if (measured) {
+      const full = fullRef.current?.querySelector('.print-sheet')
+      const later = laterRef.current?.querySelector('.print-sheet')
+      const m = full instanceof HTMLElement && later instanceof HTMLElement ? measureSheets(full, later) : null
+      if (m) next = { counts: planPages(m), ready: true }
+    }
+
+    if (next.ready !== plan.ready || next.counts.join(',') !== plan.counts.join(',')) setPlan(next)
+  })
+
+  let start = 0
+  const pages = plan.counts.map((count, index) => {
+    const part: SheetPart | undefined =
+      plan.counts.length > 1
+        ? { rows: lines.slice(start, start + count), first: index === 0, last: index === plan.counts.length - 1, page: index + 1, pages: plan.counts.length }
+        : undefined
+    start += count
+    return <SheetOf key={index} {...props} part={part} />
+  })
+
+  return (
+    <>
+      <div id="printable-invoice" data-pages={plan.counts.length} data-ready={plan.ready} className="flex flex-col gap-6">
+        {pages}
+      </div>
+      {measured ? (
+        <div
+          aria-hidden="true"
+          className="print-probe"
+          style={{ position: 'fixed', left: -10000, top: 0, width: PAGE_WIDTH, height: 0, overflow: 'hidden', visibility: 'hidden', pointerEvents: 'none' }}
+          onLoadCapture={() => setTick((tick) => tick + 1)}
+        >
+          <div ref={fullRef}>
+            <SheetOf {...props} part={{ rows: lines, first: true, last: true, page: 1, pages: 1, probe: true }} />
+          </div>
+          <div ref={laterRef}>
+            <SheetOf {...props} part={{ rows: lines.slice(0, 1), first: false, last: false, page: 2, pages: 3, probe: true }} />
+          </div>
+        </div>
+      ) : null}
+    </>
+  )
 }
 
 export function PrintSheet({ document, company, currency, theme, logoSrc }: PrintSheetProps) {

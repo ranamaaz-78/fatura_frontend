@@ -1,4 +1,5 @@
 import { toBlob, toJpeg } from 'html-to-image'
+import JSZip from 'jszip'
 import { jsPDF } from 'jspdf'
 import { t } from '../i18n'
 
@@ -79,6 +80,12 @@ function sheetNode(node?: HTMLElement | null): HTMLElement {
   return target
 }
 
+/** The A4 sheets of a rendered document: one for most documents, several for a long one. Anything else is taken as one sheet. */
+export function sheetPages(node: HTMLElement): HTMLElement[] {
+  const pages = [...node.querySelectorAll<HTMLElement>('.print-sheet')]
+  return pages.length > 0 ? pages : [node]
+}
+
 export function triggerBlobDownload(filename: string, blob: Blob): void {
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
@@ -93,31 +100,82 @@ export function triggerBlobDownload(filename: string, blob: Blob): void {
 
 /** The sheet as a PNG data URL, for putting it on a PDF page. */
 export async function captureSheetDataUrl(node?: HTMLElement | null): Promise<string> {
-  return blobToDataUrl(await captureSheetPngBlob(sheetNode(node)))
+  return blobToDataUrl(await captureSheetPngBlob(sheetPages(sheetNode(node))[0]))
+}
+
+/** Every sheet of the document as a PNG data URL, in page order. */
+export async function captureSheetDataUrls(node?: HTMLElement | null): Promise<string[]> {
+  const urls: string[] = []
+  for (const page of sheetPages(sheetNode(node))) urls.push(await blobToDataUrl(await captureSheetPngBlob(page)))
+  return urls
+}
+
+/** Up to this many sheets are saved as one tall picture; a longer document is saved as one picture per sheet in a ZIP. */
+const STITCH_MAX_PAGES = 12
+
+async function stitchPages(blobs: Blob[]): Promise<Blob> {
+  const images = await Promise.all(blobs.map((blob) => createImageBitmap(blob)))
+  const canvas = window.document.createElement('canvas')
+  canvas.width = images[0].width
+  canvas.height = images.reduce((sum, image) => sum + image.height, 0)
+  const context = canvas.getContext('2d')
+  if (!context) throw new Error(t('downloadSheetImage.could_not_render_the_document', 'Could not render the document.'))
+  context.fillStyle = '#ffffff'
+  context.fillRect(0, 0, canvas.width, canvas.height)
+  let top = 0
+  for (const image of images) {
+    context.drawImage(image, 0, top)
+    top += image.height
+    image.close()
+  }
+  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'))
+  if (!blob) throw new Error(t('downloadSheetImage.could_not_render_the_document', 'Could not render the document.'))
+  return blob
 }
 
 export async function downloadSheetImage(filename: string, node?: HTMLElement | null): Promise<void> {
-  const blob = await captureSheetPngBlob(sheetNode(node))
-  triggerBlobDownload(filename, blob)
+  const target = sheetNode(node)
+  await waitForSheetAssets(target)
+  const blobs: Blob[] = []
+  for (const page of sheetPages(target)) blobs.push(await captureSheetPngBlob(page))
+
+  if (blobs.length === 1) return triggerBlobDownload(filename, blobs[0])
+  if (blobs.length <= STITCH_MAX_PAGES) return triggerBlobDownload(filename, await stitchPages(blobs))
+
+  const base = filename.replace(/\.png$/i, '')
+  const zip = new JSZip()
+  blobs.forEach((blob, index) => zip.file(base + ' - ' + (index + 1) + '.png', blob))
+  triggerBlobDownload(base + '.zip', await zip.generateAsync({ type: 'blob', compression: 'STORE' }))
 }
 
 export async function downloadSheetPdf(filename: string, node?: HTMLElement | null): Promise<void> {
-  const blob = await captureSheetPngBlob(sheetNode(node))
-  const dataUrl = await blobToDataUrl(blob)
-  const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
-  pdf.addImage(dataUrl, 'PNG', 0, 0, 210, 297)
+  const target = sheetNode(node)
+  await waitForSheetAssets(target)
+  const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true })
+  let first = true
+  for (const page of sheetPages(target)) {
+    const dataUrl = await blobToDataUrl(await captureSheetPngBlob(page))
+    if (!first) pdf.addPage('a4', 'portrait')
+    pdf.addImage(dataUrl, 'PNG', 0, 0, 210, 297, undefined, 'FAST')
+    first = false
+  }
   pdf.save(filename)
 }
 
 export async function generateSheetPdfBase64(node?: HTMLElement | null): Promise<string> {
   const target = sheetNode(node)
   await waitForSheetAssets(target)
-  const jpegDataUrl = await Promise.race([
-    toJpeg(target, { ...captureOptions, quality: 0.88 }),
-    withTimeout(12000).then(() => null),
-  ])
-  if (!jpegDataUrl) throw new Error(t('downloadSheetImage.could_not_render_the_document_for_whatsapp', 'Could not render the document for WhatsApp.'))
   const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true })
-  pdf.addImage(jpegDataUrl, 'JPEG', 0, 0, 210, 297, undefined, 'FAST')
+  let first = true
+  for (const page of sheetPages(target)) {
+    const jpegDataUrl = await Promise.race([
+      toJpeg(page, { ...captureOptions, quality: 0.88 }),
+      withTimeout(12000).then(() => null),
+    ])
+    if (!jpegDataUrl) throw new Error(t('downloadSheetImage.could_not_render_the_document_for_whatsapp', 'Could not render the document for WhatsApp.'))
+    if (!first) pdf.addPage('a4', 'portrait')
+    pdf.addImage(jpegDataUrl, 'JPEG', 0, 0, 210, 297, undefined, 'FAST')
+    first = false
+  }
   return pdf.output('datauristring')
 }

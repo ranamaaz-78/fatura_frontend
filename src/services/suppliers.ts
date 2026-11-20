@@ -1,3 +1,4 @@
+import type { ContactImportRow } from '../lib/contactImport'
 import type { Supplier, SupplierInput } from '../types/suppliers'
 import { api, unwrap } from './api'
 
@@ -11,6 +12,10 @@ export function listSuppliers(search?: string, status?: 'active' | 'inactive'): 
       },
     }),
   )
+}
+
+export function importSuppliers(rows: ContactImportRow[]): Promise<{ created: number }> {
+  return unwrap<{ created: number }>(api.post('/app/suppliers/import', { rows }))
 }
 
 export function createSupplier(input: SupplierInput): Promise<Supplier> {

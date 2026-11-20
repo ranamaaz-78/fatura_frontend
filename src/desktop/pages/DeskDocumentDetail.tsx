@@ -14,6 +14,7 @@ import {
   MessageCircle,
   Pencil,
   Printer,
+  ReceiptText,
   Truck,
   Undo2,
 } from 'lucide-react'
@@ -25,6 +26,7 @@ import { cn } from '../../lib/cn'
 import { downloadSaleDocumentSheet } from '../../lib/exportSaleSheet'
 import { formatDate } from '../../lib/format'
 import { formatCents } from '../../lib/money'
+import { hasThermalSlip, printThermalSlip } from '../../lib/thermalSlip'
 import { getErrorMessage } from '../../services/api'
 import { typeLabel } from '../../pages/app/documentTypes'
 import { PrintSheet } from '../../pages/app/printSheets'
@@ -77,6 +79,12 @@ export default function DeskDocumentDetail() {
     void downloadSaleDocumentSheet(document, company ?? null, currency, format)
       .catch((error) => push({ tone: 'danger', title: getErrorMessage(error) }))
       .finally(() => setExporting(null))
+  }
+
+  function printSlip() {
+    if (!document) return
+    const opened = printThermalSlip(document, company ?? null, currency, (error) => push({ tone: 'danger', title: getErrorMessage(error) }))
+    if (!opened) push({ tone: 'danger', title: t('labels.blocked', 'Your browser blocked the print window. Allow pop-ups and try again.') })
   }
 
   const showsStatus = rules.settlesPayment || rules.settlesLines || voided
@@ -183,6 +191,11 @@ export default function DeskDocumentDetail() {
             <ToolButton label={t('sales.print', 'Print')} hint="Ctrl P" onClick={() => window.print()}>
               <Printer className="h-4 w-4" />
             </ToolButton>
+            {hasThermalSlip(document.type) ? (
+              <ToolButton label={t('sales.thermalSlip', '80 mm slip')} onClick={printSlip}>
+                <ReceiptText className="h-4 w-4" />
+              </ToolButton>
+            ) : null}
             <ToolButton label={t('sales.downloadPdf', 'Download PDF')} busy={exporting === 'pdf'} disabled={Boolean(exporting)} onClick={() => download('pdf')}>
               <FileDown className="h-4 w-4" />
             </ToolButton>

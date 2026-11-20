@@ -1,6 +1,6 @@
 import { ProductModal } from '../../pages/app/ProductModal'
 import { Camera, Check, Minus, PackageSearch, Plus, ScanLine, Search, ShieldCheck, ShoppingBasket, Trash2, UserRound, X } from 'lucide-react'
-import { useEffect, useRef, type ReactNode, type RefObject } from 'react'
+import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { Link } from 'react-router-dom'
 import { docPermission } from '../../auth/permissions'
 import { intlLocale, t } from '../../i18n'
@@ -543,8 +543,10 @@ function Notes({ sale }: { sale: SaleComposer }) {
   )
 }
 
-/** Who it is for: search by phone, or type a new client (saved with the document). */
+/** Who it is for: search by phone or by name, or type a new client (saved with the document). */
 function ClientCard({ sale }: { sale: SaleComposer }) {
+  // The saved clients that match the typed name show only while that field has the cursor.
+  const [nameFocused, setNameFocused] = useState(false)
   const {
     customerId,
     selectedCustomer,
@@ -554,6 +556,12 @@ function ClientCard({ sale }: { sale: SaleComposer }) {
     onPhoneChange,
     onPhoneKeyDown,
     phoneMatches,
+    phoneActive,
+    setPhoneActive,
+    nameMatches,
+    nameActive,
+    setNameActive,
+    onNameKeyDown,
     pickCustomer,
     clientName,
     setClientName,
@@ -611,13 +619,15 @@ function ClientCard({ sale }: { sale: SaleComposer }) {
             />
           </span>
           {customerId === null && phoneMatches.length > 0 ? (
-            <div className="desk-glass-strong desk-pop absolute top-full right-0 left-0 z-30 mt-1.5 overflow-hidden p-1.5">
+            <div className="desk-glass-strong desk-pop absolute top-full right-0 left-0 z-30 mt-1.5 max-h-72 overflow-y-auto p-1.5">
               {phoneMatches.map((customer, position) => (
                 <button
                   key={customer.id}
                   type="button"
+                  data-nav-active={position === phoneActive ? 'true' : undefined}
+                  onMouseEnter={() => setPhoneActive(position)}
                   onClick={() => pickCustomer(customer)}
-                  className={cn('flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-left transition', position === 0 ? 'bg-brand-600/10' : 'hover:bg-elevated')}
+                  className={cn('flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-left transition', position === phoneActive && 'bg-brand-600/10')}
                 >
                   <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-600/12 text-[11px] font-bold text-brand-600">{customer.name.slice(0, 2).toUpperCase()}</span>
                   <span className="min-w-0 flex-1">
@@ -640,9 +650,48 @@ function ClientCard({ sale }: { sale: SaleComposer }) {
           ) : null}
         </div>
 
-        <Field label={t('sales.clientName', 'Name')} required>
-          <input value={clientName} onChange={(event) => setClientName(event.target.value)} autoComplete="off" className={cn(clientField, 'font-semibold')} />
-        </Field>
+        <div className="relative">
+          <span className={fieldLabel}>
+            {t('sales.clientName', 'Name')}
+            <span className="ml-0.5 text-rose-500">*</span>
+          </span>
+          <span className="relative block">
+            <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-ink-muted" />
+            <input
+              value={clientName}
+              onChange={(event) => setClientName(event.target.value)}
+              onKeyDown={onNameKeyDown}
+              onFocus={() => setNameFocused(true)}
+              onBlur={() => setNameFocused(false)}
+              autoComplete="off"
+              placeholder={t('sales.nameSearch', 'Name, or search a saved client')}
+              className={cn(clientField, 'pl-9 font-semibold')}
+            />
+          </span>
+          {nameFocused && customerId === null && nameMatches.length > 0 ? (
+            <div className="desk-glass-strong desk-pop absolute top-full right-0 left-0 z-30 mt-1.5 max-h-72 overflow-y-auto p-1.5">
+              {nameMatches.map((customer, position) => (
+                <button
+                  key={customer.id}
+                  type="button"
+                  // Keeps the cursor in the field, so the list is still there when the click lands.
+                  onMouseDown={(event) => event.preventDefault()}
+                  data-nav-active={position === nameActive ? 'true' : undefined}
+                  onMouseEnter={() => setNameActive(position)}
+                  onClick={() => pickCustomer(customer)}
+                  className={cn('flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-left transition', position === nameActive && 'bg-brand-600/10')}
+                >
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-600/12 text-[11px] font-bold text-brand-600">{customer.name.slice(0, 2).toUpperCase()}</span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[13px] font-bold text-ink">{customer.name}</span>
+                    <span className="block truncate text-[11px] text-ink-muted">{[customer.company_name, customer.phone, customer.nif || customer.nie].filter(Boolean).join(' · ')}</span>
+                  </span>
+                  <span className="shrink-0 text-[10px] font-semibold text-ink-muted">{customer.code}</span>
+                </button>
+              ))}
+            </div>
+          ) : null}
+        </div>
         <div className="grid grid-cols-2 gap-3">
           <Field label={t('sales.clientCompany', 'Company name')}>
             <input value={clientCompany} onChange={(event) => setClientCompany(event.target.value)} autoComplete="off" className={clientField} />

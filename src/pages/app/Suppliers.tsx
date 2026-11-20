@@ -1,19 +1,23 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Pencil, Plus, Search, Trash2, Truck, X } from 'lucide-react'
+import { Download, FileSpreadsheet, Pencil, Plus, Search, Trash2, Truck, X } from 'lucide-react'
 import { useEffect, useState, type ReactNode } from 'react'
 import { Button } from '../../components/ui/Button'
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { Input } from '../../components/ui/Input'
 import { Modal } from '../../components/ui/Modal'
+import { Textarea } from '../../components/ui/Textarea'
 import { Pagination } from '../../components/ui/Pagination'
+import { ContactImportModal } from './ContactImportModal'
 import { usePageSize } from '../../components/ui/PageSizeSelect'
 import { useToast } from '../../components/ui/Toast'
 import { Toggle } from '../../components/ui/Toggle'
 import { Tooltip } from '../../components/ui/Tooltip'
 import { usePermissions } from '../../auth/permissions'
+import { useAuth } from '../../auth/AuthProvider'
 import { t } from '../../i18n'
 import { cn } from '../../lib/cn'
+import { downloadContactDemoSheet } from '../../lib/contactImport'
 import { AVATAR_TONES, TONE_AMBER, TONE_GREEN } from '../../lib/status'
 import { getErrorMessage } from '../../services/api'
 import {
@@ -35,6 +39,7 @@ type Draft = {
   phone: string
   email: string
   nif: string
+  remarks: string
 }
 
 function taxId(supplier: { nif: string | null; nie: string | null }): string {
@@ -43,7 +48,7 @@ function taxId(supplier: { nif: string | null; nie: string | null }): string {
 
 type StatusFilter = 'all' | 'active' | 'inactive'
 
-const emptyDraft: Draft = { name: '', company_name: '', phone: '', email: '', nif: '' }
+const emptyDraft: Draft = { name: '', company_name: '', phone: '', email: '', nif: '', remarks: '' }
 
 function fromSupplier(supplier: Supplier): Draft {
   return {
@@ -52,6 +57,7 @@ function fromSupplier(supplier: Supplier): Draft {
     phone: supplier.phone ?? '',
     email: supplier.email ?? '',
     nif: taxId(supplier),
+    remarks: supplier.remarks ?? '',
   }
 }
 
@@ -109,6 +115,8 @@ function Suppliers() {
     setPage(1)
   }, [debounced, status])
 
+  const [importOpen, setImportOpen] = useState(false)
+  const { session } = useAuth()
   async function refresh() {
     await queryClient.cancelQueries({ queryKey: ['app', 'suppliers'] })
     await queryClient.invalidateQueries({ queryKey: ['app', 'suppliers'] })
@@ -135,6 +143,7 @@ function Suppliers() {
         email: draft.email.trim() || null,
         nif: draft.nif.trim() || null,
         nie: null,
+        remarks: draft.remarks.trim() || null,
       }
       return editing ? updateSupplier(editing.id, input) : createSupplier(input)
     },
@@ -201,16 +210,36 @@ function Suppliers() {
             </p>
           </div>
         </div>
-        {can('suppliers.create') ? (
-        <button
-          type="button"
-          onClick={startCreate}
-          className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-xl bg-brand-600 px-4 text-xs font-semibold text-brand-on shadow-xs hover:bg-brand-500"
-        >
-          <Plus className="h-4 w-4" />
-          {t('suppliers.new', 'New supplier')}
-        </button>
-        ) : null}
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => downloadContactDemoSheet('supplier', session?.company?.name)}
+            className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-xl bg-slate-100 px-3.5 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-200"
+          >
+            <Download className="h-4 w-4 text-emerald-600" />
+            {t('products.demoSheet', 'Demo sheet')}
+          </button>
+          {can('suppliers.create') ? (
+            <button
+              type="button"
+              onClick={() => setImportOpen(true)}
+              className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-xl bg-emerald-600 px-3.5 text-xs font-semibold text-white transition-colors hover:bg-emerald-700"
+            >
+              <FileSpreadsheet className="h-4 w-4" />
+              {t('products.importExcel', 'Import Excel')}
+            </button>
+          ) : null}
+          {can('suppliers.create') ? (
+            <button
+              type="button"
+              onClick={startCreate}
+              className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-xl bg-brand-600 px-4 text-xs font-semibold text-brand-on shadow-xs hover:bg-brand-500"
+            >
+              <Plus className="h-4 w-4" />
+              {t('suppliers.new', 'New supplier')}
+            </button>
+          ) : null}
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
@@ -311,12 +340,14 @@ function Suppliers() {
           />
         ) : (
           <>
-            <div className="hidden md:block">
+            <div className="hidden overflow-x-auto md:block">
+              <div className="min-w-[1180px]">
               <div className="flex items-center bg-slate-50 px-4 py-2.5 text-[11px] font-semibold tracking-[0.08em] text-slate-500 uppercase">
-                <span className="min-w-0 flex-1">{t('suppliers.name', 'Name')}</span>
+                <span className="min-w-[14rem] flex-1">{t('suppliers.name', 'Name')}</span>
                 <span className="w-36">{t('suppliers.phone', 'Telephone')}</span>
                 <span className="w-48 pr-3">{t('suppliers.email', 'Email')}</span>
                 <span className="w-40">{t('suppliers.taxId', 'N.I.F/N.I.E')}</span>
+                <span className="w-52 pr-4">{t('clients.remarks', 'Remarks')}</span>
                 <span className="w-36">{t('suppliers.status', 'Status')}</span>
                 <span className="w-20 text-right">{t('products.actions', 'Actions')}</span>
               </div>
@@ -332,6 +363,9 @@ function Suppliers() {
                   <span className="w-36 truncate text-xs text-slate-600">{supplier.phone ?? '—'}</span>
                   <span title={supplier.email ?? undefined} className="w-48 truncate pr-3 text-xs text-slate-600">{supplier.email || '—'}</span>
                   <span className="w-40 truncate text-xs text-slate-600">{taxId(supplier) || '—'}</span>
+                  <span title={supplier.remarks ?? undefined} className="w-52 truncate pr-4 text-xs text-slate-600">
+                    {supplier.remarks || '—'}
+                  </span>
                   <span className="w-36">
                     <ActiveSwitch
                       supplier={supplier}
@@ -344,6 +378,7 @@ function Suppliers() {
                   </span>
                 </div>
               ))}
+              </div>
             </div>
             <div className="divide-y divide-slate-100 md:hidden">
               {visible.map((supplier) => (
@@ -357,6 +392,7 @@ function Suppliers() {
                   <p className="truncate text-[11px] text-slate-500">
                     {[supplier.phone, supplier.email, taxId(supplier)].filter(Boolean).join(' · ') || '—'}
                   </p>
+                  {supplier.remarks ? <p className="line-clamp-2 text-[11px] text-slate-500 italic">{supplier.remarks}</p> : null}
                   <ActiveSwitch
                     supplier={supplier}
                     disabled={togglingId === supplier.id || !can('suppliers.update')}
@@ -403,9 +439,21 @@ function Suppliers() {
           <Input compact label={t('suppliers.phone', 'Telephone')} value={draft.phone} onChange={(event) => setDraft({ ...draft, phone: event.target.value })} />
           <Input compact type="email" maxLength={190} label={t('suppliers.email', 'Email')} value={draft.email} onChange={(event) => setDraft({ ...draft, email: event.target.value })} />
           <Input compact label={t('suppliers.taxId', 'N.I.F/N.I.E')} value={draft.nif} onChange={(event) => setDraft({ ...draft, nif: event.target.value.toUpperCase() })} />
+          <div className="sm:col-span-2">
+            <Textarea
+              compact
+              rows={3}
+              maxLength={2000}
+              label={t('clients.remarks', 'Remarks')}
+              hint={t('suppliers.remarksHint', 'A private note about this supplier. It is never printed on a document.')}
+              value={draft.remarks}
+              onChange={(event) => setDraft({ ...draft, remarks: event.target.value })}
+            />
+          </div>
         </div>
       </Modal>
 
+      <ContactImportModal kind="supplier" open={importOpen} onClose={() => setImportOpen(false)} onImported={() => void refresh()} />
       <ConfirmDialog
         open={deleting !== null}
         onClose={() => setDeleting(null)}
@@ -450,7 +498,7 @@ function Stat({
 function Identity({ supplier }: { supplier: Supplier }) {
   const ink = AVATARS[supplier.id % AVATARS.length]
   return (
-    <div className="flex min-w-0 flex-1 items-center gap-3">
+    <div className="flex min-w-[14rem] flex-1 items-center gap-3">
       <span
         className={cn(
           'flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[11px] font-bold',

@@ -19,7 +19,9 @@ import { listSuppliers } from '../../services/suppliers'
 import type { Product } from '../../types/catalog'
 import type { Purchase } from '../../types/purchases'
 import { useResultNav } from '../../lib/useResultNav'
-import { productRank } from './useSaleComposer'
+import { codeFromQuery, productRank } from './useSaleComposer'
+import { ProductModal } from './ProductModal'
+import { usePermissions } from '../../auth/permissions'
 
 type IvaMode = 'none' | 'excluded' | 'included'
 
@@ -70,6 +72,9 @@ export function PurchaseModal({ open, onClose, currency, purchase = null }: { op
   const [search, setSearch] = useState('')
   const [lines, setLines] = useState<Line[]>([])
   const [errors, setErrors] = useState<Record<string, string>>({})
+  // The "Add product" window opened from the search, and what it starts with (the code that was not found).
+  const [newProduct, setNewProduct] = useState<{ barcode?: string; short_code?: string } | null>(null)
+  const { can } = usePermissions()
   // Changing a purchase: whether its saved lines were put in the form yet.
   const [filled, setFilled] = useState(false)
 
@@ -250,6 +255,7 @@ export function PurchaseModal({ open, onClose, currency, purchase = null }: { op
   })
 
   return (
+    <>
     <Modal
       open={open}
       onClose={onClose}
@@ -322,14 +328,26 @@ export function PurchaseModal({ open, onClose, currency, purchase = null }: { op
           <span className={labelClass}>{t('purchases.addProduct', 'Add a product: type its name or scan its barcode')}</span>
           <span className="relative block">
             <ScanLine className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-brand-600" />
-            <input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              onKeyDown={onSearchKey}
-              autoComplete="off"
-              placeholder={t('sales.productPlaceholder', 'Name or barcode')}
-              className="h-10 w-full rounded-xl border border-line bg-card pr-3 pl-9 text-[13px] text-ink outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-600/20"
-            />
+            <span className="flex gap-2">
+              <input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                onKeyDown={onSearchKey}
+                autoComplete="off"
+                placeholder={t('sales.productPlaceholder', 'Name or barcode')}
+                className="h-10 w-full min-w-0 flex-1 rounded-xl border border-line bg-card pr-3 pl-9 text-[13px] text-ink outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-600/20"
+              />
+              {can('products.create') ? (
+                <button
+                  type="button"
+                  onClick={() => setNewProduct(codeFromQuery(search))}
+                  className="inline-flex h-10 shrink-0 cursor-pointer items-center gap-1.5 rounded-xl border border-brand-600/40 bg-card px-3.5 text-xs font-semibold text-brand-600 hover:bg-brand-50"
+                >
+                  <Plus className="h-4 w-4" />
+                  {t('sales.addProduct', 'Add product')}
+                </button>
+              ) : null}
+            </span>
           </span>
           {search.trim() !== '' ? (
             <div className="absolute top-full right-0 left-0 z-20 mt-1.5 max-h-72 overflow-y-auto overscroll-contain rounded-xl border border-line bg-card shadow-lg">
@@ -576,5 +594,17 @@ export function PurchaseModal({ open, onClose, currency, purchase = null }: { op
         </p>
       </div>
     </Modal>
+    <ProductModal
+      open={newProduct !== null}
+      product={null}
+      initial={newProduct ?? undefined}
+      onClose={() => setNewProduct(null)}
+      onSaved={(product) => {
+        // The new product goes straight onto the delivery; the catalog reloads by itself.
+        setNewProduct(null)
+        add(product)
+      }}
+    />
+    </>
   )
 }

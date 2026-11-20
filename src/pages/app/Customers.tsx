@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Pencil, Plus, Search, Trash2, UserRound, Users, X } from 'lucide-react'
+import { Download, FileSpreadsheet, Pencil, Plus, Search, Trash2, UserRound, Users, X } from 'lucide-react'
 import { useEffect, useState, type ReactNode } from 'react'
 import { Button } from '../../components/ui/Button'
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog'
@@ -8,13 +8,16 @@ import { Input } from '../../components/ui/Input'
 import { Textarea } from '../../components/ui/Textarea'
 import { Modal } from '../../components/ui/Modal'
 import { Pagination } from '../../components/ui/Pagination'
+import { ContactImportModal } from './ContactImportModal'
 import { usePageSize } from '../../components/ui/PageSizeSelect'
 import { useToast } from '../../components/ui/Toast'
 import { Toggle } from '../../components/ui/Toggle'
 import { Tooltip } from '../../components/ui/Tooltip'
 import { usePermissions } from '../../auth/permissions'
+import { useAuth } from '../../auth/AuthProvider'
 import { t } from '../../i18n'
 import { cn } from '../../lib/cn'
+import { downloadContactDemoSheet } from '../../lib/contactImport'
 import { AVATAR_TONES, TONE_AMBER, TONE_GREEN } from '../../lib/status'
 import { getErrorMessage } from '../../services/api'
 import {
@@ -114,6 +117,8 @@ function Customers() {
     setPage(1)
   }, [debounced, status])
 
+  const [importOpen, setImportOpen] = useState(false)
+  const { session } = useAuth()
   async function refresh() {
     await queryClient.cancelQueries({ queryKey: ['app', 'customers'] })
     await queryClient.invalidateQueries({ queryKey: ['app', 'customers'] })
@@ -207,16 +212,36 @@ function Customers() {
             </p>
           </div>
         </div>
-        {can('customers.create') ? (
-        <button
-          type="button"
-          onClick={startCreate}
-          className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-xl bg-brand-600 px-4 text-xs font-semibold text-brand-on shadow-xs hover:bg-brand-500"
-        >
-          <Plus className="h-4 w-4" />
-          {t('clients.new', 'New client')}
-        </button>
-        ) : null}
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => downloadContactDemoSheet('customer', session?.company?.name)}
+            className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-xl bg-slate-100 px-3.5 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-200"
+          >
+            <Download className="h-4 w-4 text-emerald-600" />
+            {t('products.demoSheet', 'Demo sheet')}
+          </button>
+          {can('customers.create') ? (
+            <button
+              type="button"
+              onClick={() => setImportOpen(true)}
+              className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-xl bg-emerald-600 px-3.5 text-xs font-semibold text-white transition-colors hover:bg-emerald-700"
+            >
+              <FileSpreadsheet className="h-4 w-4" />
+              {t('products.importExcel', 'Import Excel')}
+            </button>
+          ) : null}
+          {can('customers.create') ? (
+            <button
+              type="button"
+              onClick={startCreate}
+              className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-xl bg-brand-600 px-4 text-xs font-semibold text-brand-on shadow-xs hover:bg-brand-500"
+            >
+              <Plus className="h-4 w-4" />
+              {t('clients.new', 'New client')}
+            </button>
+          ) : null}
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
@@ -317,9 +342,10 @@ function Customers() {
           />
         ) : (
           <>
-            <div className="hidden md:block">
+            <div className="hidden overflow-x-auto md:block">
+              <div className="min-w-[1180px]">
               <div className="flex items-center bg-slate-50 px-4 py-2.5 text-[11px] font-semibold tracking-[0.08em] text-slate-500 uppercase">
-                <span className="min-w-0 flex-1">{t('clients.name', 'Name')}</span>
+                <span className="min-w-[14rem] flex-1">{t('clients.name', 'Name')}</span>
                 <span className="w-36">{t('clients.phone', 'Telephone')}</span>
                 <span className="w-48 pr-3">{t('clients.email', 'Email')}</span>
                 <span className="w-40">{t('clients.taxId', 'N.I.F/N.I.E')}</span>
@@ -358,6 +384,7 @@ function Customers() {
                   </span>
                 </div>
               ))}
+              </div>
             </div>
             <div className="divide-y divide-slate-100 md:hidden">
               {visible.map((customer) => (
@@ -434,6 +461,7 @@ function Customers() {
         </div>
       </Modal>
 
+      <ContactImportModal kind="customer" open={importOpen} onClose={() => setImportOpen(false)} onImported={() => void refresh()} />
       <ConfirmDialog
         open={deleting !== null}
         onClose={() => setDeleting(null)}
@@ -478,7 +506,7 @@ function Stat({
 function Identity({ customer }: { customer: Customer }) {
   const ink = AVATARS[customer.id % AVATARS.length]
   return (
-    <div className="flex min-w-0 flex-1 items-center gap-3">
+    <div className="flex min-w-[14rem] flex-1 items-center gap-3">
       <span
         className={cn(
           'flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[11px] font-bold',

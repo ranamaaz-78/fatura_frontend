@@ -3,7 +3,7 @@ import { flushSync } from 'react-dom'
 import type { Company } from '../types/module01'
 import type { SaleDocument } from '../types/sales'
 import { PrintSheetView } from '../pages/app/printSheets'
-import { A4_CSS_HEIGHT, A4_CSS_WIDTH, captureSheetDataUrl, downloadSheetImage, downloadSheetPdf, generateSheetPdfBase64 } from './downloadSheetImage'
+import { A4_CSS_HEIGHT, A4_CSS_WIDTH, captureSheetDataUrls, downloadSheetImage, downloadSheetPdf, generateSheetPdfBase64 } from './downloadSheetImage'
 import { getPrintTemplates, loadLogoBlob } from '../services/printables'
 import { typeLabel } from '../pages/app/documentTypes'
 import { downloadFileName, fileDate } from './fileName'
@@ -23,7 +23,8 @@ async function waitForSheetNode(host: HTMLElement): Promise<HTMLElement> {
   const deadline = Date.now() + 4000
   while (Date.now() < deadline) {
     const node = host.querySelector('#printable-invoice')
-    if (node instanceof HTMLElement) {
+    // A long document is cut into its pages first: only then is it ready to be captured.
+    if (node instanceof HTMLElement && node.dataset.ready === 'true') {
       await waitForPaint()
       return node
     }
@@ -58,8 +59,7 @@ export async function downloadSaleDocumentSheet(
     'left:0',
     'top:0',
     `width:${A4_CSS_WIDTH}px`,
-    `height:${A4_CSS_HEIGHT}px`,
-    'overflow:hidden',
+    `min-height:${A4_CSS_HEIGHT}px`,
     'pointer-events:none',
     'z-index:-1',
   ].join(';')
@@ -113,8 +113,7 @@ export async function generateSaleDocumentPdfBase64(
     'left:0',
     'top:0',
     `width:${A4_CSS_WIDTH}px`,
-    `height:${A4_CSS_HEIGHT}px`,
-    'overflow:hidden',
+    `min-height:${A4_CSS_HEIGHT}px`,
     'pointer-events:none',
     'z-index:-1',
   ].join(';')
@@ -145,8 +144,8 @@ export async function generateSaleDocumentPdfBase64(
 }
 
 export type SaleSheetRenderer = {
-  /** The document as the PNG data URL of its A4 sheet. */
-  render: (sale: SaleDocument) => Promise<string>
+  /** The document as the PNG data URL of each of its A4 sheets, in page order. */
+  render: (sale: SaleDocument) => Promise<string[]>
   dispose: () => void
 }
 
@@ -166,8 +165,7 @@ export async function createSaleSheetRenderer(company: Company | null, currency:
     'left:0',
     'top:0',
     `width:${A4_CSS_WIDTH}px`,
-    `height:${A4_CSS_HEIGHT}px`,
-    'overflow:hidden',
+    `min-height:${A4_CSS_HEIGHT}px`,
     'pointer-events:none',
     'z-index:-1',
   ].join(';')
@@ -191,7 +189,7 @@ export async function createSaleSheetRenderer(company: Company | null, currency:
       })
       const node = await waitForSheetNode(host)
       await waitForPaint()
-      return captureSheetDataUrl(node)
+      return captureSheetDataUrls(node)
     },
     dispose() {
       root.unmount()

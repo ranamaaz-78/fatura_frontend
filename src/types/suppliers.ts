@@ -7,6 +7,8 @@ export type Supplier = {
   email?: string | null
   nif: string | null
   nie: string | null
+  /** A private note about the supplier; never printed. */
+  remarks?: string | null
   is_active: boolean
   products_count?: number
 }
@@ -18,4 +20,5 @@ export type SupplierInput = {
   email?: string | null
   nif: string | null
   nie: string | null
+  remarks?: string | null
 }

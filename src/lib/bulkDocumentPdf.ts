@@ -34,7 +34,7 @@ function checkCancelled(signal?: AbortSignal): void {
  * Prints the documents one after the other (one A4 sheet each, exactly as the single download does) and hands every
  * sheet to `add` together with the document number.
  */
-async function eachSheet(options: BulkOptions, add: (sheet: string, sale: SaleDocument, index: number) => void): Promise<void> {
+async function eachSheet(options: BulkOptions, add: (sheets: string[], sale: SaleDocument, index: number) => void): Promise<void> {
   const renderer = await createSaleSheetRenderer(options.company, options.currency)
   try {
     for (let index = 0; index < options.ids.length; index += 1) {
@@ -58,9 +58,12 @@ export async function downloadDocumentsZip(options: BulkOptions): Promise<void> 
   const zip = new JSZip()
   const used = new Set<string>()
 
-  await eachSheet(options, (sheet, sale) => {
+  await eachSheet(options, (sheets, sale) => {
     const pdf = newPdf()
-    pdf.addImage(sheet, 'PNG', 0, 0, 210, 297, undefined, 'FAST')
+    sheets.forEach((sheet, page) => {
+      if (page > 0) pdf.addPage('a4', 'portrait')
+      pdf.addImage(sheet, 'PNG', 0, 0, 210, 297, undefined, 'FAST')
+    })
 
     // Inside the zip each file is named like a single download: Company - Invoice F-202610-00002 - 2026-10-19.pdf
     let name = saleFileName(sale, options.company, 'pdf')
@@ -74,13 +77,18 @@ export async function downloadDocumentsZip(options: BulkOptions): Promise<void> 
   triggerBlobDownload(`${options.fileName}.zip`, blob)
 }
 
-/** Every document on its own page of one PDF. */
+/** Every document on its own page (a long one on as many as it needs) of one PDF. */
 export async function downloadDocumentsPdf(options: BulkOptions): Promise<void> {
   const pdf = newPdf()
 
-  await eachSheet(options, (sheet, _sale, index) => {
-    if (index > 0) pdf.addPage('a4', 'portrait')
-    pdf.addImage(sheet, 'PNG', 0, 0, 210, 297, undefined, 'FAST')
+  let started = false
+  await eachSheet(options, (sheets) => {
+    // A long document takes as many pages as it has sheets.
+    for (const sheet of sheets) {
+      if (started) pdf.addPage('a4', 'portrait')
+      pdf.addImage(sheet, 'PNG', 0, 0, 210, 297, undefined, 'FAST')
+      started = true
+    }
   })
 
   checkCancelled(options.signal)

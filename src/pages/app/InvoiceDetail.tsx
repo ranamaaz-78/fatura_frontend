@@ -1,4 +1,4 @@
-import { ArrowLeft, CalendarClock, CalendarX2, FileDown, ImageDown, FileText, MessageCircle, Pencil, Printer, Undo2 } from 'lucide-react'
+import { ArrowLeft, CalendarClock, CalendarX2, FileDown, ImageDown, FileText, MessageCircle, Pencil, Printer, ReceiptText, Undo2 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { ConfettiBurst } from '../../components/ui/ConfettiBurst'
 import { IconButton } from '../../components/ui/IconButton'
@@ -7,6 +7,7 @@ import { cn } from '../../lib/cn'
 import { downloadSaleDocumentSheet } from '../../lib/exportSaleSheet'
 import { formatDate } from '../../lib/format'
 import { formatCents } from '../../lib/money'
+import { hasThermalSlip, printThermalSlip } from '../../lib/thermalSlip'
 import { getErrorMessage } from '../../services/api'
 import type { SaleDisplayStatus } from '../../types/sales'
 import { typeLabel } from './documentTypes'
@@ -99,54 +100,6 @@ function InvoiceDetail() {
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => window.print()}
-            className="inline-flex h-[38px] cursor-pointer items-center gap-2 rounded-xl bg-slate-100 px-3.5 text-xs font-semibold text-slate-700"
-          >
-            <Printer className="h-4 w-4" />
-            {t('sales.print', 'Print')}
-          </button>
-          <button
-            type="button"
-            disabled={Boolean(exporting)}
-            onClick={() => {
-              setExporting('pdf')
-              void downloadSaleDocumentSheet(document, company ?? null, currency, 'pdf')
-                .catch((error) => push({ tone: 'danger', title: getErrorMessage(error) }))
-                .finally(() => setExporting(null))
-            }}
-            className="inline-flex h-[38px] cursor-pointer items-center gap-2 rounded-xl bg-slate-100 px-3.5 text-xs font-semibold text-slate-700 disabled:opacity-60"
-          >
-            <FileDown className="h-4 w-4" />
-            {exporting === 'pdf'
-              ? t('sales.savingPdf', 'Saving PDF...')
-              : t('sales.downloadPdf', 'Download PDF')}
-          </button>
-          <button
-            type="button"
-            disabled={Boolean(exporting)}
-            onClick={() => {
-              setExporting('png')
-              void downloadSaleDocumentSheet(document, company ?? null, currency, 'png')
-                .catch((error) => push({ tone: 'danger', title: getErrorMessage(error) }))
-                .finally(() => setExporting(null))
-            }}
-            className="inline-flex h-[38px] cursor-pointer items-center gap-2 rounded-xl bg-slate-100 px-3.5 text-xs font-semibold text-slate-700 disabled:opacity-60"
-          >
-            <ImageDown className="h-4 w-4" />
-            {exporting === 'png'
-              ? t('sales.savingImage', 'Saving image...')
-              : t('sales.downloadImage', 'Download as image')}
-          </button>
-          <button
-            type="button"
-            onClick={() => setWhatsAppOpen(true)}
-            className="inline-flex h-[38px] cursor-pointer items-center gap-2 rounded-xl border border-emerald-300 bg-emerald-50 px-3.5 text-xs font-semibold text-emerald-800 hover:bg-emerald-100 transition-colors shadow-2xs"
-          >
-            <MessageCircle className="h-4 w-4 text-emerald-600" />
-            {t('whatsapp.sendBtn', 'WhatsApp')}
-          </button>
           {document.type === 'albaran' && document.can_edit && canUpdate ? (
             <Link
               to={`/app/delivery-notes/${document.id}/edit`}
@@ -459,8 +412,82 @@ function InvoiceDetail() {
         </div>
       ) : null}
 
-      <div className="w-full overflow-x-auto print:contents">
-        <PrintSheet document={document} company={company ?? null} currency={currency} />
+      <div className="flex flex-col gap-6 xl:flex-row xl:items-start print:contents">
+        <div className="w-full min-w-0 overflow-x-auto xl:flex-1 print:contents">
+          <PrintSheet document={document} company={company ?? null} currency={currency} />
+        </div>
+
+        {/* Everything that prints, saves or sends this document, one under the other beside the sheet. */}
+        <aside className="no-print order-first flex w-full flex-col gap-2 rounded-2xl border border-line/80 bg-card p-4 shadow-xs xl:sticky xl:top-0 xl:order-last xl:w-56 xl:shrink-0">
+          <p className="mb-1 text-[11px] font-semibold tracking-[0.06em] text-slate-500 uppercase">
+            {t('sales.printPanel', 'Print and share')}
+          </p>
+          <button
+            type="button"
+            onClick={() => window.print()}
+            className="inline-flex h-[38px] w-full cursor-pointer items-center gap-2 rounded-xl bg-slate-100 px-3.5 text-xs font-semibold text-slate-700 hover:bg-slate-200"
+          >
+            <Printer className="h-4 w-4 shrink-0" />
+            {t('sales.print', 'Print')}
+          </button>
+          {hasThermalSlip(document.type) ? (
+            <button
+              type="button"
+              onClick={() => {
+                const opened = printThermalSlip(document, company ?? null, currency, (error) =>
+                  push({ tone: 'danger', title: getErrorMessage(error) }),
+                )
+                if (!opened) {
+                  push({ tone: 'danger', title: t('labels.blocked', 'Your browser blocked the print window. Allow pop-ups and try again.') })
+                }
+              }}
+              className="inline-flex h-[38px] w-full cursor-pointer items-center gap-2 rounded-xl bg-slate-100 px-3.5 text-xs font-semibold text-slate-700 hover:bg-slate-200"
+            >
+              <ReceiptText className="h-4 w-4 shrink-0" />
+              {t('sales.thermalSlip', '80 mm slip')}
+            </button>
+          ) : null}
+          <button
+            type="button"
+            disabled={Boolean(exporting)}
+            onClick={() => {
+              setExporting('pdf')
+              void downloadSaleDocumentSheet(document, company ?? null, currency, 'pdf')
+                .catch((error) => push({ tone: 'danger', title: getErrorMessage(error) }))
+                .finally(() => setExporting(null))
+            }}
+            className="inline-flex h-[38px] w-full cursor-pointer items-center gap-2 rounded-xl bg-slate-100 px-3.5 text-xs font-semibold text-slate-700 hover:bg-slate-200 disabled:opacity-60"
+          >
+            <FileDown className="h-4 w-4 shrink-0" />
+            {exporting === 'pdf'
+              ? t('sales.savingPdf', 'Saving PDF...')
+              : t('sales.downloadPdf', 'Download PDF')}
+          </button>
+          <button
+            type="button"
+            disabled={Boolean(exporting)}
+            onClick={() => {
+              setExporting('png')
+              void downloadSaleDocumentSheet(document, company ?? null, currency, 'png')
+                .catch((error) => push({ tone: 'danger', title: getErrorMessage(error) }))
+                .finally(() => setExporting(null))
+            }}
+            className="inline-flex h-[38px] w-full cursor-pointer items-center gap-2 rounded-xl bg-slate-100 px-3.5 text-xs font-semibold text-slate-700 hover:bg-slate-200 disabled:opacity-60"
+          >
+            <ImageDown className="h-4 w-4 shrink-0" />
+            {exporting === 'png'
+              ? t('sales.savingImage', 'Saving image...')
+              : t('sales.downloadImage', 'Download as image')}
+          </button>
+          <button
+            type="button"
+            onClick={() => setWhatsAppOpen(true)}
+            className="inline-flex h-[38px] w-full cursor-pointer items-center gap-2 rounded-xl border border-emerald-300 bg-emerald-50 px-3.5 text-xs font-semibold text-emerald-800 shadow-2xs transition-colors hover:bg-emerald-100"
+          >
+            <MessageCircle className="h-4 w-4 shrink-0 text-emerald-600" />
+            {t('whatsapp.sendBtn', 'WhatsApp')}
+          </button>
+        </aside>
       </div>
 
       <DocumentDialogs detail={detail} document={document} />

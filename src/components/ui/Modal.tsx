@@ -14,6 +14,10 @@ const widthClasses = {
   '5xl': 'sm:max-w-5xl',
 } as const
 
+/** The windows open right now, the last one on top: Escape belongs to the top one only. */
+const openStack: number[] = []
+let nextModalId = 1
+
 export type ModalProps = {
   open: boolean
   onClose: () => void
@@ -48,12 +52,17 @@ export function Modal({
     document.body.style.overflow = 'hidden'
     panelRef.current?.focus()
 
+    const modalId = nextModalId++
+    openStack.push(modalId)
+
     function onKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') onCloseRef.current()
+      if (event.key === 'Escape' && openStack[openStack.length - 1] === modalId) onCloseRef.current()
     }
 
     window.addEventListener('keydown', onKeyDown)
     return () => {
+      const at = openStack.indexOf(modalId)
+      if (at >= 0) openStack.splice(at, 1)
       document.body.style.overflow = previousOverflow
       window.removeEventListener('keydown', onKeyDown)
       if (trigger instanceof HTMLElement) trigger.focus()

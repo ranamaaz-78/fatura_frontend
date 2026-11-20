@@ -39,6 +39,9 @@ export function ivaOptions(rates: { rate: number }[], current: string): string[]
 
 export const QUOTE_VALID_DAYS = 7
 
+/** What the counter (POS) starts on when no document kind is asked for: a delivery note. */
+const DEFAULT_TYPE: IssuableType = 'albaran'
+
 function toLocalInput(iso: string): string {
   const date = new Date(iso)
   if (Number.isNaN(date.getTime())) return nowLocal()
@@ -86,6 +89,11 @@ function digits(value: string): string {
   return value.replace(/[\s-]+/g, '')
 }
 
+/** A name as it is searched: lower case, accents off, so "garcia" finds "García". */
+function plain(value: string): string {
+  return value.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().trim()
+}
+
 export function productRank(product: Product, query: string): number {
   const barcode = product.barcode.toLowerCase()
   const article = product.article.toLowerCase()
@@ -116,7 +124,7 @@ export function useSaleComposer() {
 
   const { can } = usePermissions()
   const requested = params.get('type')
-  const [type, setType] = useState<IssuableType>(editing ? 'quotation' : isIssuable(requested) ? requested : 'factura')
+  const [type, setType] = useState<IssuableType>(editing ? 'quotation' : isIssuable(requested) ? requested : DEFAULT_TYPE)
   const [hydrated, setHydrated] = useState(false)
   const [recargoRestored, setRecargoRestored] = useState(false)
   // Editing a delivery note: what it already took out of stock (it is put back when saved), so it can keep those pieces.
@@ -182,8 +190,9 @@ export function useSaleComposer() {
       setType(requested)
       return
     }
-    // The first kind of document this person may issue, when the one asked for is not allowed.
-    const allowed = ISSUABLE_TYPES.find((option) => can(docPermission(option, 'create')))
+    // Nothing asked for (the counter opened from the menu): a delivery note, when this person may issue one;
+    // otherwise the first kind of document they may issue.
+    const allowed = [DEFAULT_TYPE, ...ISSUABLE_TYPES].find((option) => can(docPermission(option, 'create')))
     if (allowed) setType(allowed)
   }, [editing, requested, can])
 
@@ -244,6 +253,28 @@ export function useSaleComposer() {
       .slice(0, 8)
   }, [customers.data, phoneNeedle])
 
+  // The same saved clients, found by their name or their company's name as it is typed in the Name field.
+  const nameNeedle = plain(clientName)
+  const nameMatches = useMemo(() => {
+    if (nameNeedle.length < 2) return []
+    const rank = (customer: Customer) => {
+      const name = plain(customer.name)
+      const company = plain(customer.company_name ?? '')
+      if (name === nameNeedle || company === nameNeedle) return 0
+      if (name.startsWith(nameNeedle) || company.startsWith(nameNeedle)) return 1
+      // A word inside the name: "lopez" finds "Ana López".
+      if (name.split(/\s+/).some((word) => word.startsWith(nameNeedle))) return 2
+      if (name.includes(nameNeedle) || company.includes(nameNeedle)) return 3
+      return 99
+    }
+    return (customers.data ?? [])
+      .map((customer) => ({ customer, rank: rank(customer) }))
+      .filter((row) => row.rank < 99)
+      .sort((a, b) => a.rank - b.rank || a.customer.name.localeCompare(b.customer.name))
+      .slice(0, 8)
+      .map((row) => row.customer)
+  }, [customers.data, nameNeedle])
+
   const productMatches = useMemo(() => {
     const query = productQuery.trim().toLowerCase()
     if (query === '') return []
@@ -257,6 +288,9 @@ export function useSaleComposer() {
 
   // Up and Down walk the results; Enter takes the highlighted one.
   const matchNav = useResultNav(productMatches.length, productQuery)
+  // The saved-client lists (by phone and by name) move the same way: arrow keys and the mouse change the highlighted row.
+  const phoneNav = useResultNav(phoneMatches.length, phoneNeedle)
+  const nameNav = useResultNav(nameMatches.length, nameNeedle)
 
   // What a line is worth once this document's own tax and discount rules apply.
   const lineMath = useMemo(() => {
@@ -431,9 +465,19 @@ export function useSaleComposer() {
   }
 
   function onPhoneKeyDown(event: KeyboardEvent<HTMLInputElement>) {
-    if (event.key !== 'Enter' || phoneMatches.length === 0) return
+    if (customerId !== null || phoneMatches.length === 0) return
+    if (phoneNav.onNavKey(event)) return
+    if (event.key !== 'Enter') return
     event.preventDefault()
-    pickCustomer(phoneMatches[0]!)
+    pickCustomer(phoneMatches[phoneNav.active] ?? phoneMatches[0]!)
+  }
+
+  function onNameKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    if (customerId !== null || nameMatches.length === 0) return
+    if (nameNav.onNavKey(event)) return
+    if (event.key !== 'Enter') return
+    event.preventDefault()
+    pickCustomer(nameMatches[nameNav.active] ?? nameMatches[0]!)
   }
 
   function openNewProduct() {
@@ -684,6 +728,11 @@ export function useSaleComposer() {
     hasClientData,
     phoneNeedle,
     phoneMatches,
+    phoneActive: phoneNav.active,
+    setPhoneActive: phoneNav.setActive,
+    nameMatches,
+    nameActive: nameNav.active,
+    setNameActive: nameNav.setActive,
     productMatches,
     lineMath,
     grossBase,
@@ -699,6 +748,7 @@ export function useSaleComposer() {
     pickCustomer,
     onPhoneChange,
     onPhoneKeyDown,
+    onNameKeyDown,
     onProductKeyDown,
     activeMatch: matchNav.active,
     setActiveMatch: matchNav.setActive,
