@@ -37,6 +37,7 @@ const DOCUMENT_AREA: Record<string, string> = {
   albaran: 'delivery_notes',
   quotation: 'quotes',
   proforma: 'proformas',
+  nota_entrega: 'delivery_receipts',
 }
 
 export function docPermission(type: string, action: 'view' | 'create' | 'update' | 'delete' | 'pay' | 'void'): string {

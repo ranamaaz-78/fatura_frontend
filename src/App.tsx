@@ -44,6 +44,8 @@ import PrintablesPage from './pages/app/Printables'
 import ProductImagesPage from './pages/app/ProductImages'
 import ProductsPage from './pages/app/Products'
 import ProformasPage from './pages/app/Proformas'
+import DeliveryReceiptNewPage from './pages/app/DeliveryReceiptNew'
+import DeliveryReceiptsPage from './pages/app/DeliveryReceipts'
 import PurchasesPage from './pages/app/Purchases'
 import QuotesPage from './pages/app/Quotes'
 import ReportDownloadsPage from './pages/app/ReportDownloads'
@@ -144,6 +146,10 @@ function App() {
               <Route element={<RequirePermission permission="quotes.update" />}>
                 <Route path="quotes/:id/edit" element={pick(<InvoiceNewPage />, <Desk.Pos />)} />
               </Route>
+              {/* A draft invoice opens on the counter again, to be changed, saved again or issued. */}
+              <Route element={<RequirePermission permission="invoices.create" />}>
+                <Route path="invoices/:id/edit" element={pick(<InvoiceNewPage />, <Desk.Pos />)} />
+              </Route>
               <Route element={<RequirePermission permission="quotes.view" />}>
                 <Route path="quotes" element={pick(<QuotesPage />, <Desk.DocumentList type="quotation" />)} />
                 <Route path="quotes/:id" element={pick(<InvoiceDetailPage />, <Desk.DocumentDetail />)} />
@@ -151,6 +157,14 @@ function App() {
               <Route element={<RequirePermission permission="proformas.view" />}>
                 <Route path="proformas" element={pick(<ProformasPage />, <Desk.DocumentList type="proforma" />)} />
                 <Route path="proformas/:id" element={pick(<InvoiceDetailPage />, <Desk.DocumentDetail />)} />
+              </Route>
+              {/* Delivery receipts (notas de entrega): their own list and their own screen, apart from the counter. */}
+              <Route element={<RequirePermission permission="delivery_receipts.create" />}>
+                <Route path="delivery-receipts/new" element={pick(<DeliveryReceiptNewPage />, <Desk.Pos fixedType="nota_entrega" />)} />
+              </Route>
+              <Route element={<RequirePermission permission="delivery_receipts.view" />}>
+                <Route path="delivery-receipts" element={pick(<DeliveryReceiptsPage />, <Desk.DocumentList type="nota_entrega" />)} />
+                <Route path="delivery-receipts/:id" element={pick(<InvoiceDetailPage />, <Desk.DocumentDetail />)} />
               </Route>
               <Route element={<RequirePermission permission="payments.view" />}>
                 <Route path="payments" element={<PaymentsPage />} />
@@ -189,7 +203,7 @@ function App() {
               <Route element={<RequirePermission ownerOnly />}>
                 <Route path="team" element={<TeamPage />} />
               </Route>
-              <Route element={<RequirePermission permission="invoices.delete|delivery_notes.delete|quotes.delete|proformas.delete" />}>
+              <Route element={<RequirePermission permission="invoices.delete|delivery_notes.delete|quotes.delete|proformas.delete|delivery_receipts.delete" />}>
                 <Route path="restore" element={<RestorePage />} />
               </Route>
               <Route path="settings" element={<SettingsPage />} />

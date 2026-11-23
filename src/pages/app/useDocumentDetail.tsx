@@ -6,7 +6,7 @@ import { ConfirmDialog } from '../../components/ui/ConfirmDialog'
 import { useToast } from '../../components/ui/Toast'
 import { t } from '../../i18n'
 import { getErrorMessage } from '../../services/api'
-import { cancelSaleReturn, convertSale, deleteSale, getSale, invoiceAlbaran, invoiceSettlement, restoreSale, returnSalePieces, settleSale, updateSalePayment, updateSaleSettlement, voidSale } from '../../services/sales'
+import { cancelSaleReturn, convertSale, deleteSale, getSale, invoiceAlbaran, invoiceSettlement, issueDraft, restoreSale, returnSalePieces, settleSale, updateSalePayment, updateSaleSettlement, voidSale } from '../../services/sales'
 import {
   isSaleConverted,
   isSaleExpired,
@@ -37,6 +37,7 @@ export function paymentLabel(status: SaleDisplayStatus): string {
   if (status === 'voided') return t('sales.voided', 'Voided')
   if (status === 'returned') return t('sales.returned', 'Returned')
   if (status === 'partial') return t('sales.partial', 'Partial')
+  if (status === 'draft') return t('sales.draft', 'Draft')
   return status === 'paid' ? t('sales.paid', 'Paid') : t('sales.pending', 'Pending')
 }
 
@@ -229,10 +230,31 @@ export function useDocumentDetail() {
       setDeleteOpen(false)
       queryClient.setQueryData(['app', 'sale', documentId], document)
       refreshAfterDelete()
-      push({ tone: 'success', title: t('sales.deleted', '{number} deleted. You can restore it from the Restore page.', { number: document.number }) })
+      push({
+        tone: 'success',
+        title: document.is_draft
+          ? t('sales.draftDeleted', '{number} was a draft. It is kept as a voided invoice, so the numbering has no gap.', { number: document.number })
+          : t('sales.deleted', '{number} deleted. You can restore it from the Restore page.', { number: document.number }),
+      })
     },
     onError: (error) => {
       setDeleteOpen(false)
+      push({ tone: 'danger', title: getErrorMessage(error) })
+    },
+  })
+
+  /** Issues a draft invoice as it stands (pending; a payment is recorded afterwards as on any invoice). */
+  const issuingDraft = useMutation({
+    mutationFn: () => issueDraft(documentId, 'pending'),
+    onSuccess: (document) => {
+      queryClient.setQueryData(['app', 'sale', documentId], document)
+      void queryClient.invalidateQueries({ queryKey: ['app', 'sales'] })
+      void queryClient.invalidateQueries({ queryKey: ['app', 'products'] })
+      push({ tone: 'success', title: t('sales.draftIssued', '{number} issued. The stock was taken now.', { number: document.number }) })
+    },
+    onError: (error) => {
+      // A shortage found by the server: show the fresh shortages on the screen.
+      void queryClient.invalidateQueries({ queryKey: ['app', 'sale', documentId] })
       push({ tone: 'danger', title: getErrorMessage(error) })
     },
   })
@@ -313,6 +335,7 @@ export function useDocumentDetail() {
     voiding,
     deleting,
     restoring,
+    issuingDraft,
     converting,
   }
 }
@@ -462,7 +485,11 @@ export function DocumentDialogs({ detail, document }: { detail: DocumentDetail; 
           loading={deleting.isPending}
           tone="danger"
           title={t('sales.deleteTitle', 'Delete {number}?', { number: document.number })}
-          description={t('sales.deleteBody', 'It leaves your lists and reports, and any stock it took comes back. Its number is never reused. You can restore it from the Restore page.')}
+          description={
+            document.is_draft
+              ? t('sales.deleteDraftBody', 'A draft already holds its invoice number, so it is not removed: it stays as a voided invoice with that number, and the numbering keeps no gap. It took no stock, so none comes back.')
+              : t('sales.deleteBody', 'It leaves your lists and reports, and any stock it took comes back. Its number is never reused. You can restore it from the Restore page.')
+          }
           confirmLabel={t('sales.delete', 'Delete')}
           onClose={() => setDeleteOpen(false)}
           onConfirm={() => deleting.mutate()}

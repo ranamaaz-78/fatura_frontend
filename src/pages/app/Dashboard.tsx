@@ -53,14 +53,14 @@ export function shortTick(value: string): string {
 }
 
 export function docHref(type: string, id: number): string {
-  if (type === 'factura' || type === 'albaran' || type === 'quotation' || type === 'proforma') {
+  if (type === 'factura' || type === 'albaran' || type === 'quotation' || type === 'proforma' || type === 'nota_entrega') {
     return `${rulesFor(type).listPath}/${id}`
   }
   return '/app/invoices'
 }
 
 export function docTypeLabel(type: string): string {
-  if (type === 'factura' || type === 'albaran' || type === 'quotation' || type === 'proforma') {
+  if (type === 'factura' || type === 'albaran' || type === 'quotation' || type === 'proforma' || type === 'nota_entrega') {
     return typeLabel(type as SaleType)
   }
   return type

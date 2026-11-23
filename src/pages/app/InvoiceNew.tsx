@@ -10,6 +10,7 @@ import { TONE_AMBER, TONE_GREEN, TONE_ROSE } from '../../lib/status'
 import { formatCents } from '../../lib/money'
 import { onlyDecimal } from '../../lib/numberInput'
 import { getErrorMessage } from '../../services/api'
+import type { IssuableType } from '../../types/sales'
 import { docPermission } from '../../auth/permissions'
 import { ISSUABLE_TYPES, typeLabel } from './documentTypes'
 import { isPastMonth, nowLocal, shortDate, snapIssueDate } from '../../lib/issueDate'
@@ -32,7 +33,11 @@ const clientField =
 
 const optionOn = 'bg-brand-50'
 
-function InvoiceNew() {
+/**
+ * The new-sale screen. The counter (POS) opens it with a kind that can be switched; a kind with its own page (the
+ * delivery receipt) passes `fixedType`: same design, no switching, and no client box when the kind names nobody.
+ */
+function InvoiceNew({ fixedType }: { fixedType?: IssuableType } = {}) {
   const {
     push,
     currency,
@@ -123,7 +128,13 @@ function InvoiceNew() {
     submit,
     confirmMethod,
     issueLabel,
-  } = useSaleComposer()
+    editingDraft,
+    draftSave,
+    draftIssue,
+    saveDraft,
+    lineShortage,
+    hasShortage,
+  } = useSaleComposer(fixedType)
   // The saved clients that match the typed name show only while that field has the cursor.
   const [nameFocused, setNameFocused] = useState(false)
 
@@ -151,15 +162,23 @@ function InvoiceNew() {
               {editing
                 ? type === 'albaran'
                   ? t('sales.editDeliveryNote', 'Edit delivery note')
-                  : t('sales.editQuote', 'Edit quotation')
-                : t('sales.newTitle', 'New sale')}
+                  : editingDraft
+                    ? t('sales.editDraft', 'Draft invoice')
+                    : t('sales.editQuote', 'Edit quotation')
+                : fixedType
+                  ? t('sales.newOf', 'New :type').replace(':type', typeLabel(fixedType))
+                  : t('sales.newTitle', 'New sale')}
             </h1>
             <p className="mt-0.5 text-xs text-slate-500">
-              {editing
+              {editing && editingDraft
+                ? t('sales.editDraftHint', 'Its number and date are kept. Change anything, save it again as a draft, or issue it: the stock is taken then.')
+                : editing
                 ? type === 'albaran'
                   ? t('sales.editDeliveryNoteHint', 'Change the client or the lines while it is unpaid. The number and date stay, and the stock is adjusted by the difference.')
                   : t('sales.editQuoteHint', 'Change the client or the lines. The quotation number stays.')
-                : t('sales.newSubtitle', 'Invoice, delivery note, quotation or proforma, with the client and the lines on one screen.')}
+                : fixedType === 'nota_entrega'
+                  ? t('sales.newNotaSubtitle', 'The goods handed over, with prices and a total. No IVA, discount or client details; the stock is taken out.')
+                  : t('sales.newSubtitle', 'Invoice, delivery note, quotation or proforma, with the client and the lines on one screen.')}
             </p>
           </div>
         </div>
@@ -228,7 +247,7 @@ function InvoiceNew() {
           <div className="grid grid-cols-1 gap-3 rounded-2xl border border-line/80 bg-page p-4 sm:grid-cols-3">
             <div className="sm:col-span-3">
               <span className={label}>{t('sales.document', 'Document')}</span>
-              {editing ? (
+              {editing || fixedType ? (
                 <span className="block rounded-lg bg-brand-600 px-2 py-1.5 text-xs font-bold text-brand-on">
                   {typeLabel(type)}
                 </span>
@@ -264,7 +283,7 @@ function InvoiceNew() {
                 // A quotation keeps any date; everything else is today's month up to now, or a past month's last day.
                 max={datedByMonth ? nowLocal() : undefined}
                 // A delivery note keeps the date its number was issued on.
-                disabled={editing && type === 'albaran'}
+                disabled={editing && (type === 'albaran' || editingDraft)}
                 onChange={(event) => setIssuedAt(datedByMonth ? snapIssueDate(event.target.value) : event.target.value)}
                 className="w-full rounded-lg border border-line bg-card px-2.5 py-1.5 text-xs text-ink outline-none"
               />
@@ -273,7 +292,12 @@ function InvoiceNew() {
                   {t('sales.deliveryDateFixed', 'The date and number of a delivery note stay as they were issued.')}
                 </span>
               ) : null}
-              {!(editing && type === 'albaran') && datedByMonth && isPastMonth(issuedAt) ? (
+              {editingDraft ? (
+                <span className="mt-1 block text-[10.5px] leading-snug text-ink-muted">
+                  {t('sales.draftDateFixed', 'A draft keeps the number and date it was saved with.')}
+                </span>
+              ) : null}
+              {!(editing && (type === 'albaran' || editingDraft)) && datedByMonth && isPastMonth(issuedAt) ? (
                 <span className="mt-1 block text-[10.5px] leading-snug text-ink-muted">
                   {t('sales.pastMonthHint', 'Past month: the date can only be its last day (:date).').replace(':date', shortDate(issuedAt))}
                 </span>
@@ -291,7 +315,7 @@ function InvoiceNew() {
                 </span>
               ) : null}
             </div>
-            {!editing && rules.settlesPayment ? (
+            {(!editing || editingDraft) && rules.settlesPayment ? (
               <div>
                 <span className={label}>{t('sales.payment', 'Payment')}</span>
                 <div className="grid grid-cols-2 gap-1">
@@ -318,207 +342,210 @@ function InvoiceNew() {
           </div>
         </div>
 
-        <div className="flex flex-col gap-4 rounded-2xl border border-brand-100 bg-page p-5">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h3 className="flex items-center gap-2.5 text-sm font-bold tracking-[0.06em] text-slate-800 uppercase">
-              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
-                <UserRound className="h-4 w-4" />
-              </span>
-              {t('sales.clientHeading', 'Client')}
-            </h3>
-            <div className="flex items-center gap-2 text-xs">
-              {customerId !== null ? (
-                <span
-                  className={cn(
-                    'inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 font-semibold',
-                    TONE_GREEN,
-                  )}
-                >
-                  <Check className="h-3 w-3" strokeWidth={3} />
-                  {t('sales.savedClient', 'Saved client')}
-                  {selectedCustomer ? <span className="">· {selectedCustomer.code}</span> : null}
+        {/* A delivery receipt names no client, so its screen has no client box. */}
+        {rules.hasClient ? (
+          <div className="flex flex-col gap-4 rounded-2xl border border-brand-100 bg-page p-5">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h3 className="flex items-center gap-2.5 text-sm font-bold tracking-[0.06em] text-slate-800 uppercase">
+                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
+                  <UserRound className="h-4 w-4" />
                 </span>
-              ) : hasClientData ? (
-                <span className="rounded-full bg-brand-100 px-2.5 py-0.5 font-semibold text-brand-600">
-                  {t('sales.newClient', 'New client')}
+                {t('sales.clientHeading', 'Client')}
+              </h3>
+              <div className="flex items-center gap-2 text-xs">
+                {customerId !== null ? (
+                  <span
+                    className={cn(
+                      'inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 font-semibold',
+                      TONE_GREEN,
+                    )}
+                  >
+                    <Check className="h-3 w-3" strokeWidth={3} />
+                    {t('sales.savedClient', 'Saved client')}
+                    {selectedCustomer ? <span className="">· {selectedCustomer.code}</span> : null}
+                  </span>
+                ) : hasClientData ? (
+                  <span className="rounded-full bg-brand-100 px-2.5 py-0.5 font-semibold text-brand-600">
+                    {t('sales.newClient', 'New client')}
+                  </span>
+                ) : null}
+                {hasClientData ? (
+                  <button
+                    type="button"
+                    onClick={clearCustomer}
+                    className="inline-flex cursor-pointer items-center gap-1 rounded-lg px-2 py-1 font-semibold text-slate-500 transition hover:bg-rose-50 hover:text-rose-600"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                    {t('sales.clearClient', 'Clear')}
+                  </button>
+                ) : null}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2">
+              <div className="relative">
+                <span className={clientLabel}>{t('sales.phone', 'Telephone')}</span>
+                <span className="relative block">
+                  <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <input
+                    value={clientPhone}
+                    onChange={(event) => onPhoneChange(event.target.value)}
+                    onKeyDown={onPhoneKeyDown}
+                    inputMode="tel"
+                    autoComplete="off"
+                    placeholder={t('sales.phoneSearch', 'Search by phone number')}
+                    className={cn(clientField, 'pl-9')}
+                  />
                 </span>
-              ) : null}
-              {hasClientData ? (
-                <button
-                  type="button"
-                  onClick={clearCustomer}
-                  className="inline-flex cursor-pointer items-center gap-1 rounded-lg px-2 py-1 font-semibold text-slate-500 transition hover:bg-rose-50 hover:text-rose-600"
-                >
-                  <X className="h-3.5 w-3.5" />
-                  {t('sales.clearClient', 'Clear')}
-                </button>
-              ) : null}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2">
-            <div className="relative">
-              <span className={clientLabel}>{t('sales.phone', 'Telephone')}</span>
-              <span className="relative block">
-                <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                <input
-                  value={clientPhone}
-                  onChange={(event) => onPhoneChange(event.target.value)}
-                  onKeyDown={onPhoneKeyDown}
-                  inputMode="tel"
-                  autoComplete="off"
-                  placeholder={t('sales.phoneSearch', 'Search by phone number')}
-                  className={cn(clientField, 'pl-9')}
-                />
-              </span>
-              {customerId === null && phoneMatches.length > 0 ? (
-                <div className="absolute top-full left-0 z-20 mt-1.5 max-h-72 w-[min(24rem,calc(100vw-2.5rem))] overflow-y-auto rounded-xl border border-line bg-card shadow-lg">
-                  {phoneMatches.map((customer, index) => (
-                    <button
-                      key={customer.id}
-                      type="button"
-                      data-nav-active={index === phoneActive ? 'true' : undefined}
-                      onMouseEnter={() => setPhoneActive(index)}
-                      onClick={() => pickCustomer(customer)}
-                      className={cn(
-                        'flex w-full cursor-pointer items-center gap-3 border-b border-slate-100 px-3 py-2.5 text-left last:border-0',
-                        index === phoneActive && optionOn,
-                      )}
-                    >
-                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-50 text-[11px] font-bold text-brand-600">
-                        {customer.name.slice(0, 2).toUpperCase()}
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate text-xs font-bold text-slate-900">{customer.name}</span>
-                        <span className="block truncate text-[11px] text-slate-500">
-                          {[customer.company_name, customer.phone, customer.nif || customer.nie].filter(Boolean).join(' · ')}
+                {customerId === null && phoneMatches.length > 0 ? (
+                  <div className="absolute top-full left-0 z-20 mt-1.5 max-h-72 w-[min(24rem,calc(100vw-2.5rem))] overflow-y-auto rounded-xl border border-line bg-card shadow-lg">
+                    {phoneMatches.map((customer, index) => (
+                      <button
+                        key={customer.id}
+                        type="button"
+                        data-nav-active={index === phoneActive ? 'true' : undefined}
+                        onMouseEnter={() => setPhoneActive(index)}
+                        onClick={() => pickCustomer(customer)}
+                        className={cn(
+                          'flex w-full cursor-pointer items-center gap-3 border-b border-slate-100 px-3 py-2.5 text-left last:border-0',
+                          index === phoneActive && optionOn,
+                        )}
+                      >
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-50 text-[11px] font-bold text-brand-600">
+                          {customer.name.slice(0, 2).toUpperCase()}
                         </span>
-                      </span>
-                      <span className="shrink-0 text-[10px] font-semibold text-slate-400">{customer.code}</span>
-                    </button>
-                  ))}
-                </div>
-              ) : null}
-            </div>
-
-            <div className="relative">
-              <span className={clientLabel}>
-                {t('sales.clientName', 'Name')}
-                <span className="ml-0.5 text-rose-500">*</span>
-              </span>
-              <span className="relative block">
-                <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                <input
-                  value={clientName}
-                  onChange={(event) => setClientName(event.target.value)}
-                  onKeyDown={onNameKeyDown}
-                  onFocus={() => setNameFocused(true)}
-                  onBlur={() => setNameFocused(false)}
-                  autoComplete="off"
-                  placeholder={t('sales.nameSearch', 'Name, or search a saved client')}
-                  className={cn(clientField, 'pl-9 font-semibold')}
-                />
-              </span>
-              {nameFocused && customerId === null && nameMatches.length > 0 ? (
-                <div className="absolute top-full left-0 z-20 mt-1.5 max-h-72 w-[min(24rem,calc(100vw-2.5rem))] overflow-y-auto rounded-xl border border-line bg-card shadow-lg">
-                  {nameMatches.map((customer, index) => (
-                    <button
-                      key={customer.id}
-                      type="button"
-                      // Keeps the cursor in the field, so the list is still there when the click lands.
-                      onMouseDown={(event) => event.preventDefault()}
-                      data-nav-active={index === nameActive ? 'true' : undefined}
-                      onMouseEnter={() => setNameActive(index)}
-                      onClick={() => pickCustomer(customer)}
-                      className={cn(
-                        'flex w-full cursor-pointer items-center gap-3 border-b border-slate-100 px-3 py-2.5 text-left last:border-0',
-                        index === nameActive && optionOn,
-                      )}
-                    >
-                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-50 text-[11px] font-bold text-brand-600">
-                        {customer.name.slice(0, 2).toUpperCase()}
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate text-xs font-bold text-slate-900">{customer.name}</span>
-                        <span className="block truncate text-[11px] text-slate-500">
-                          {[customer.company_name, customer.phone, customer.nif || customer.nie].filter(Boolean).join(' · ')}
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-xs font-bold text-slate-900">{customer.name}</span>
+                          <span className="block truncate text-[11px] text-slate-500">
+                            {[customer.company_name, customer.phone, customer.nif || customer.nie].filter(Boolean).join(' · ')}
+                          </span>
                         </span>
-                      </span>
-                      <span className="shrink-0 text-[10px] font-semibold text-slate-400">{customer.code}</span>
-                    </button>
-                  ))}
-                </div>
-              ) : null}
+                        <span className="shrink-0 text-[10px] font-semibold text-slate-400">{customer.code}</span>
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="relative">
+                <span className={clientLabel}>
+                  {t('sales.clientName', 'Name')}
+                  <span className="ml-0.5 text-rose-500">*</span>
+                </span>
+                <span className="relative block">
+                  <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <input
+                    value={clientName}
+                    onChange={(event) => setClientName(event.target.value)}
+                    onKeyDown={onNameKeyDown}
+                    onFocus={() => setNameFocused(true)}
+                    onBlur={() => setNameFocused(false)}
+                    autoComplete="off"
+                    placeholder={t('sales.nameSearch', 'Name, or search a saved client')}
+                    className={cn(clientField, 'pl-9 font-semibold')}
+                  />
+                </span>
+                {nameFocused && customerId === null && nameMatches.length > 0 ? (
+                  <div className="absolute top-full left-0 z-20 mt-1.5 max-h-72 w-[min(24rem,calc(100vw-2.5rem))] overflow-y-auto rounded-xl border border-line bg-card shadow-lg">
+                    {nameMatches.map((customer, index) => (
+                      <button
+                        key={customer.id}
+                        type="button"
+                        // Keeps the cursor in the field, so the list is still there when the click lands.
+                        onMouseDown={(event) => event.preventDefault()}
+                        data-nav-active={index === nameActive ? 'true' : undefined}
+                        onMouseEnter={() => setNameActive(index)}
+                        onClick={() => pickCustomer(customer)}
+                        className={cn(
+                          'flex w-full cursor-pointer items-center gap-3 border-b border-slate-100 px-3 py-2.5 text-left last:border-0',
+                          index === nameActive && optionOn,
+                        )}
+                      >
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-50 text-[11px] font-bold text-brand-600">
+                          {customer.name.slice(0, 2).toUpperCase()}
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-xs font-bold text-slate-900">{customer.name}</span>
+                          <span className="block truncate text-[11px] text-slate-500">
+                            {[customer.company_name, customer.phone, customer.nif || customer.nie].filter(Boolean).join(' · ')}
+                          </span>
+                        </span>
+                        <span className="shrink-0 text-[10px] font-semibold text-slate-400">{customer.code}</span>
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+
+              <div>
+                <span className={clientLabel}>{t('sales.clientCompany', 'Company name')}</span>
+                <input
+                  value={clientCompany}
+                  onChange={(event) => setClientCompany(event.target.value)}
+                  autoComplete="off"
+                  className={clientField}
+                />
+              </div>
+
+              <div>
+                <span className={clientLabel}>{t('sales.taxId', 'N.I.F/N.I.E')}</span>
+                <input
+                  value={clientNif}
+                  onChange={(event) => setClientNif(event.target.value.toUpperCase())}
+                  autoComplete="off"
+                  className={cn(clientField, 'uppercase')}
+                />
+              </div>
+
+              <div>
+                <span className={clientLabel}>{t('sales.clientEmail', 'Email')}</span>
+                <input
+                  type="email"
+                  value={clientEmail}
+                  onChange={(event) => setClientEmail(event.target.value)}
+                  maxLength={190}
+                  autoComplete="off"
+                  placeholder={t('sales.clientEmailPlaceholder', 'name@example.com')}
+                  className={clientField}
+                />
+              </div>
+
+              <div>
+                <span className={clientLabel}>{t('sales.clientAddress', 'Address')}</span>
+                <input
+                  value={clientAddress}
+                  onChange={(event) => setClientAddress(event.target.value)}
+                  maxLength={255}
+                  autoComplete="off"
+                  placeholder={t('sales.clientAddressPlaceholder', 'Street, number, city')}
+                  className={clientField}
+                />
+              </div>
             </div>
 
-            <div>
-              <span className={clientLabel}>{t('sales.clientCompany', 'Company name')}</span>
-              <input
-                value={clientCompany}
-                onChange={(event) => setClientCompany(event.target.value)}
-                autoComplete="off"
-                className={clientField}
-              />
-            </div>
-
-            <div>
-              <span className={clientLabel}>{t('sales.taxId', 'N.I.F/N.I.E')}</span>
-              <input
-                value={clientNif}
-                onChange={(event) => setClientNif(event.target.value.toUpperCase())}
-                autoComplete="off"
-                className={cn(clientField, 'uppercase')}
-              />
-            </div>
-
-            <div>
-              <span className={clientLabel}>{t('sales.clientEmail', 'Email')}</span>
-              <input
-                type="email"
-                value={clientEmail}
-                onChange={(event) => setClientEmail(event.target.value)}
-                maxLength={190}
-                autoComplete="off"
-                placeholder={t('sales.clientEmailPlaceholder', 'name@example.com')}
-                className={clientField}
-              />
-            </div>
-
-            <div>
-              <span className={clientLabel}>{t('sales.clientAddress', 'Address')}</span>
-              <input
-                value={clientAddress}
-                onChange={(event) => setClientAddress(event.target.value)}
-                maxLength={255}
-                autoComplete="off"
-                placeholder={t('sales.clientAddressPlaceholder', 'Street, number, city')}
-                className={clientField}
-              />
-            </div>
-          </div>
-
-          {customerId === null && phoneNeedle.length >= 3 ? (
-            <p
-              className={cn(
-                'flex items-start gap-1.5 text-[11px] font-medium',
-                !customers.isPending && phoneMatches.length === 0 ? 'text-brand-600' : 'text-slate-500',
-              )}
-            >
-              <span
-                aria-hidden="true"
+            {customerId === null && phoneNeedle.length >= 3 ? (
+              <p
                 className={cn(
-                  'mt-[5px] h-1.5 w-1.5 shrink-0 rounded-full',
-                  !customers.isPending && phoneMatches.length === 0 ? 'bg-brand-500' : 'bg-slate-300',
+                  'flex items-start gap-1.5 text-[11px] font-medium',
+                  !customers.isPending && phoneMatches.length === 0 ? 'text-brand-600' : 'text-slate-500',
                 )}
-              />
-              {customers.isPending
-                ? t('sales.phoneSearching', 'Searching…')
-                : phoneMatches.length === 0
-                  ? t('sales.phoneNew', 'No client on this number. Fill in the details — they will be saved as a new client.')
-                  : t('sales.phoneEnter', 'Press Enter to use the highlighted client.')}
-            </p>
-          ) : null}
-        </div>
+              >
+                <span
+                  aria-hidden="true"
+                  className={cn(
+                    'mt-[5px] h-1.5 w-1.5 shrink-0 rounded-full',
+                    !customers.isPending && phoneMatches.length === 0 ? 'bg-brand-500' : 'bg-slate-300',
+                  )}
+                />
+                {customers.isPending
+                  ? t('sales.phoneSearching', 'Searching…')
+                  : phoneMatches.length === 0
+                    ? t('sales.phoneNew', 'No client on this number. Fill in the details — they will be saved as a new client.')
+                    : t('sales.phoneEnter', 'Press Enter to use the highlighted client.')}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
 
         <div data-tour="pos-scan" className="relative flex flex-col gap-2">
           <span className="text-xs font-bold tracking-[0.06em] text-slate-700 uppercase">
@@ -656,6 +683,12 @@ function InvoiceNew() {
                       <span className="min-w-0 flex-1 px-2">
                         <span className="block truncate text-xs font-bold text-slate-900">{line.article}</span>
                         {line.barcode ? <span className="block truncate text-[11px] tabular-nums text-slate-500">{line.barcode}</span> : null}
+                        {lineShortage(line) !== null ? (
+                          // A draft opened again: the shelf no longer covers this line.
+                          <span className="mt-0.5 block text-[11px] font-semibold text-rose-600">
+                            {t('sales.notAvailableNow', 'Quantity not available now: only :stock left').replace(':stock', String(lineShortage(line)))}
+                          </span>
+                        ) : null}
                       </span>
                       {rules.showsAvailable ? (
                         <span className="flex w-40 flex-col items-start px-2">
@@ -864,18 +897,38 @@ function InvoiceNew() {
                 <span className="text-2xl font-black text-brand-500">{formatCents(grandTotal, currency)}</span>
               </span>
             </div>
+            {hasShortage ? (
+              <p className="rounded-xl bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700">
+                {t('sales.shortageHint', 'Some lines ask for more than is in stock now. Lower them (or save it as a draft) before issuing.')}
+              </p>
+            ) : null}
             <button
               type="button"
-              disabled={save.isPending}
+              disabled={save.isPending || draftIssue.isPending || hasShortage}
               onClick={submit}
               className="flex w-full cursor-pointer items-center justify-center rounded-xl bg-brand-600 px-4 py-3.5 text-sm font-bold text-brand-on shadow-md disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {save.isPending
-                ? editing
+              {save.isPending || draftIssue.isPending
+                ? editing && !editingDraft
                   ? t('common.saving', 'Saving')
                   : t('sales.issuing', 'Issuing...')
                 : issueLabel}
             </button>
+            {/* An invoice can be kept as a draft: it holds its number now and takes its stock when it is issued. */}
+            {type === 'factura' && (!editing || editingDraft) ? (
+              <button
+                type="button"
+                disabled={draftSave.isPending || draftIssue.isPending || save.isPending}
+                onClick={saveDraft}
+                className="flex w-full cursor-pointer items-center justify-center rounded-xl border border-brand-200 bg-card px-4 py-3 text-sm font-bold text-brand-600 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {draftSave.isPending
+                  ? t('common.saving', 'Saving')
+                  : editingDraft
+                    ? t('sales.saveDraftAgain', 'Save draft')
+                    : t('sales.saveAsDraft', 'Save as draft (keeps the number, no stock taken)')}
+              </button>
+            ) : null}
           </div>
         </div>
       </div>

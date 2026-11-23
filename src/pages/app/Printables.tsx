@@ -38,6 +38,7 @@ function typeLabel(type: PrintableType): string {
   if (type === 'factura') return t('nav.invoices', 'Invoices')
   if (type === 'albaran') return t('nav.deliveryNotes', 'Delivery notes')
   if (type === 'quotation') return t('nav.quotes', 'Quotes')
+  if (type === 'nota_entrega') return t('nav.deliveryReceipts', 'Delivery receipts')
   return t('nav.proformas', 'Proformas')
 }
 
@@ -48,6 +49,7 @@ function sampleNumber(type: PrintableType): string {
   if (type === 'factura') return `F-${month}/00001`
   if (type === 'albaran') return `AL-${month}/00001`
   if (type === 'quotation') return `Q-${month}/00001`
+  if (type === 'nota_entrega') return `NE-${month}/00001`
   return `PF-${month}/00001`
 }
 
@@ -106,13 +108,18 @@ function sampleDocument(type: PrintableType): SaleDocument {
     converted_at: null,
     is_converted: false,
     customer_id: null,
-    client_code: 'C-0001',
-    client_name: 'Adeel Khan',
-    client_company: 'Khan Supplies',
-    client_phone: '+34 600 123 456',
-    client_nif: 'B12345678',
-    client_nie: null,
-    client_address: 'Calle Mayor 12, 28013 Madrid',
+    // A delivery receipt names no client; the others show a sample one.
+    ...(type === 'nota_entrega'
+      ? { client_code: null, client_name: '', client_company: null, client_phone: null, client_nif: null, client_nie: null, client_address: null }
+      : {
+          client_code: 'C-0001',
+          client_name: 'Adeel Khan',
+          client_company: 'Khan Supplies',
+          client_phone: '+34 600 123 456',
+          client_nif: 'B12345678',
+          client_nie: null,
+          client_address: 'Calle Mayor 12, 28013 Madrid',
+        }),
     notes: t('printables.sampleNote', 'Sample note printed on this document.'),
     base_cents: base,
     tax_cents: tax,
@@ -430,7 +437,7 @@ function Printables() {
                 onChange={(event) => patch({ footer_notes: event.target.value })}
               />
 
-              {type !== 'albaran' ? (
+              {type !== 'albaran' && type !== 'nota_entrega' ? (
                 <Toggle
                   checked={draft.show_logo}
                   onChange={(checked) => patch({ show_logo: checked })}
@@ -461,7 +468,7 @@ function Printables() {
               company={company}
               currency={currency}
               theme={previewTheme}
-              logoSrc={type !== 'albaran' && draft.show_logo ? (logoBlob.data ?? null) : null}
+              logoSrc={type !== 'albaran' && type !== 'nota_entrega' && draft.show_logo ? (logoBlob.data ?? null) : null}
             />
           </div>
         )}

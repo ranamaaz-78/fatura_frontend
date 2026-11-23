@@ -1,7 +1,7 @@
 import { PRINT_FONTS } from '../lib/printFonts'
 import type { PrintFontKey } from '../lib/printFonts'
 
-export type PrintableType = 'factura' | 'albaran' | 'quotation' | 'proforma'
+export type PrintableType = 'factura' | 'albaran' | 'quotation' | 'proforma' | 'nota_entrega'
 
 export type { PrintFontKey }
 
@@ -23,6 +23,6 @@ export type PrintTemplatesPayload = {
 
 export type PrintTemplateInput = Omit<PrintTemplate, 'type'>
 
-export const PRINTABLE_TYPES: PrintableType[] = ['factura', 'albaran', 'quotation', 'proforma']
+export const PRINTABLE_TYPES: PrintableType[] = ['factura', 'albaran', 'quotation', 'proforma', 'nota_entrega']
 
 export { PRINT_FONTS }

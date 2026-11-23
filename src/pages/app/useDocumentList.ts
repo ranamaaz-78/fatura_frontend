@@ -13,7 +13,7 @@ import { rulesFor } from './documentTypes'
 export type PaymentFilter = SaleDisplayStatus | 'all'
 
 
-const emptyCounts = { all: 0, pending: 0, paid: 0, partial: 0, voided: 0 }
+const emptyCounts = { all: 0, pending: 0, paid: 0, partial: 0, voided: 0, draft: 0 }
 const emptyStats = {
   total_cents: 0,
   paid_count: 0,
@@ -34,6 +34,8 @@ export function listHint(type: IssuableType): string {
       return t('sales.listQuoteHint', 'Prices with and without tax. Stock is not reserved.')
     case 'proforma':
       return t('sales.listProformaHint', 'Agreed price only. No tax and no discount.')
+    case 'nota_entrega':
+      return t('sales.listNotaHint', 'Goods handed over, prices and total only. No IVA, discount, client or payment; the stock is taken out.')
     default:
       return t('sales.listInvoiceHint', 'Tax invoices. Mark paid when the money arrives.')
   }
@@ -43,6 +45,7 @@ export function paymentChipLabel(status: SaleDisplayStatus): string {
   if (status === 'voided') return t('sales.voided', 'Voided')
   if (status === 'returned') return t('sales.returned', 'Returned')
   if (status === 'partial') return t('sales.partial', 'Partial')
+  if (status === 'draft') return t('sales.draft', 'Draft')
   return status === 'paid' ? t('sales.paid', 'Paid') : t('sales.pending', 'Pending')
 }
 
@@ -110,6 +113,8 @@ export function useDocumentList(type: IssuableType) {
         { id: 'all', label: t('sales.anyPayment', 'Any payment'), count: counts.all },
         { id: 'pending', label: t('sales.pending', 'Pending'), count: counts.pending },
         { id: 'paid', label: t('sales.paid', 'Paid'), count: counts.paid },
+        // Only invoices are drafted; the filter shows when there is one.
+        ...(type === 'factura' && (counts.draft ?? 0) > 0 ? [{ id: 'draft' as PaymentFilter, label: t('sales.drafts', 'Drafts'), count: counts.draft ?? 0 }] : []),
         { id: 'voided', label: t('sales.voided', 'Voided'), count: counts.voided },
       ]
 

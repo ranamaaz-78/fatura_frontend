@@ -66,6 +66,7 @@ export const en: Record<string, string> = {
   'nav.deliveryNotes': 'Delivery notes',
   'nav.quotes': 'Quotes',
   'nav.proformas': 'Proformas',
+  'nav.deliveryReceipts': 'Delivery receipts',
   'nav.payments': 'Payments',
   'payments.subtitle': 'See which invoices and proformas are received, and which are still pending.',
   'payments.manageMethods': 'Manage methods',

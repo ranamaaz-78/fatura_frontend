@@ -1,11 +1,11 @@
 /** abono is closed to new documents; older rows still load with it. */
-export type SaleType = 'factura' | 'albaran' | 'quotation' | 'proforma' | 'abono'
+export type SaleType = 'factura' | 'albaran' | 'quotation' | 'proforma' | 'nota_entrega' | 'abono'
 
 export type IssuableType = Exclude<SaleType, 'abono'>
 
 export type PaymentStatus = 'pending' | 'partial' | 'paid'
 
-export type SaleDisplayStatus = PaymentStatus | 'voided' | 'returned'
+export type SaleDisplayStatus = PaymentStatus | 'voided' | 'returned' | 'draft'
 
 export function isSaleVoided(document: { voided_at?: string | null; is_voided?: boolean }): boolean {
   return Boolean(document.is_voided || document.voided_at)
@@ -40,8 +40,11 @@ export function saleDisplayStatus(document: {
   voided_at?: string | null
   is_voided?: boolean
   is_fully_returned?: boolean
+  is_draft?: boolean
 }): SaleDisplayStatus {
   if (isSaleVoided(document)) return 'voided'
+  // A draft invoice holds its number but is no sale yet, so it is neither pending nor paid.
+  if (document.is_draft) return 'draft'
   // A proforma whose pieces all came back never became a sale.
   return document.is_fully_returned ? 'returned' : document.payment_status
 }
@@ -171,6 +174,12 @@ export type SaleDocument = {
   deleted_by_name?: string | null
   can_restore?: boolean
   can_delete?: boolean
+  /** A draft invoice: it holds its number and date, has taken no stock, and is no sale until it is issued. */
+  is_draft?: boolean
+  draft_at?: string | null
+  can_issue_draft?: boolean
+  /** On an opened draft: the lines the stock no longer covers. */
+  stock_shortages?: DraftShortage[]
   /** Why this document cannot be deleted (when it cannot). */
   delete_blocked?: string | null
   converted_to_id: number | null
@@ -228,9 +237,14 @@ export type SaleLineInput = {
   iva_percent: number
 }
 
+/** A draft line the shelf can no longer cover: how many it needs and how many are there now. */
+export type DraftShortage = { position: number; product_id: number; article: string; needed: number; available: number }
+
 export type SaleInput = {
   type: SaleType
   issued_at: string
+  /** Save an invoice as a draft: it takes its number now and its stock when it is issued. */
+  draft?: boolean
   payment_status: PaymentStatus
   payment_method_id?: number | null
   /** A discount on the whole bill: a percent, or an amount in cents. Not on proformas. */
@@ -264,7 +278,7 @@ export type SaleListParams = {
 export type SaleList = {
   items: SaleDocument[]
   meta: { current_page: number; last_page: number; per_page: number; total: number }
-  counts: { all: number; pending: number; paid: number; partial: number; voided: number; trashed?: number }
+  counts: { all: number; pending: number; paid: number; partial: number; voided: number; draft?: number; trashed?: number }
   stats: {
     total_cents: number
     paid_count: number

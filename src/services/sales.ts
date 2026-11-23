@@ -2,6 +2,7 @@ import type { ContactImportRow } from '../lib/contactImport'
 import type {
   Customer,
   CustomerInput,
+  IssuableType,
   PaymentList,
   PaymentListParams,
   PaymentStatus,
@@ -62,6 +63,11 @@ export function createSale(input: SaleInput): Promise<SaleDocument> {
 
 export function updateSale(id: number, input: SaleInput): Promise<SaleDocument> {
   return unwrap<SaleDocument>(api.patch(`/app/sales/${id}`, input))
+}
+
+/** Issues a draft invoice: same number and date; the stock goes out now (refused if any line falls short). */
+export function issueDraft(id: number, payment_status: PaymentStatus, payment_method_id?: number | null): Promise<SaleDocument> {
+  return unwrap<SaleDocument>(api.post(`/app/sales/${id}/issue-draft`, { payment_status, payment_method_id: payment_method_id ?? null }))
 }
 
 export function convertSale(
@@ -141,7 +147,7 @@ export function bulkRestoreSales(ids: number[]): Promise<BulkResult> {
 }
 
 /** How many deleted documents there are of each kind (the Restore page's tabs). */
-export function getTrashCounts(): Promise<Record<'factura' | 'albaran' | 'quotation' | 'proforma', number>> {
+export function getTrashCounts(): Promise<Record<IssuableType, number>> {
   return unwrap(api.get('/app/sales/trash-counts'))
 }
 

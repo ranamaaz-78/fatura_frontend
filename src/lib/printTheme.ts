@@ -14,7 +14,7 @@ export const FALLBACK_PRINT_THEME: Omit<PrintTemplate, 'type'> = {
 }
 
 export function printableTypeFor(type: SaleType | PrintableType): PrintableType {
-  if (type === 'albaran' || type === 'quotation' || type === 'proforma' || type === 'factura') return type
+  if (type === 'albaran' || type === 'quotation' || type === 'proforma' || type === 'factura' || type === 'nota_entrega') return type
   return 'factura'
 }
 

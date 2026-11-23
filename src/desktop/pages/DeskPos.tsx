@@ -14,6 +14,7 @@ import { RecargoPicker } from '../../pages/app/RecargoPicker'
 import { RecordPaymentModal } from '../../pages/app/RecordPaymentModal'
 import { QUOTE_VALID_DAYS, initials, ivaOptions, useSaleComposer, type DraftLine, type SaleComposer } from '../../pages/app/useSaleComposer'
 import { getErrorMessage } from '../../services/api'
+import type { IssuableType } from '../../types/sales'
 import { QuantityField } from '../../components/ui/QuantityField'
 import { identityFor } from '../ui/docIdentity'
 import { Kbd, Shimmer, deskButtonClass } from '../ui/kit'
@@ -29,8 +30,9 @@ const clientField =
  * The POS as a counter: a scanner bar and the receipt on the left, the client and the bill on the right. The sale
  * itself (lines, stock checks, totals, issuing) is the website's own (useSaleComposer).
  */
-export default function DeskPos() {
-  const sale = useSaleComposer()
+export default function DeskPos({ fixedType }: { fixedType?: IssuableType } = {}) {
+  // The delivery receipt's own page passes its kind: same counter, no switching and no client card.
+  const sale = useSaleComposer(fixedType)
   const { editing, existing, hydrated, type, rules, save, submit } = sale
   const scanRef = useRef<HTMLInputElement>(null)
   const submitRef = useRef(submit)
@@ -66,21 +68,23 @@ export default function DeskPos() {
   }
 
   const identity = identityFor(type)
-  const busyLabel = editing ? t('common.saving', 'Saving') : t('sales.issuing', 'Issuing...')
+  const { editingDraft, draftSave, draftIssue, saveDraft, hasShortage } = sale
+  const busy = save.isPending || draftIssue.isPending
+  const busyLabel = editing && !editingDraft ? t('common.saving', 'Saving') : t('sales.issuing', 'Issuing...')
 
   return (
     <div>
       {/* Two columns from the top: the sale on the left, the client and the bill on the right (always in view). */}
       <div className="grid grid-cols-[minmax(0,1fr)_400px] items-start gap-5">
         <div className="min-w-0 space-y-5">
-          <Header sale={sale} />
+          <Header sale={sale} fixedType={fixedType} />
           <Scanner sale={sale} inputRef={scanRef} />
           <Receipt sale={sale} />
           <Notes sale={sale} />
         </div>
 
         <aside className="sticky top-0 space-y-4">
-          <ClientCard sale={sale} />
+          {rules.hasClient ? <ClientCard sale={sale} /> : null}
 
           <section className="desk-glass-strong overflow-hidden">
             <span className={cn('block h-1', identity.accent)} />
@@ -88,7 +92,7 @@ export default function DeskPos() {
               <p className="text-[11px] font-bold tracking-[0.12em] text-ink-muted uppercase">{t('sales.settlement', 'Settlement')}</p>
               <Bill sale={sale} />
 
-              {!editing && rules.settlesPayment ? (
+              {(!editing || editingDraft) && rules.settlesPayment ? (
                 <div className="mt-4 grid grid-cols-2 gap-1 rounded-xl bg-elevated p-1">
                   {(['pending', 'paid'] as const).map((status) => (
                     <button
@@ -110,10 +114,25 @@ export default function DeskPos() {
                 </div>
               ) : null}
 
-              <button type="button" disabled={save.isPending} onClick={submit} className={deskButtonClass('primary', 'mt-4 h-13 w-full text-[14px]')}>
-                {save.isPending ? busyLabel : sale.issueLabel}
-                {save.isPending ? null : <Kbd className="ml-1 border-white/40">Ctrl ↵</Kbd>}
+              {hasShortage ? (
+                <p className="mt-4 rounded-xl bg-rose-500/10 px-3 py-2 text-[12px] font-semibold text-rose-700 app-dark:text-rose-300">
+                  {t('sales.shortageHint', 'Some lines ask for more than is in stock now. Lower them (or save it as a draft) before issuing.')}
+                </p>
+              ) : null}
+              <button type="button" disabled={busy || hasShortage} onClick={submit} className={deskButtonClass('primary', 'mt-4 h-13 w-full text-[14px]')}>
+                {busy ? busyLabel : sale.issueLabel}
+                {busy ? null : <Kbd className="ml-1 border-white/40">Ctrl ↵</Kbd>}
               </button>
+              {/* An invoice can be kept as a draft: it holds its number now and takes its stock when it is issued. */}
+              {type === 'factura' && (!editing || editingDraft) ? (
+                <button type="button" disabled={busy || draftSave.isPending} onClick={saveDraft} className={deskButtonClass('quiet', 'mt-2 h-11 w-full text-[13px]')}>
+                  {draftSave.isPending
+                    ? t('common.saving', 'Saving')
+                    : editingDraft
+                      ? t('sales.saveDraftAgain', 'Save draft')
+                      : t('sales.saveAsDraft', 'Save as draft (keeps the number, no stock taken)')}
+                </button>
+              ) : null}
             </div>
           </section>
         </aside>
@@ -135,14 +154,18 @@ export default function DeskPos() {
 }
 
 /** What is being made: the kind of document (one colour each), its number and date, and whether stock moves. */
-function Header({ sale }: { sale: SaleComposer }) {
-  const { editing, type, setType, can, rules, existing, preview, issuedAt, setIssuedAt, datedByMonth, quoteEnd } = sale
+function Header({ sale, fixedType }: { sale: SaleComposer; fixedType?: IssuableType }) {
+  const { editing, type, setType, can, rules, existing, preview, issuedAt, setIssuedAt, datedByMonth, quoteEnd, editingDraft } = sale
   const options = ISSUABLE_TYPES.filter((option) => can(docPermission(option, 'create')))
   const title = editing
     ? type === 'albaran'
       ? t('sales.editDeliveryNote', 'Edit delivery note')
-      : t('sales.editQuote', 'Edit quotation')
-    : t('sales.newTitle', 'New sale')
+      : editingDraft
+        ? t('sales.editDraft', 'Draft invoice')
+        : t('sales.editQuote', 'Edit quotation')
+    : fixedType
+      ? t('sales.newOf', 'New :type').replace(':type', typeLabel(fixedType))
+      : t('sales.newTitle', 'New sale')
 
   return (
     <section className="desk-glass relative overflow-hidden px-6 py-5">
@@ -153,11 +176,15 @@ function Header({ sale }: { sale: SaleComposer }) {
         <div className="min-w-0">
           <h1 className="text-[24px] leading-tight font-extrabold tracking-[-0.03em] text-ink">{title}</h1>
           <p className="mt-0.5 max-w-xl text-[12px] text-ink-muted">
-            {editing
+            {editing && editingDraft
+              ? t('sales.editDraftHint', 'Its number and date are kept. Change anything, save it again as a draft, or issue it: the stock is taken then.')
+              : editing
               ? type === 'albaran'
                 ? t('sales.editDeliveryNoteHint', 'Change the client or the lines while it is unpaid. The number and date stay, and the stock is adjusted by the difference.')
                 : t('sales.editQuoteHint', 'Change the client or the lines. The quotation number stays.')
-              : t('sales.newSubtitle', 'Invoice, delivery note, quotation or proforma, with the client and the lines on one screen.')}
+              : fixedType === 'nota_entrega'
+                ? t('sales.newNotaSubtitle', 'The goods handed over, with prices and a total. No IVA, discount or client details; the stock is taken out.')
+                : t('sales.newSubtitle', 'Invoice, delivery note, quotation or proforma, with the client and the lines on one screen.')}
           </p>
         </div>
         <span
@@ -175,7 +202,7 @@ function Header({ sale }: { sale: SaleComposer }) {
       <div className="relative mt-4 flex flex-wrap items-start gap-x-6 gap-y-4">
         {/* One button per kind of document, each in its own colour. Lined up with the fields beside it, under their labels. */}
         <div className="mt-4 flex flex-wrap gap-1.5 rounded-2xl bg-elevated/80 p-1.5">
-          {(editing ? [type] : options).map((option) => {
+          {(editing || fixedType ? [type] : options).map((option) => {
             const optionIdentity = identityFor(option)
             const OptionIcon = optionIdentity.icon
             const on = type === option
@@ -183,7 +210,7 @@ function Header({ sale }: { sale: SaleComposer }) {
               <button
                 key={option}
                 type="button"
-                disabled={editing}
+                disabled={editing || Boolean(fixedType)}
                 onClick={() => setType(option)}
                 className={cn(
                   'inline-flex h-10 items-center gap-2 rounded-xl px-3.5 text-[13px] font-bold transition',
@@ -212,14 +239,17 @@ function Header({ sale }: { sale: SaleComposer }) {
               type="datetime-local"
               value={issuedAt}
               max={datedByMonth ? nowLocal() : undefined}
-              disabled={editing && type === 'albaran'}
+              disabled={editing && (type === 'albaran' || editingDraft)}
               onChange={(event) => setIssuedAt(datedByMonth ? snapIssueDate(event.target.value) : event.target.value)}
               className={cn(field, 'desk-num disabled:opacity-60')}
             />
             {editing && type === 'albaran' ? (
               <span className="mt-1 block text-[11px] leading-snug text-ink-muted">{t('sales.deliveryDateFixed', 'The date and number of a delivery note stay as they were issued.')}</span>
             ) : null}
-            {!(editing && type === 'albaran') && datedByMonth && isPastMonth(issuedAt) ? (
+            {editingDraft ? (
+              <span className="mt-1 block text-[11px] leading-snug text-ink-muted">{t('sales.draftDateFixed', 'A draft keeps the number and date it was saved with.')}</span>
+            ) : null}
+            {!(editing && (type === 'albaran' || editingDraft)) && datedByMonth && isPastMonth(issuedAt) ? (
               <span className="mt-1 block text-[11px] leading-snug text-ink-muted">
                 {t('sales.pastMonthHint', 'Past month: the date can only be its last day (:date).').replace(':date', shortDate(issuedAt))}
               </span>
@@ -404,7 +434,8 @@ function Receipt({ sale }: { sale: SaleComposer }) {
 }
 
 function LineRow({ sale, line, index, columns }: { sale: SaleComposer; line: DraftLine; index: number; columns: string }) {
-  const { rules, lineMath, changeLine, changeQuantity, setLines, taxRates, currency } = sale
+  const { rules, lineMath, changeLine, changeQuantity, setLines, taxRates, currency, lineShortage } = sale
+  const short = lineShortage(line)
   const math = lineMath.get(line.key) ?? { base: 0, tax: 0, total: 0, iva: 0 }
   const atStock = line.stock !== null && rules.movesStock && line.quantity >= line.stock
   // A quotation reserves nothing, so its count stays at the shelf.
@@ -426,6 +457,12 @@ function LineRow({ sale, line, index, columns }: { sale: SaleComposer; line: Dra
         <span className="block truncate text-[13px] font-bold text-ink">{line.article}</span>
         {line.barcode ? <span className="desk-num block truncate text-[11px] text-ink-muted">{line.barcode}</span> : null}
         {line.description ? <span className="block truncate text-[11px] text-ink-muted">{line.description}</span> : null}
+        {short !== null ? (
+          // A draft opened again: the shelf no longer covers this line.
+          <span className="block text-[11px] font-semibold text-rose-600 app-dark:text-rose-300">
+            {t('sales.notAvailableNow', 'Quantity not available now: only :stock left').replace(':stock', String(short))}
+          </span>
+        ) : null}
       </span>
       {rules.showsAvailable ? (
         <span className="min-w-0">

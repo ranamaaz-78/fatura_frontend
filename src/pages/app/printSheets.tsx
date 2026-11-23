@@ -70,6 +70,7 @@ function paymentText(status: SaleDisplayStatus): string {
   if (status === 'voided') return td('sales.voided', 'Voided')
   if (status === 'returned') return td('sales.returned', 'Returned')
   if (status === 'partial') return td('sales.partial', 'Partial')
+  if (status === 'draft') return td('sales.draft', 'Draft')
   return status === 'paid' ? td('sales.paid', 'Paid') : td('sales.pending', 'Pending')
 }
 
@@ -200,6 +201,7 @@ function SheetFrame({
   theme,
   voided,
   expired = false,
+  draft = false,
   demo = false,
   lineCount,
   denseAfter = DENSE_AFTER,
@@ -212,6 +214,8 @@ function SheetFrame({
   voided: boolean
   /** An open quotation past its week: stamped so nobody mistakes it for a live offer. */
   expired?: boolean
+  /** A draft invoice: stamped so nobody mistakes it for an issued one. */
+  draft?: boolean
   /** A document made in the shared demo account: stamped so nobody mistakes it for a real one. */
   demo?: boolean
   lineCount: number
@@ -246,6 +250,14 @@ function SheetFrame({
           className="pointer-events-none absolute top-[46%] left-1/2 z-10 -translate-x-1/2 -translate-y-1/2 -rotate-[24deg] rounded-xl border-[6px] border-[#b45309]/20 px-10 py-1 text-[96px] font-bold tracking-[0.12em] text-[#b45309]/15 uppercase"
         >
           {td('sales.expiredStamp', 'Expired')}
+        </span>
+      ) : null}
+      {draft && !voided ? (
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute top-[46%] left-1/2 z-10 -translate-x-1/2 -translate-y-1/2 -rotate-[24deg] rounded-xl border-[6px] border-[#475569]/20 px-10 py-1 text-[104px] font-bold tracking-[0.12em] text-[#475569]/15 uppercase"
+        >
+          {td('sales.draftStamp', 'Draft')}
         </span>
       ) : null}
       {demo ? (
@@ -467,18 +479,24 @@ function ItemsTable({
   columns,
   variant,
   className,
+  compact = false,
 }: {
   lines: SaleLine[]
   columns: Column[]
   variant: TableStyle
   className?: string
+  /**
+   * One short row per line (the description runs on beside the article, smaller type, little padding), so a page
+   * holds about three times as many lines. Used by the delivery receipt, which is mostly a long list of goods.
+   */
+  compact?: boolean
 }) {
   const style = TABLE[variant]
   const edge = style.pad ? 'first:pl-3.5 last:pr-3.5' : ''
 
   return (
     <div className={cn(style.wrap, className)}>
-      <table data-items className={cn('w-full table-fixed border-collapse text-[11.5px]', `${D}text-[11px]`)}>
+      <table data-items className={cn('w-full table-fixed border-collapse', compact ? 'text-[11px] leading-[1.3]' : cn('text-[11.5px]', `${D}text-[11px]`))}>
         <colgroup>
           <col style={{ width: style.pad ? 40 : 28 }} />
           <col style={{ width: style.pad ? 124 : 112 }} />
@@ -490,14 +508,14 @@ function ItemsTable({
         <thead>
           <tr className={style.head}>
             {['#', td('sales.sku', 'SKU'), td('sales.description', 'Description')].map((label) => (
-              <th key={label} className={cn('text-left text-[9.5px] font-semibold tracking-[0.08em] uppercase', style.th, edge)}>
+              <th key={label} className={cn('text-left text-[9.5px] font-semibold tracking-[0.08em] uppercase', style.th, compact && 'pb-1.5 text-[9px]', edge)}>
                 {label}
               </th>
             ))}
             {columns.map((column) => (
               <th
                 key={column.key}
-                className={cn('text-right text-[9.5px] font-semibold tracking-[0.08em] uppercase', style.th, edge)}
+                className={cn('text-right text-[9.5px] font-semibold tracking-[0.08em] uppercase', style.th, compact && 'pb-1.5 text-[9px]', edge)}
               >
                 {column.label}
               </th>
@@ -508,15 +526,16 @@ function ItemsTable({
           {lines.map((line, index) => {
             // The brand of the product goes first in the description: "Philips · Denim Jeans Blue".
             const detail = [line.brand?.trim(), line.description?.trim()].filter(Boolean).join(' · ')
-            const cell = cn('py-2.5 align-top', `${D}py-[5px]`, edge, style.td)
+            const cell = compact ? cn('py-[4px] align-top', edge, style.td) : cn('py-2.5 align-top', `${D}py-[5px]`, edge, style.td)
             return (
-              <tr key={line.position} className={style.row(index)}>
+              // Compact rows are thin, so every other one is shaded to keep the eye on its line.
+              <tr key={line.position} className={cn(style.row(index), compact && index % 2 === 1 && 'bg-[#f8fafc]')}>
                 <td className={cn(cell, 'text-[#94a3b8] tabular-nums')}>{line.position}</td>
-                <td className={cn(cell, 'pr-3 text-[10.5px] whitespace-nowrap text-[#334155] tabular-nums')}>{line.barcode ?? ''}</td>
+                <td className={cn(cell, 'pr-3 whitespace-nowrap text-[#334155] tabular-nums', compact ? 'text-[10px]' : 'text-[10.5px]')}>{line.barcode ?? ''}</td>
                 <td className={cn(cell, 'pr-5')}>
-                  <span className={cn('block font-medium break-words text-[#0f172a]', `${D}inline`)}>{line.article}</span>
+                  <span className={cn('font-medium break-words text-[#0f172a]', compact ? 'inline' : cn('block', `${D}inline`))}>{line.article}</span>
                   {detail ? (
-                    <span className={cn('mt-0.5 block text-[10px] leading-snug break-words text-[#475569]', `${D}mt-0 ${D}ml-2 ${D}inline`)}>
+                    <span className={cn('break-words text-[#475569]', compact ? 'ml-1.5 inline text-[10px]' : cn('mt-0.5 block text-[10px] leading-snug', `${D}mt-0 ${D}ml-2 ${D}inline`))}>
                       {detail}
                     </span>
                   ) : null}
@@ -665,19 +684,26 @@ function VerifyBlock({ document }: { document: SaleDocument }) {
   )
 }
 
+/**
+ * The invoice, and the delivery receipt (nota de entrega). The receipt prints the same layout with prices and a total
+ * only (no IVA, recargo or discount), carries no company details or logo (like the delivery note), names no client
+ * (only "Client", with a line to write on) and asks for no payment (no status, no amount due).
+ */
 function InvoiceSheet({ document, company, currency, lines, issued, theme, logoSrc, part }: SheetProps) {
   const rows = part?.rows ?? lines
   const first = part?.first ?? true
   const last = part?.last ?? true
   const display = saleDisplayStatus(document)
+  const receipt = document.type === 'nota_entrega'
+  const title = receipt ? td('sales.notaTitle', 'Delivery receipt') : td('sales.invoiceTitle', 'Invoice')
   const place = companyPlace(company)
   const contact = companyContact(company)
 
   const columns: Column[] = [
     { key: 'qty', label: td('print.qty', 'Qty'), width: 48, render: (line) => qtyText(line.quantity) },
     { key: 'price', label: td('sales.unitPrice', 'Price'), width: 88, render: (line) => formatCents(line.unit_price, currency) },
-    ...discountColumn(lines, 52),
-    { key: 'iva', label: 'IVA', width: 46, render: (line) => `${line.iva_percent}%` },
+    ...(receipt ? [] : discountColumn(lines, 52)),
+    ...(receipt ? [] : [{ key: 'iva', label: 'IVA', width: 46, render: (line: SaleLine) => `${line.iva_percent}%` }]),
     {
       key: 'amount',
       label: td('sales.amount', 'Amount'),
@@ -688,12 +714,13 @@ function InvoiceSheet({ document, company, currency, lines, issued, theme, logoS
   ]
 
   return (
-    <SheetFrame demo={Boolean(company?.is_demo)} theme={theme} voided={display === 'voided'} lineCount={lines.length} part={part} className={cn('px-14 pt-14 pb-10', `${D}pt-11 ${D}pb-8`)}>
+    <SheetFrame demo={Boolean(company?.is_demo)} draft={Boolean(document.is_draft)} theme={theme} voided={display === 'voided'} lineCount={lines.length} part={part} className={receipt ? 'px-12 pt-9 pb-7' : cn('px-14 pt-14 pb-10', `${D}pt-11 ${D}pb-8`)}>
       <span aria-hidden="true" className="absolute inset-x-0 top-0 h-[5px] bg-[var(--print-accent)]" />
 
       {first ? (
         <>
       <header className="flex items-start justify-between gap-10">
+        {receipt ? <span /> : (
         <div className={cn('flex min-w-0 gap-4', theme.show_logo && logoSrc ? 'flex-col items-start gap-2.5' : 'items-start')}>
           <LogoMark company={company} logoSrc={logoSrc} show={theme.show_logo} imageSize={lines.length > 8 ? 54 : 68} />
           <div className="min-w-0">
@@ -708,27 +735,40 @@ function InvoiceSheet({ document, company, currency, lines, issued, theme, logoS
             </p>
           </div>
         </div>
+        )}
         <div className="shrink-0 text-right">
-          <h1 className="m-0 text-[32px] leading-none font-semibold tracking-[-0.025em] text-[var(--print-accent)]">
-            {td('sales.invoiceTitle', 'Invoice')}
+          <h1 className={cn('m-0 leading-none font-semibold tracking-[-0.025em] text-[var(--print-accent)]', receipt ? 'text-[28px]' : 'text-[32px]')}>
+            {title}
           </h1>
-          <div className="mt-3">
-            <StatusBadge status={display} />
-          </div>
+          {receipt ? null : (
+            <div className="mt-3">
+              <StatusBadge status={display} />
+            </div>
+          )}
         </div>
       </header>
 
-      <section className={cn('mt-12 flex items-start justify-between gap-10', `${D}mt-8`)}>
+      <section className={cn('flex items-start justify-between gap-10', receipt ? 'mt-5' : cn('mt-12', `${D}mt-8`))}>
         <div className="min-w-0 flex-1">
-          <Label>{td('sales.billTo', 'Bill to')}</Label>
-          <ClientBlock document={document} />
+          {receipt ? (
+            <>
+              <Label>{td('sales.clientHeading', 'Client')}</Label>
+              {/* Nobody is named: a line to write on when the goods are handed over. */}
+              <span aria-hidden="true" className="mt-5 block h-px w-[260px] max-w-full bg-[#cbd5e1]" />
+            </>
+          ) : (
+            <>
+              <Label>{td('sales.billTo', 'Bill to')}</Label>
+              <ClientBlock document={document} />
+            </>
+          )}
         </div>
         <MetaList
           className="shrink-0"
           rows={[
-            { label: td('sales.invoiceNumber', 'Invoice no.'), value: document.number, strong: true },
+            { label: receipt ? td('sales.notaNumber', 'Receipt no.') : td('sales.invoiceNumber', 'Invoice no.'), value: document.number, strong: true },
             { label: td('sales.issueDate', 'Issue date'), value: issued },
-            ...(display === 'pending'
+            ...(!receipt && display === 'pending'
               ? [{ label: td('sales.amountDue', 'Amount due'), value: formatCents(document.total_cents, currency), strong: true }]
               : []),
           ]}
@@ -737,28 +777,36 @@ function InvoiceSheet({ document, company, currency, lines, issued, theme, logoS
 
         </>
       ) : (
-        <ContinuationBar title={td('sales.invoiceTitle', 'Invoice')} document={document} part={part!} />
+        <ContinuationBar title={title} document={document} part={part!} />
       )}
-      <ItemsTable lines={rows} columns={columns} variant="rule" className={first ? cn('mt-10', `${D}mt-7`) : 'mt-5'} />
+      <ItemsTable
+        lines={rows}
+        columns={columns}
+        variant="rule"
+        compact={receipt}
+        className={receipt ? (first ? 'mt-5' : 'mt-3') : first ? cn('mt-10', `${D}mt-7`) : 'mt-5'}
+      />
 
       {last ? (
         <>
-      <section className={cn('mt-8 flex items-start justify-between gap-10', `${D}mt-5`)}>
-        <TaxSummary lines={lines} currency={currency} />
+      <section className={cn('flex items-start justify-between gap-10', receipt ? 'mt-4' : cn('mt-8', `${D}mt-5`))}>
+        {receipt ? <span /> : <TaxSummary lines={lines} currency={currency} />}
         <div className="w-[280px] shrink-0 text-[11.5px]">
-          <TotalRows
-            rows={[
-              ...discountRows(document, currency),
-              {
-                label: document.discount_cents
-                  ? td('sales.subtotalAfterDiscount', 'Subtotal after discount')
-                  : td('sales.subtotal', 'Subtotal'),
-                value: formatCents(document.base_cents, currency) },
-              { label: 'IVA', value: formatCents(document.tax_cents, currency) },
-              ...recargoRows(document, currency),
-            ]}
-          />
-          <div className="mt-2 flex items-baseline justify-between gap-4 border-t border-[#0f172a] pt-3">
+          {receipt ? null : (
+            <TotalRows
+              rows={[
+                ...discountRows(document, currency),
+                {
+                  label: document.discount_cents
+                    ? td('sales.subtotalAfterDiscount', 'Subtotal after discount')
+                    : td('sales.subtotal', 'Subtotal'),
+                  value: formatCents(document.base_cents, currency) },
+                { label: 'IVA', value: formatCents(document.tax_cents, currency) },
+                ...recargoRows(document, currency),
+              ]}
+            />
+          )}
+          <div className={cn('flex items-baseline justify-between gap-4 border-t border-[#0f172a] pt-3', receipt ? '' : 'mt-2')}>
             <span className="text-[12px] font-semibold">{td('sales.total', 'Total')}</span>
             <span className="text-[24px] font-semibold tracking-[-0.02em] text-[var(--print-accent)] tabular-nums">
               {formatCents(document.total_cents, currency)}
@@ -773,7 +821,7 @@ function InvoiceSheet({ document, company, currency, lines, issued, theme, logoS
       ) : null}
 
       <footer className="mt-auto flex items-end justify-between gap-8 pt-4 text-[9.5px] leading-[1.6] text-[#94a3b8]">
-        <span className="min-w-0">{[company?.name, contact].filter(Boolean).join(' · ')}</span>
+        <span className="min-w-0">{receipt ? null : [company?.name, contact].filter(Boolean).join(' · ')}</span>
         <div className="flex shrink-0 flex-col items-end gap-2">
           {last ? <VerifyBlock document={document} /> : null}
           {part ? <PageMark document={document} part={part} /> : null}

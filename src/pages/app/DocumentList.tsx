@@ -5,6 +5,7 @@ import {
   FileDown,
   FileText,
   ImageDown,
+  PackageCheck,
   Plus,
   ReceiptEuro as Receipt,
   Search,
@@ -62,9 +63,20 @@ const THEMES: Record<IssuableType, Theme> = {
     badge: 'bg-brand-50 text-brand-600 ring-1 ring-brand-600 ring-inset',
     rowMark: 'bg-brand-600',
   },
+  nota_entrega: {
+    icon: PackageCheck,
+    tile: 'border-2 border-dashed border-brand-600 bg-card text-brand-600',
+    badge: 'border border-dashed border-brand-600 bg-card text-brand-600',
+    rowMark: 'bg-brand-600',
+  },
 }
 
 const AVATARS = AVATAR_TONES
+
+/** The client as a list shows it. A delivery receipt names nobody, so it reads "Client". */
+function clientOf(document: SaleDocument): string {
+  return document.client_name || t('sales.clientHeading', 'Client')
+}
 
 function initials(name: string): string {
   const parts = name.trim().split(/\s+/).slice(0, 2)
@@ -76,6 +88,7 @@ function paymentBadge(status: SaleDisplayStatus): string {
   if (status === 'voided') return 'bg-rose-50 text-rose-700 ring-1 ring-rose-200 app-dark:bg-rose-500/15 app-dark:text-rose-300 app-dark:ring-rose-500/30'
   if (status === 'returned') return 'bg-slate-100 text-slate-700 ring-1 ring-slate-200 app-dark:bg-white/10 app-dark:text-slate-300 app-dark:ring-white/15'
   if (status === 'partial') return 'bg-sky-50 text-sky-800 ring-1 ring-sky-200 app-dark:bg-sky-500/15 app-dark:text-sky-300 app-dark:ring-sky-500/30'
+  if (status === 'draft') return 'bg-slate-100 text-slate-700 ring-1 ring-dashed ring-slate-400 app-dark:bg-white/10 app-dark:text-slate-300'
   return status === 'paid'
     ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 app-dark:bg-emerald-500/15 app-dark:text-emerald-300 app-dark:ring-emerald-500/30'
     : 'bg-amber-50 text-amber-800 ring-1 ring-amber-200 app-dark:bg-amber-500/15 app-dark:text-amber-300 app-dark:ring-amber-500/30'
@@ -263,7 +276,7 @@ export function DocumentList({ type }: { type: IssuableType }) {
           </div>
           {can(docPermission(type, 'create')) ? (
             <Link
-              to={`/app/invoices/new?type=${type}`}
+              to={rules.newPath}
               className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 text-xs font-semibold text-brand-on shadow-xs hover:bg-brand-500 sm:w-auto"
             >
               <Plus className="h-4 w-4" />
@@ -413,7 +426,7 @@ export function DocumentList({ type }: { type: IssuableType }) {
             primaryAction={
               can(docPermission(type, 'create')) ? (
                 <Link
-                  to={`/app/invoices/new?type=${type}`}
+                  to={rules.newPath}
                   className="inline-flex h-10 items-center gap-2 rounded-xl bg-brand-600 px-4 text-xs font-semibold text-brand-on"
                 >
                   <Plus className="h-4 w-4" />
@@ -481,7 +494,7 @@ export function DocumentList({ type }: { type: IssuableType }) {
                         AVATARS[document.id % AVATARS.length],
                       )}
                     >
-                      {initials(document.client_name)}
+                      {initials(clientOf(document))}
                     </span>
                     <span className="min-w-0">
                       <span className="block text-sm font-bold text-slate-900">{document.number}</span>
@@ -491,7 +504,7 @@ export function DocumentList({ type }: { type: IssuableType }) {
                     </span>
                   </span>
                   <span className="w-48 min-w-0 pr-3">
-                    <span className="block truncate text-[13px] font-semibold text-slate-800">{document.client_name}</span>
+                    <span className="block truncate text-[13px] font-semibold text-slate-800">{clientOf(document)}</span>
                     <span className="block truncate text-[11px] text-slate-400">{document.client_company ?? '—'}</span>
                   </span>
                   <span className="w-28 text-xs text-slate-500">{formatDate(document.issued_at)}</span>
@@ -520,7 +533,7 @@ export function DocumentList({ type }: { type: IssuableType }) {
                       AVATARS[document.id % AVATARS.length],
                     )}
                   >
-                    {initials(document.client_name)}
+                    {initials(clientOf(document))}
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="flex items-start justify-between gap-3">
@@ -530,7 +543,7 @@ export function DocumentList({ type }: { type: IssuableType }) {
                       </span>
                     </span>
                     <span className="mt-0.5 block truncate text-[13px] font-semibold text-slate-700">
-                      {document.client_name}
+                      {clientOf(document)}
                       {document.client_company ? (
                         <span className="font-normal text-slate-400"> · {document.client_company}</span>
                       ) : null}

@@ -11,6 +11,7 @@ export const MODULE_LABEL: Record<string, () => string> = {
   delivery_notes: () => t('perm.delivery_notes', 'Delivery notes'),
   quotes: () => t('perm.quotes', 'Quotes'),
   proformas: () => t('perm.proformas', 'Proformas'),
+  delivery_receipts: () => t('perm.delivery_receipts', 'Delivery receipts'),
   payments: () => t('perm.payments', 'Payments'),
   customers: () => t('perm.customers', 'Clients'),
   suppliers: () => t('perm.suppliers', 'Suppliers'),

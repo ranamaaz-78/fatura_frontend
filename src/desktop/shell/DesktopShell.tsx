@@ -44,7 +44,7 @@ function Workspace({ admin }: { admin: boolean }) {
         return
       }
       if (admin || event.ctrlKey || event.altKey || event.metaKey) return
-      // F2 / F3 / F4 / F6 start a document, like the buttons on the dashboard.
+      // F2 / F3 / F4 / F6 / F7 start a document, like the buttons on the dashboard.
       const doc = NEW_DOCUMENTS.find((item) => item.key === event.key)
       if (doc && can(docPermission(doc.type, 'create'))) {
         event.preventDefault()

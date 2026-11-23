@@ -16,6 +16,7 @@ import { DocumentDialogs, documentFlags, paymentLabel, useDocumentDetail } from 
 
 function paymentClass(status: SaleDisplayStatus): string {
   if (status === 'voided') return 'bg-rose-50 text-rose-700 border border-rose-200'
+  if (status === 'draft') return 'bg-slate-100 text-slate-700 border border-dashed border-slate-400'
   if (status === 'returned') return 'bg-slate-100 text-slate-700 border border-slate-200'
   if (status === 'partial') return 'bg-sky-50 text-sky-800 border border-sky-200'
   return status === 'paid'
@@ -57,6 +58,7 @@ function InvoiceDetail() {
     voiding,
     deleting,
     restoring,
+    issuingDraft,
     converting,
   } = detail
 
@@ -95,7 +97,7 @@ function InvoiceDetail() {
               </span>
             ) : null}
             <span className="text-xs text-slate-500">
-              {issued.toLocaleString(intlLocale())} · {document.client_name}
+              {[issued.toLocaleString(intlLocale()), document.client_name].filter(Boolean).join(' · ')}
             </span>
           </div>
         </div>
@@ -138,6 +140,27 @@ function InvoiceDetail() {
                 {t('sales.convertAlbaran', 'Convert to delivery note')}
               </button>
               ) : null}
+            </>
+          ) : null}
+          {/* A draft invoice: open it again on the counter, or issue it as it stands (the stock is taken then). */}
+          {document.can_issue_draft && !deleted && can('invoices.create') ? (
+            <>
+              <Link
+                to={`/app/invoices/${document.id}/edit`}
+                className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-slate-100 px-4 text-xs font-semibold text-slate-700"
+              >
+                <Pencil className="h-3.5 w-3.5" />
+                {t('sales.editDraftButton', 'Edit draft')}
+              </Link>
+              <button
+                type="button"
+                disabled={issuingDraft.isPending || (document.stock_shortages?.length ?? 0) > 0}
+                title={(document.stock_shortages?.length ?? 0) > 0 ? t('sales.shortageHint', 'Some lines ask for more than is in stock now. Lower them (or save it as a draft) before issuing.') : undefined}
+                onClick={() => issuingDraft.mutate()}
+                className="inline-flex h-10 cursor-pointer items-center rounded-xl bg-brand-600 px-4 text-xs font-semibold text-brand-on disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {issuingDraft.isPending ? t('sales.issuing', 'Issuing...') : t('sales.issueDraft', 'Issue invoice')}
+              </button>
             </>
           ) : null}
           {document.can_invoice && !deleted && can('invoices.create') ? (
@@ -204,7 +227,7 @@ function InvoiceDetail() {
               {t('sales.returnPieces', 'Return pieces')}
             </button>
           ) : null}
-          {rules.settlesPayment && !voided && document.payment_status !== 'paid' && canPay ? (
+          {rules.settlesPayment && !voided && !document.is_draft && document.payment_status !== 'paid' && canPay ? (
             <button
               type="button"
               disabled={payment.isPending}
@@ -218,6 +241,38 @@ function InvoiceDetail() {
           ) : null}
         </div>
       </div>
+
+      {document.can_issue_draft ? (
+        <div
+          className={cn(
+            'no-print flex items-start gap-3 rounded-2xl border px-5 py-4',
+            (document.stock_shortages?.length ?? 0) > 0
+              ? 'border-rose-200 bg-rose-50 app-dark:border-rose-500/30 app-dark:bg-rose-500/10'
+              : 'border-dashed border-slate-300 bg-page',
+          )}
+        >
+          <FileText className={cn('mt-0.5 h-5 w-5 shrink-0', (document.stock_shortages?.length ?? 0) > 0 ? 'text-rose-600' : 'text-slate-500')} />
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-slate-900">{t('sales.draftBannerTitle', 'Draft invoice')}</p>
+            <p className="mt-0.5 text-xs leading-relaxed text-slate-600">
+              {t('sales.draftBannerBody', 'Its number is kept for it and the next invoice takes the one after. No stock has been taken yet: that happens when you issue it.')}
+            </p>
+            {(document.stock_shortages?.length ?? 0) > 0 ? (
+              <ul className="mt-2 flex flex-col gap-1 text-xs font-semibold text-rose-700 app-dark:text-rose-300">
+                {document.stock_shortages!.map((short) => (
+                  <li key={short.position}>
+                    {t('sales.draftShortLine', 'Line :position, :article: :needed needed, only :available available now.')
+                      .replace(':position', String(short.position))
+                      .replace(':article', short.article)
+                      .replace(':needed', String(short.needed))
+                      .replace(':available', String(short.available))}
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
 
       {quoteExpired && document.expires_at ? (
         <div className="no-print flex items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50 px-5 py-4 app-dark:border-rose-500/30 app-dark:bg-rose-500/10">

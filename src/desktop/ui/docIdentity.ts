@@ -1,4 +1,4 @@
-import { FileCheck2, FileMinus2, FileText, ReceiptEuro as Receipt, Truck, type LucideIcon } from 'lucide-react'
+import { FileCheck2, FileMinus2, FileText, PackageCheck, ReceiptEuro as Receipt, Truck, type LucideIcon } from 'lucide-react'
 import type { SaleType } from '../../types/sales'
 
 export type DocIdentity = {
@@ -17,6 +17,7 @@ const IDENTITY: Record<SaleType, DocIdentity> = {
   albaran: { icon: Truck, chip: 'bg-teal-500/14 text-teal-600 app-dark:text-teal-300', accent: 'bg-teal-500', color: '#14b8a6' },
   quotation: { icon: FileText, chip: 'bg-violet-500/14 text-violet-600 app-dark:text-violet-300', accent: 'bg-violet-500', color: '#8b5cf6' },
   proforma: { icon: FileCheck2, chip: 'bg-amber-500/16 text-amber-600 app-dark:text-amber-300', accent: 'bg-amber-500', color: '#f59e0b' },
+  nota_entrega: { icon: PackageCheck, chip: 'bg-cyan-500/14 text-cyan-700 app-dark:text-cyan-300', accent: 'bg-cyan-500', color: '#06b6d4' },
   abono: { icon: FileMinus2, chip: 'bg-rose-500/14 text-rose-600 app-dark:text-rose-300', accent: 'bg-rose-500', color: '#f43f5e' },
 }
 

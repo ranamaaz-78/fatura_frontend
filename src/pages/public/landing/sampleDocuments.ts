@@ -137,6 +137,19 @@ export const SAMPLE_DOCUMENTS: Record<PrintableType, SaleDocument> = {
     discounted: true,
     status: 'pending',
   }),
+  // A delivery receipt names no client.
+  nota_entrega: {
+    ...sample('nota_entrega', 'NE-2026/0007', { taxed: false, discounted: false, status: 'pending' }),
+    customer_id: null,
+    client_code: null,
+    client_name: '',
+    client_company: null,
+    client_phone: null,
+    client_nif: null,
+    client_nie: null,
+    client_email: null,
+    client_address: null,
+  },
 }
 
 export const SAMPLE_THEME: Record<PrintableType, PrintTemplate> = {
@@ -174,6 +187,15 @@ export const SAMPLE_THEME: Record<PrintableType, PrintTemplate> = {
     footer_notes: 'This delivery note is not a tax invoice.',
     notes: '',
     show_logo: false,
+    show_signature: true,
+  },
+  nota_entrega: {
+    type: 'nota_entrega',
+    primary_color: '#004ac6',
+    font_key: 'geist',
+    footer_notes: 'Goods received in good condition. This delivery receipt is not a tax invoice.',
+    notes: '',
+    show_logo: true,
     show_signature: true,
   },
 }

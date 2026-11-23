@@ -11,7 +11,7 @@ import { allocateDiscount, centsToInput, lineTotals, parseAmountToCents, parseNu
 import { getErrorMessage } from '../../services/api'
 import { listAllProducts, listRecargoRates, listTaxRates } from '../../services/catalog'
 import { getPrintTemplates, loadLogoBlob } from '../../services/printables'
-import { createSale, getSale, listActiveCustomers, previewSale, updateSale } from '../../services/sales'
+import { createSale, getSale, issueDraft, listActiveCustomers, previewSale, updateSale } from '../../services/sales'
 import type { Product } from '../../types/catalog'
 import type { Customer, DiscountType, IssuableType, PaymentStatus, SaleDocument, SaleInput } from '../../types/sales'
 import { isSaleConverted, isSaleExpired } from '../../types/sales'
@@ -111,7 +111,7 @@ export function productRank(product: Product, query: string): number {
  * the totals, and issuing or saving it. The website's InvoiceNew and the Windows app's counter screen both draw from
  * it, so a sale is made exactly the same way on both.
  */
-export function useSaleComposer() {
+export function useSaleComposer(fixedType?: IssuableType) {
   const { session } = useAuth()
   const navigate = useNavigate()
   const { id } = useParams()
@@ -124,7 +124,8 @@ export function useSaleComposer() {
 
   const { can } = usePermissions()
   const requested = params.get('type')
-  const [type, setType] = useState<IssuableType>(editing ? 'quotation' : isIssuable(requested) ? requested : DEFAULT_TYPE)
+  // A screen made for one kind (the delivery receipt's own page) passes it here, and the kind cannot be switched.
+  const [type, setType] = useState<IssuableType>(fixedType ?? (editing ? 'quotation' : isIssuable(requested) ? requested : DEFAULT_TYPE))
   const [hydrated, setHydrated] = useState(false)
   const [recargoRestored, setRecargoRestored] = useState(false)
   // Editing a delivery note: what it already took out of stock (it is put back when saved), so it can keep those pieces.
@@ -186,6 +187,10 @@ export function useSaleComposer() {
   useEffect(() => {
     // Editing: the document being edited decides the type (it is set once the document has loaded).
     if (editing) return
+    if (fixedType) {
+      setType(fixedType)
+      return
+    }
     if (isIssuable(requested) && can(docPermission(requested, 'create'))) {
       setType(requested)
       return
@@ -194,7 +199,7 @@ export function useSaleComposer() {
     // otherwise the first kind of document they may issue.
     const allowed = [DEFAULT_TYPE, ...ISSUABLE_TYPES].find((option) => can(docPermission(option, 'create')))
     if (allowed) setType(allowed)
-  }, [editing, requested, can])
+  }, [editing, requested, can, fixedType])
 
   const existing = useQuery({
     queryKey: ['app', 'sale', editingId],
@@ -374,14 +379,16 @@ export function useSaleComposer() {
         navigate(`${rulesFor('quotation').listPath}/${document.id}`, { replace: true })
         return
       }
-    } else if (document.type !== 'albaran' || document.can_edit === false) {
-      // Only a quotation or an unpaid delivery note can be opened for editing.
+    } else if (!(document.type === 'albaran' || (document.type === 'factura' && document.is_draft)) || document.can_edit === false) {
+      // Only a quotation, an unpaid delivery note or a draft invoice can be opened for editing.
       push({
         tone: 'danger',
         title:
           document.type === 'albaran'
             ? t('sales.deliveryNotNotEditable', 'This delivery note can no longer be edited: it is paid, voided or already invoiced.')
-            : t('sales.notEditable', 'This document cannot be edited.'),
+            : document.is_draft
+              ? t('sales.draftNotEditable', 'This draft was deleted and can no longer be edited.')
+              : t('sales.notEditable', 'This document cannot be edited.'),
       })
       navigate(`${rulesFor(document.type).listPath}/${document.id}`, { replace: true })
       return
@@ -433,6 +440,43 @@ export function useSaleComposer() {
       })
     }
   }, [editing, existing.data, push, recargoRates.data, recargoRestored])
+
+  // Editing a draft invoice: it is saved again as a draft, or issued (the stock is checked and taken then).
+  const editingDraft = editing && existing.data?.is_draft === true
+
+  const openDocument = (document: SaleDocument) => navigate(`${rulesFor(document.type).listPath}/${document.id}`)
+
+  const draftSave = useMutation({
+    mutationFn: (input: SaleInput) =>
+      editing ? updateSale(editingId, input) : createSale({ ...input, draft: true, payment_status: 'pending', payment_method_id: null }),
+    onSuccess: (document) => {
+      push({ tone: 'success', title: t('sales.draftSaved', 'Saved as a draft. Its number is kept; the stock is taken when you issue it.') })
+      openDocument(document)
+    },
+    onError: (error) => push({ tone: 'danger', title: getErrorMessage(error) }),
+  })
+
+  const draftIssue = useMutation({
+    mutationFn: async ({ input, status, methodId }: { input: SaleInput; status: PaymentStatus; methodId?: number | null }) => {
+      // The lines as they are on screen first, then the issue (which checks the stock).
+      await updateSale(editingId, input)
+      return issueDraft(editingId, status, methodId)
+    },
+    onSuccess: (document) => {
+      setMethodOpen(false)
+      navigate(`${rulesFor(document.type).listPath}/${document.id}`, {
+        state: document.payment_status === 'paid' ? { celebrate: true } : undefined,
+      })
+    },
+    onError: (error) => push({ tone: 'danger', title: getErrorMessage(error) }),
+  })
+
+  /** Keeps the invoice as a draft: the number is held, no stock moves. */
+  function saveDraft() {
+    if (draftSave.isPending || draftIssue.isPending || save.isPending) return
+    const payload = buildPayload()
+    if (payload) draftSave.mutate(payload)
+  }
 
   const save = useMutation({
     mutationFn: (input: SaleInput) => (editing ? updateSale(editingId, input) : createSale(input)),
@@ -562,6 +606,15 @@ export function useSaleComposer() {
     setLines((current) => current.map((line) => (line.key === key ? { ...line, ...patch } : line)))
   }
 
+  /** How many pieces the shelf has for this line when it asks for more than that, or null when it is covered. */
+  function lineShortage(line: DraftLine): number | null {
+    if (line.product_id === null || line.stock === null || !rules.movesStock) return null
+    // Several lines of one product share its stock.
+    const asked = lines.filter((other) => other.product_id === line.product_id).reduce((sum, other) => sum + other.quantity, 0)
+    return asked > line.stock ? Math.max(0, line.stock) : null
+  }
+  const hasShortage = lines.some((line) => lineShortage(line) !== null)
+
   function changeQuantity(line: DraftLine, next: number) {
     const capped = line.stock !== null && rules.movesStock ? Math.min(next, line.stock) : next
     if (capped < 1) return
@@ -569,7 +622,7 @@ export function useSaleComposer() {
   }
 
   function buildPayload(): SaleInput | null {
-    if (clientName.trim() === '') {
+    if (rules.hasClient && clientName.trim() === '') {
       push({ tone: 'danger', title: t('sales.needClient', 'Enter the client name.') })
       return null
     }
@@ -584,7 +637,7 @@ export function useSaleComposer() {
     }
 
     const typedPhone = digits(clientPhone)
-    if (customerId === null && typedPhone.length >= 3) {
+    if (rules.hasClient && customerId === null && typedPhone.length >= 3) {
       const exact = (customers.data ?? []).find((customer) => digits(customer.phone ?? '') === typedPhone)
       if (exact) {
         push({
@@ -614,15 +667,30 @@ export function useSaleComposer() {
       type,
       issued_at: withOffset(issuedAt),
       payment_status: rules.settlesPayment ? payment : 'pending',
-      customer_id: customerId,
-      save_customer: customerId === null,
-      client_name: clientName.trim(),
-      client_company: clientCompany.trim() || null,
-      client_phone: clientPhone.trim() || null,
-      client_nif: clientNif.trim() || null,
-      client_nie: null,
-      client_address: clientAddress.trim() || null,
-      client_email: clientEmail.trim() || null,
+      // A delivery receipt names nobody: no client is sent or saved.
+      ...(rules.hasClient
+        ? {
+            customer_id: customerId,
+            save_customer: customerId === null,
+            client_name: clientName.trim(),
+            client_company: clientCompany.trim() || null,
+            client_phone: clientPhone.trim() || null,
+            client_nif: clientNif.trim() || null,
+            client_nie: null,
+            client_address: clientAddress.trim() || null,
+            client_email: clientEmail.trim() || null,
+          }
+        : {
+            customer_id: null,
+            save_customer: false,
+            client_name: '',
+            client_company: null,
+            client_phone: null,
+            client_nif: null,
+            client_nie: null,
+            client_address: null,
+            client_email: null,
+          }),
       discount_type: discountCents > 0 ? discountKind : null,
       discount_value:
         discountCents > 0 ? (discountKind === 'amount' ? Math.round(typedDiscount * 100) : typedDiscount) : null,
@@ -632,9 +700,18 @@ export function useSaleComposer() {
   }
 
   function submit() {
-    if (save.isPending) return
+    if (save.isPending || draftIssue.isPending || draftSave.isPending) return
     const payload = buildPayload()
     if (!payload) return
+    if (editingDraft) {
+      // Issuing the draft: a paid one asks how it was paid first.
+      if (payment === 'paid') {
+        setMethodOpen(true)
+        return
+      }
+      draftIssue.mutate({ input: payload, status: 'pending' })
+      return
+    }
     if (!editing && rules.settlesPayment && payment === 'paid') {
       setMethodOpen(true)
       return
@@ -645,10 +722,14 @@ export function useSaleComposer() {
   function confirmMethod(methodId: number) {
     const payload = buildPayload()
     if (!payload) return
+    if (editingDraft) {
+      draftIssue.mutate({ input: payload, status: 'paid', methodId })
+      return
+    }
     save.mutate({ ...payload, payment_status: 'paid', payment_method_id: methodId })
   }
 
-  const issueLabel = editing
+  const issueLabel = editing && !editingDraft
     ? type === 'albaran'
       ? t('sales.saveDeliveryNote', 'Save delivery note')
       : t('sales.saveQuote', 'Save quotation')
@@ -657,6 +738,12 @@ export function useSaleComposer() {
       : t('sales.issueOnly', 'Issue :type').replace(':type', typeLabel(type).toLowerCase())
 
   return {
+    editingDraft,
+    draftSave,
+    draftIssue,
+    saveDraft,
+    lineShortage,
+    hasShortage,
     session,
     navigate,
     id,

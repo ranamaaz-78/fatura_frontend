@@ -14,10 +14,10 @@ import { useAuth } from '../../auth/AuthProvider'
 import { getErrorMessage } from '../../services/api'
 import { bulkRestoreSales, getTrashCounts, listSales } from '../../services/sales'
 import type { IssuableType, SaleDocument } from '../../types/sales'
-import { rulesFor, typeLabel } from './documentTypes'
+import { DOCUMENT_TYPES, rulesFor, typeLabel } from './documentTypes'
 import { refreshAfterDeleteOrRestore, SelectBox, SelectionBar, useBulkReport } from './documentDeletion'
 
-const TABS: IssuableType[] = ['factura', 'albaran', 'quotation', 'proforma']
+const TABS: IssuableType[] = DOCUMENT_TYPES
 
 /**
  * The Restore page: every deleted invoice, delivery note, quotation and proforma, one tab each. Pick one or many (or

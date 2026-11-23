@@ -88,7 +88,8 @@ export default function DeskDocumentDetail() {
   }
 
   const showsStatus = rules.settlesPayment || rules.settlesLines || voided
-  const canRecordPayment = rules.settlesPayment && !voided && document.payment_status !== 'paid' && canPay
+  // A draft is paid once it is issued, not before.
+  const canRecordPayment = rules.settlesPayment && !voided && !document.is_draft && document.payment_status !== 'paid' && canPay
 
   // The main next step for this document, shown big; the rest sit under it.
   const primary: ReactNode[] = []
@@ -145,6 +146,20 @@ export default function DeskDocumentDetail() {
       </ActionButton>,
     )
   }
+  // A draft invoice: issue it as it stands (the stock is taken then), or open it again on the counter.
+  if (document.can_issue_draft && !deleted && can('invoices.create')) {
+    const short = (document.stock_shortages?.length ?? 0) > 0
+    primary.push(
+      <ActionButton key="issue-draft" tone="primary" icon={FileOutput} busy={detail.issuingDraft.isPending} onClick={() => (short ? detail.push({ tone: 'danger', title: t('sales.shortageHint', 'Some lines ask for more than is in stock now. Lower them (or save it as a draft) before issuing.') }) : detail.issuingDraft.mutate())}>
+        {detail.issuingDraft.isPending ? t('sales.issuing', 'Issuing...') : t('sales.issueDraft', 'Issue invoice')}
+      </ActionButton>,
+    )
+    secondary.push(
+      <ActionLink key="edit-draft" icon={Pencil} to={`/app/invoices/${document.id}/edit`}>
+        {t('sales.editDraftButton', 'Edit draft')}
+      </ActionLink>,
+    )
+  }
   if (document.type === 'albaran' && document.can_edit && canUpdate) {
     secondary.push(
       <ActionLink key="edit-albaran" icon={Pencil} to={`/app/delivery-notes/${document.id}/edit`}>
@@ -182,7 +197,7 @@ export default function DeskDocumentDetail() {
                 {quoteExpired ? <Pill tone="voided">{t('sales.expired', 'Expired')}</Pill> : null}
               </div>
               <p className="mt-0.5 truncate text-[12px] text-ink-muted">
-                {new Date(document.issued_at).toLocaleString(intlLocale())} · {document.client_name}
+                {[new Date(document.issued_at).toLocaleString(intlLocale()), document.client_name].filter(Boolean).join(' · ')}
               </p>
             </div>
           </div>

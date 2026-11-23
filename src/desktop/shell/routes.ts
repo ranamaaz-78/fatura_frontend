@@ -1,7 +1,8 @@
-import { FileCheck2, FileText, ReceiptEuro as Receipt, Truck, type LucideIcon } from 'lucide-react'
+import { FileCheck2, FileText, PackageCheck, ReceiptEuro as Receipt, Truck, type LucideIcon } from 'lucide-react'
 import { ADMIN_NAV, APP_NAV, type NavGroup } from '../../components/layout/nav'
 import { t } from '../../i18n'
 import type { IssuableType } from '../../types/sales'
+import { rulesFor } from '../../pages/app/documentTypes'
 
 export type Crumb = { group: string; page: string }
 
@@ -34,14 +35,18 @@ export function crumbFor(pathname: string, admin: boolean): Crumb {
 
 export type NewDocument = { type: IssuableType; label: string; icon: LucideIcon; key: string }
 
-/** The four documents the POS can start; the palette and the dashboard offer the ones the person may create. */
+/**
+ * The documents a shortcut can start: the four the POS switches between, and the delivery receipt, which opens its own
+ * screen. The palette and the dashboard offer the ones the person may create.
+ */
 export const NEW_DOCUMENTS: NewDocument[] = [
   { type: 'factura', label: t('desk.newInvoice', 'New invoice'), icon: Receipt, key: 'F2' },
   { type: 'albaran', label: t('desk.newDeliveryNote', 'New delivery note'), icon: Truck, key: 'F3' },
   { type: 'quotation', label: t('desk.newQuote', 'New quotation'), icon: FileText, key: 'F4' },
   { type: 'proforma', label: t('desk.newProforma', 'New proforma'), icon: FileCheck2, key: 'F6' },
+  { type: 'nota_entrega', label: t('desk.newDeliveryReceipt', 'New delivery receipt'), icon: PackageCheck, key: 'F7' },
 ]
 
 export function newDocumentPath(type: IssuableType): string {
-  return `/app/invoices/new?type=${type}`
+  return rulesFor(type).newPath
 }

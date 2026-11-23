@@ -24,6 +24,10 @@ export type DocumentRules = {
   showsAvailable: boolean
   /** The list this kind of document belongs to. */
   listPath: string
+  /** Where "New" opens: the counter (POS) with this kind picked, or the kind's own screen. */
+  newPath: string
+  /** A delivery receipt names no client: no client box on its screen, and only "Client" on the sheet. */
+  hasClient: boolean
 }
 
 const RULES: Record<SaleType, DocumentRules> = {
@@ -40,6 +44,8 @@ const RULES: Record<SaleType, DocumentRules> = {
     showsPriceWithTax: false,
     showsAvailable: true,
     listPath: '/app/invoices',
+    newPath: '/app/invoices/new?type=factura',
+    hasClient: true,
   },
   albaran: {
     title: t('sales.typeAlbaran', 'Delivery note'),
@@ -54,6 +60,8 @@ const RULES: Record<SaleType, DocumentRules> = {
     showsPriceWithTax: false,
     showsAvailable: true,
     listPath: '/app/delivery-notes',
+    newPath: '/app/invoices/new?type=albaran',
+    hasClient: true,
   },
   quotation: {
     title: t('sales.typeQuotation', 'Quotation'),
@@ -68,6 +76,8 @@ const RULES: Record<SaleType, DocumentRules> = {
     showsPriceWithTax: true,
     showsAvailable: false,
     listPath: '/app/quotes',
+    newPath: '/app/invoices/new?type=quotation',
+    hasClient: true,
   },
   proforma: {
     title: t('sales.typeProforma', 'Proforma'),
@@ -82,6 +92,26 @@ const RULES: Record<SaleType, DocumentRules> = {
     showsPriceWithTax: false,
     showsAvailable: true,
     listPath: '/app/proformas',
+    newPath: '/app/invoices/new?type=proforma',
+    hasClient: true,
+  },
+  // Like a delivery note, a delivery receipt shows prices and a total only: no IVA, recargo or discount.
+  nota_entrega: {
+    title: t('sales.typeNotaEntrega', 'Delivery receipt'),
+    allowsRecargo: false,
+    movesStock: true,
+    carriesTax: false,
+    carriesDiscount: false,
+    manualPrice: false,
+    settlesPayment: false,
+    settlesLines: false,
+    // No company details and no logo on it, like the delivery note.
+    showsCompanyContact: false,
+    showsPriceWithTax: false,
+    showsAvailable: true,
+    listPath: '/app/delivery-receipts',
+    newPath: '/app/delivery-receipts/new',
+    hasClient: false,
   },
   abono: {
     title: t('sales.typeAbono', 'Abono'),
@@ -96,10 +126,16 @@ const RULES: Record<SaleType, DocumentRules> = {
     showsPriceWithTax: false,
     showsAvailable: true,
     listPath: '/app/invoices',
+    newPath: '/app/invoices/new?type=factura',
+    hasClient: true,
   },
 }
 
+/** The kinds the counter (POS) can switch between. The delivery receipt has its own screen and is not one of them. */
 export const ISSUABLE_TYPES: IssuableType[] = ['factura', 'albaran', 'quotation', 'proforma']
+
+/** Every kind a person can issue, the delivery receipt included (lists, the bin, permissions). */
+export const DOCUMENT_TYPES: IssuableType[] = [...ISSUABLE_TYPES, 'nota_entrega']
 
 export function rulesFor(type: SaleType): DocumentRules {
   return RULES[type] ?? RULES.factura
@@ -115,6 +151,8 @@ export function typeLabel(type: SaleType): string {
       return t('sales.typeQuotation', 'Quotation')
     case 'proforma':
       return t('sales.typeProforma', 'Proforma')
+    case 'nota_entrega':
+      return t('sales.typeNotaEntrega', 'Delivery receipt')
     default:
       return t('sales.typeAbono', 'Abono')
   }

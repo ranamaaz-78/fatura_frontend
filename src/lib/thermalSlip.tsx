@@ -28,8 +28,9 @@ const PRINT_MM = 72
 const SIDE_MM = 5
 
 /** Only invoices and delivery notes are handed over the counter on a roll. */
+/** The 80 mm slip: invoices, delivery notes and delivery receipts (the paper that goes with the goods). */
 export function hasThermalSlip(type: SaleType): boolean {
-  return type === 'factura' || type === 'albaran'
+  return type === 'factura' || type === 'albaran' || type === 'nota_entrega'
 }
 
 const STYLE = `
@@ -132,6 +133,7 @@ function statusText(status: SaleDisplayStatus): string {
   if (status === 'voided') return td('sales.voided', 'Voided')
   if (status === 'returned') return td('sales.returned', 'Returned')
   if (status === 'partial') return td('sales.partial', 'Partial')
+  if (status === 'draft') return td('sales.draft', 'Draft')
   return status === 'paid' ? td('sales.paid', 'Paid') : td('sales.pending', 'Pending')
 }
 
@@ -201,7 +203,7 @@ function ThermalSlip({ document, company, currency, theme, logoSrc }: SlipProps)
         </div>
       ) : null}
 
-      <p className={`band ${invoice ? '' : 'first'}`}>{invoice ? td('sales.invoiceTitle', 'Invoice') : td('sales.typeAlbaran', 'Delivery note')}</p>
+      <p className={`band ${invoice ? '' : 'first'}`}>{invoice ? td('sales.invoiceTitle', 'Invoice') : document.type === 'nota_entrega' ? td('sales.notaTitle', 'Delivery receipt') : td('sales.typeAlbaran', 'Delivery note')}</p>
 
       {display === 'voided' ? <p className="void">{td('sales.voided', 'Voided')}</p> : null}
 
@@ -212,10 +214,15 @@ function ThermalSlip({ document, company, currency, theme, logoSrc }: SlipProps)
         <dd>
           {date} · {time}
         </dd>
-        <dt>{td('sales.status', 'Status')}</dt>
-        <dd>
-          <span className={`stamp ${display === 'paid' ? 'solid' : ''}`}>{statusText(display)}</span>
-        </dd>
+        {/* A delivery receipt takes no payment, so it has no paid / pending status (only "Voided" above, if ever). */}
+        {document.type === 'nota_entrega' ? null : (
+          <>
+            <dt>{td('sales.status', 'Status')}</dt>
+            <dd>
+              <span className={`stamp ${display === 'paid' ? 'solid' : ''}`}>{statusText(display)}</span>
+            </dd>
+          </>
+        )}
         {paidWith ? (
           <>
             <dt>{td('sales.payment', 'Payment')}</dt>
@@ -230,6 +237,16 @@ function ThermalSlip({ document, company, currency, theme, logoSrc }: SlipProps)
         ) : null}
       </dl>
 
+      {document.type === 'nota_entrega' ? (
+        <>
+          {/* A delivery receipt names nobody: only "Client", with a line to write on. */}
+          <Section>{td('sales.clientHeading', 'Client')}</Section>
+          <div className="client">
+            <p className="muted">______________________________</p>
+          </div>
+        </>
+      ) : (
+        <>
       <Section>{invoice ? td('sales.billTo', 'Bill to') : td('sales.deliverTo', 'Deliver to')}</Section>
       <div className="client">
         <p className="client-name">{document.client_company || document.client_name}</p>
@@ -246,6 +263,8 @@ function ThermalSlip({ document, company, currency, theme, logoSrc }: SlipProps)
         ) : null}
         {document.client_address ? <p className="muted">{document.client_address}</p> : null}
       </div>
+        </>
+      )}
 
       <Section>{td('sales.items', 'Items')}</Section>
       {lines.map((line) => {
