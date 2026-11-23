@@ -38,7 +38,6 @@ function InvoiceDetail() {
     setSettleOpen,
     setReturnOpen,
     setInvoicing,
-    setAlbaranInvoiceOpen,
     setCancelling,
     setEditingSettlement,
     setVoidOpen,
@@ -52,7 +51,6 @@ function InvoiceDetail() {
     settling,
     returning,
     makeInvoice,
-    invoiceFromAlbaran,
     cancelReturn,
     editingQty,
     voiding,
@@ -102,9 +100,9 @@ function InvoiceDetail() {
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
-          {document.type === 'albaran' && document.can_edit && canUpdate ? (
+          {(document.type === 'albaran' || document.type === 'factura' || document.type === 'nota_entrega') && !document.is_draft && document.can_edit && canUpdate ? (
             <Link
-              to={`/app/delivery-notes/${document.id}/edit`}
+              to={`${rules.listPath}/${document.id}/edit`}
               className="inline-flex h-[38px] items-center gap-2 rounded-xl bg-slate-100 px-3.5 text-xs font-semibold text-slate-700 hover:bg-slate-200"
             >
               {t('common.edit', 'Edit')}
@@ -164,14 +162,12 @@ function InvoiceDetail() {
             </>
           ) : null}
           {document.can_invoice && !deleted && can('invoices.create') ? (
-            <button
-              type="button"
-              disabled={invoiceFromAlbaran.isPending}
-              onClick={() => setAlbaranInvoiceOpen(true)}
-              className="inline-flex h-10 cursor-pointer items-center rounded-xl bg-brand-600 px-4 text-xs font-semibold text-brand-on disabled:opacity-60"
+            <Link
+              to={`/app/delivery-notes/${document.id}/invoice`}
+              className="inline-flex h-10 items-center rounded-xl bg-brand-600 px-4 text-xs font-semibold text-brand-on"
             >
               {t('sales.convertInvoice', 'Convert to invoice')}
-            </button>
+            </Link>
           ) : null}
           {canVoid ? (
             <button

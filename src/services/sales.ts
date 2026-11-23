@@ -106,7 +106,19 @@ export function invoiceSettlement(
 /** A delivery note turned into an invoice: IVA (and recargo) added on top, no stock moved. */
 export function invoiceAlbaran(
   id: number,
-  input: { iva: Record<number, number>; recargo_rate_id: number | null },
+  input: {
+    iva: Record<number, number>
+    recargo_rate_id: number | null
+    /** Client details the delivery note lacks; the ones it has are never replaced. */
+    client_company?: string
+    client_phone?: string
+    client_nif?: string
+    client_address?: string
+    client_email?: string
+    /** A paid delivery note: pay the IVA / recargo it did not cover now, with this method. */
+    pay_difference?: boolean
+    payment_method_id?: number | null
+  },
 ): Promise<SaleDocument> {
   return unwrap<SaleDocument>(api.post(`/app/sales/${id}/invoice`, input))
 }

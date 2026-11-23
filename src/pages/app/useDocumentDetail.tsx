@@ -6,7 +6,7 @@ import { ConfirmDialog } from '../../components/ui/ConfirmDialog'
 import { useToast } from '../../components/ui/Toast'
 import { t } from '../../i18n'
 import { getErrorMessage } from '../../services/api'
-import { cancelSaleReturn, convertSale, deleteSale, getSale, invoiceAlbaran, invoiceSettlement, issueDraft, restoreSale, returnSalePieces, settleSale, updateSalePayment, updateSaleSettlement, voidSale } from '../../services/sales'
+import { cancelSaleReturn, convertSale, deleteSale, getSale, invoiceSettlement, issueDraft, restoreSale, returnSalePieces, settleSale, updateSalePayment, updateSaleSettlement, voidSale } from '../../services/sales'
 import {
   isSaleConverted,
   isSaleExpired,
@@ -26,7 +26,6 @@ import { canVoidType, celebratesPayment, rulesFor } from './documentTypes'
 import { ConvertQuoteModal } from './ConvertQuoteModal'
 import { RecordPaymentModal } from './RecordPaymentModal'
 import { EditProformaSettlementModal } from './EditProformaSettlementModal'
-import { InvoiceFromAlbaranModal } from './InvoiceFromAlbaranModal'
 import { InvoiceFromPaymentModal } from './InvoiceFromPaymentModal'
 import { ReturnProformaModal } from './ReturnProformaModal'
 import { SettleProformaModal } from './SettleProformaModal'
@@ -62,7 +61,6 @@ export function useDocumentDetail() {
   const [settleOpen, setSettleOpen] = useState(false)
   const [returnOpen, setReturnOpen] = useState(false)
   const [invoicing, setInvoicing] = useState<SaleSettlement | null>(null)
-  const [albaranInvoiceOpen, setAlbaranInvoiceOpen] = useState(false)
   const [cancelling, setCancelling] = useState<SaleReturn | null>(null)
   const [editingSettlement, setEditingSettlement] = useState<SaleSettlement | null>(null)
   const [voidOpen, setVoidOpen] = useState(false)
@@ -159,20 +157,6 @@ export function useDocumentDetail() {
       void queryClient.invalidateQueries({ queryKey: ['app', 'sale', documentId] })
       void queryClient.invalidateQueries({ queryKey: ['app', 'sales'] })
       push({ tone: 'success', title: t('sales.invoiceFromPaymentDone', 'Invoice {number} created.', { number: invoice.number }) })
-      navigate(`/app/invoices/${invoice.id}`, { state: { print: true } })
-    },
-    onError: (error) => push({ tone: 'danger', title: getErrorMessage(error) }),
-  })
-
-  const invoiceFromAlbaran = useMutation({
-    mutationFn: (input: { iva: Record<number, number>; recargoRateId: number | null }) =>
-      invoiceAlbaran(documentId, { iva: input.iva, recargo_rate_id: input.recargoRateId }),
-    onSuccess: (invoice) => {
-      setAlbaranInvoiceOpen(false)
-      void queryClient.invalidateQueries({ queryKey: ['app', 'sale', documentId] })
-      void queryClient.invalidateQueries({ queryKey: ['app', 'sales'] })
-      void queryClient.invalidateQueries({ queryKey: ['app', 'dashboard'] })
-      push({ tone: 'success', title: t('sales.invoiceFromAlbaranDone', 'Invoice {number} created.', { number: invoice.number }) })
       navigate(`/app/invoices/${invoice.id}`, { state: { print: true } })
     },
     onError: (error) => push({ tone: 'danger', title: getErrorMessage(error) }),
@@ -308,8 +292,8 @@ export function useDocumentDetail() {
     setReturnOpen,
     invoicing,
     setInvoicing,
-    albaranInvoiceOpen,
-    setAlbaranInvoiceOpen,
+
+
     cancelling,
     setCancelling,
     editingSettlement,
@@ -329,7 +313,7 @@ export function useDocumentDetail() {
     settling,
     returning,
     makeInvoice,
-    invoiceFromAlbaran,
+
     cancelReturn,
     editingQty,
     voiding,
@@ -381,8 +365,8 @@ export function DocumentDialogs({ detail, document }: { detail: DocumentDetail; 
     setReturnOpen,
     invoicing,
     setInvoicing,
-    albaranInvoiceOpen,
-    setAlbaranInvoiceOpen,
+
+
     cancelling,
     setCancelling,
     editingSettlement,
@@ -399,7 +383,7 @@ export function DocumentDialogs({ detail, document }: { detail: DocumentDetail; 
     settling,
     returning,
     makeInvoice,
-    invoiceFromAlbaran,
+
     cancelReturn,
     editingQty,
     voiding,
@@ -433,14 +417,6 @@ export function DocumentDialogs({ detail, document }: { detail: DocumentDetail; 
           onConfirm={(iva, recargoRateId) => {
             if (invoicing !== null) makeInvoice.mutate({ settlementId: invoicing.id, iva, recargoRateId })
           }}
-        />
-        <InvoiceFromAlbaranModal
-          open={albaranInvoiceOpen}
-          loading={invoiceFromAlbaran.isPending}
-          lines={document.lines ?? []}
-          currency={currency}
-          onClose={() => setAlbaranInvoiceOpen(false)}
-          onConfirm={(iva, recargoRateId) => invoiceFromAlbaran.mutate({ iva, recargoRateId })}
         />
         <ReturnProformaModal
           open={returnOpen}

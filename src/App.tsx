@@ -44,6 +44,7 @@ import PrintablesPage from './pages/app/Printables'
 import ProductImagesPage from './pages/app/ProductImages'
 import ProductsPage from './pages/app/Products'
 import ProformasPage from './pages/app/Proformas'
+import AlbaranToInvoicePage from './pages/app/AlbaranToInvoice'
 import DeliveryReceiptNewPage from './pages/app/DeliveryReceiptNew'
 import DeliveryReceiptsPage from './pages/app/DeliveryReceipts'
 import PurchasesPage from './pages/app/Purchases'
@@ -140,6 +141,10 @@ function App() {
                 <Route path="delivery-notes" element={pick(<DeliveryNotesPage />, <Desk.DocumentList type="albaran" />)} />
                 <Route path="delivery-notes/:id" element={pick(<InvoiceDetailPage />, <Desk.DocumentDetail />)} />
               </Route>
+              {/* A delivery note becomes an invoice on its own page (the counter's look), not in a pop-up. */}
+              <Route element={<RequirePermission permission="invoices.create" />}>
+                <Route path="delivery-notes/:id/invoice" element={<AlbaranToInvoicePage />} />
+              </Route>
               <Route element={<RequirePermission permission="delivery_notes.update" />}>
                 <Route path="delivery-notes/:id/edit" element={pick(<InvoiceNewPage />, <Desk.Pos />)} />
               </Route>
@@ -147,8 +152,11 @@ function App() {
                 <Route path="quotes/:id/edit" element={pick(<InvoiceNewPage />, <Desk.Pos />)} />
               </Route>
               {/* A draft invoice opens on the counter again, to be changed, saved again or issued. */}
-              <Route element={<RequirePermission permission="invoices.create" />}>
+              <Route element={<RequirePermission permission="invoices.create|invoices.update" />}>
                 <Route path="invoices/:id/edit" element={pick(<InvoiceNewPage />, <Desk.Pos />)} />
+              </Route>
+              <Route element={<RequirePermission permission="delivery_receipts.update" />}>
+                <Route path="delivery-receipts/:id/edit" element={pick(<DeliveryReceiptNewPage />, <Desk.Pos fixedType="nota_entrega" />)} />
               </Route>
               <Route element={<RequirePermission permission="quotes.view" />}>
                 <Route path="quotes" element={pick(<QuotesPage />, <Desk.DocumentList type="quotation" />)} />

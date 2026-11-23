@@ -141,9 +141,9 @@ export default function DeskDocumentDetail() {
   }
   if (document.can_invoice && !deleted && can('invoices.create')) {
     primary.push(
-      <ActionButton key="albaran-invoice" tone="primary" icon={FileOutput} busy={detail.invoiceFromAlbaran.isPending} onClick={() => detail.setAlbaranInvoiceOpen(true)}>
+      <ActionLink key="albaran-invoice" tone="primary" icon={FileOutput} to={`/app/delivery-notes/${document.id}/invoice`}>
         {t('sales.convertInvoice', 'Convert to invoice')}
-      </ActionButton>,
+      </ActionLink>,
     )
   }
   // A draft invoice: issue it as it stands (the stock is taken then), or open it again on the counter.
@@ -160,9 +160,9 @@ export default function DeskDocumentDetail() {
       </ActionLink>,
     )
   }
-  if (document.type === 'albaran' && document.can_edit && canUpdate) {
+  if ((document.type === 'albaran' || document.type === 'factura' || document.type === 'nota_entrega') && !document.is_draft && document.can_edit && canUpdate) {
     secondary.push(
-      <ActionLink key="edit-albaran" icon={Pencil} to={`/app/delivery-notes/${document.id}/edit`}>
+      <ActionLink key="edit-albaran" icon={Pencil} to={`${rules.listPath}/${document.id}/edit`}>
         {t('common.edit', 'Edit')}
       </ActionLink>,
     )
@@ -493,9 +493,9 @@ function ActionButton({
   )
 }
 
-function ActionLink({ icon: Icon, to, children }: { icon: typeof Pencil; to: string; children: ReactNode }) {
+function ActionLink({ tone = 'ghost', icon: Icon, to, children }: { tone?: 'ghost' | 'primary'; icon: typeof Pencil; to: string; children: ReactNode }) {
   return (
-    <Link to={to} className={deskButtonClass('ghost', 'h-10 w-full text-[12px]')}>
+    <Link to={to} className={deskButtonClass(tone, 'h-10 w-full text-[12px]')}>
       <Icon className="h-4 w-4" />
       {children}
     </Link>

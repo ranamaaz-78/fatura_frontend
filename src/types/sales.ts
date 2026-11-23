@@ -296,7 +296,8 @@ export type PaymentStatusBadge = 'received' | 'pending' | 'partial'
 
 export type PaymentEntry = {
   id: string
-  kind: 'document' | 'settlement'
+  /** "difference": the IVA / recargo an invoice added to a delivery note that was already paid. */
+  kind: 'document' | 'settlement' | 'difference'
   status: PaymentStatusBadge
   document_id: number
   document_type: SaleType

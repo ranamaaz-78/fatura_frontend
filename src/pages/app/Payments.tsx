@@ -357,7 +357,7 @@ function Payments() {
                       {payment.document_number}
                     </span>
                     <span className="block truncate text-[11px] text-slate-400">
-                      {typeLabel(payment.document_type)}
+                      {payment.kind === 'difference' ? t('sales.differenceRow', 'IVA / recargo on the invoice') : typeLabel(payment.document_type)}
                     </span>
                   </span>
                   <span className="w-[120px] pr-2">

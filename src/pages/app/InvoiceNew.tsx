@@ -164,7 +164,11 @@ function InvoiceNew({ fixedType }: { fixedType?: IssuableType } = {}) {
                   ? t('sales.editDeliveryNote', 'Edit delivery note')
                   : editingDraft
                     ? t('sales.editDraft', 'Draft invoice')
-                    : t('sales.editQuote', 'Edit quotation')
+                    : type === 'factura'
+                      ? t('sales.editInvoice', 'Edit invoice')
+                      : type === 'nota_entrega'
+                        ? t('sales.editReceipt', 'Edit delivery receipt')
+                        : t('sales.editQuote', 'Edit quotation')
                 : fixedType
                   ? t('sales.newOf', 'New :type').replace(':type', typeLabel(fixedType))
                   : t('sales.newTitle', 'New sale')}
@@ -175,7 +179,9 @@ function InvoiceNew({ fixedType }: { fixedType?: IssuableType } = {}) {
                 : editing
                 ? type === 'albaran'
                   ? t('sales.editDeliveryNoteHint', 'Change the client or the lines while it is unpaid. The number and date stay, and the stock is adjusted by the difference.')
-                  : t('sales.editQuoteHint', 'Change the client or the lines. The quotation number stays.')
+                  : type === 'factura' || type === 'nota_entrega'
+                    ? t('sales.editIssuedHint', 'Change the lines while it is allowed. The number and date stay, and the stock is adjusted by the difference.')
+                    : t('sales.editQuoteHint', 'Change the client or the lines. The quotation number stays.')
                 : fixedType === 'nota_entrega'
                   ? t('sales.newNotaSubtitle', 'The goods handed over, with prices and a total. No IVA, discount or client details; the stock is taken out.')
                   : t('sales.newSubtitle', 'Invoice, delivery note, quotation or proforma, with the client and the lines on one screen.')}
@@ -283,7 +289,7 @@ function InvoiceNew({ fixedType }: { fixedType?: IssuableType } = {}) {
                 // A quotation keeps any date; everything else is today's month up to now, or a past month's last day.
                 max={datedByMonth ? nowLocal() : undefined}
                 // A delivery note keeps the date its number was issued on.
-                disabled={editing && (type === 'albaran' || editingDraft)}
+                disabled={editing && type !== 'quotation'}
                 onChange={(event) => setIssuedAt(datedByMonth ? snapIssueDate(event.target.value) : event.target.value)}
                 className="w-full rounded-lg border border-line bg-card px-2.5 py-1.5 text-xs text-ink outline-none"
               />

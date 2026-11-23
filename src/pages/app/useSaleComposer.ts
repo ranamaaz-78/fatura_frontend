@@ -379,14 +379,17 @@ export function useSaleComposer(fixedType?: IssuableType) {
         navigate(`${rulesFor('quotation').listPath}/${document.id}`, { replace: true })
         return
       }
-    } else if (!(document.type === 'albaran' || (document.type === 'factura' && document.is_draft)) || document.can_edit === false) {
-      // Only a quotation, an unpaid delivery note or a draft invoice can be opened for editing.
+    } else if (document.can_edit !== true) {
+      // The server decides what can be edited: an open quotation, an unpaid delivery note, a pending invoice or a
+      // draft, and a delivery receipt.
       push({
         tone: 'danger',
         title:
           document.type === 'albaran'
             ? t('sales.deliveryNotNotEditable', 'This delivery note can no longer be edited: it is paid, voided or already invoiced.')
-            : document.is_draft
+            : document.type === 'factura' && !document.is_draft
+              ? t('sales.invoiceNotEditable', 'This invoice can no longer be edited: only a pending invoice can be changed. Void a paid one instead.')
+              : document.is_draft
               ? t('sales.draftNotEditable', 'This draft was deleted and can no longer be edited.')
               : t('sales.notEditable', 'This document cannot be edited.'),
       })
@@ -395,7 +398,8 @@ export function useSaleComposer(fixedType?: IssuableType) {
     }
     setType(document.type as IssuableType)
     const heldNow: Record<number, number> = {}
-    if (document.type === 'albaran') {
+    // What the document already took out of stock is put back when it is saved, so those pieces stay usable here.
+    if (document.type !== 'quotation' && !document.is_draft && rulesFor(document.type).movesStock) {
       for (const line of document.lines ?? []) {
         if (line.product_id !== null) heldNow[line.product_id] = (heldNow[line.product_id] ?? 0) + line.quantity
       }
@@ -732,7 +736,9 @@ export function useSaleComposer(fixedType?: IssuableType) {
   const issueLabel = editing && !editingDraft
     ? type === 'albaran'
       ? t('sales.saveDeliveryNote', 'Save delivery note')
-      : t('sales.saveQuote', 'Save quotation')
+      : type === 'quotation'
+        ? t('sales.saveQuote', 'Save quotation')
+        : t('sales.saveChanges', 'Save changes')
     : rules.movesStock
       ? t('sales.issueAndDeduct', 'Issue :type and deduct stock').replace(':type', typeLabel(type).toLowerCase())
       : t('sales.issueOnly', 'Issue :type').replace(':type', typeLabel(type).toLowerCase())

@@ -162,7 +162,11 @@ function Header({ sale, fixedType }: { sale: SaleComposer; fixedType?: IssuableT
       ? t('sales.editDeliveryNote', 'Edit delivery note')
       : editingDraft
         ? t('sales.editDraft', 'Draft invoice')
-        : t('sales.editQuote', 'Edit quotation')
+        : type === 'factura'
+          ? t('sales.editInvoice', 'Edit invoice')
+          : type === 'nota_entrega'
+            ? t('sales.editReceipt', 'Edit delivery receipt')
+            : t('sales.editQuote', 'Edit quotation')
     : fixedType
       ? t('sales.newOf', 'New :type').replace(':type', typeLabel(fixedType))
       : t('sales.newTitle', 'New sale')
@@ -181,7 +185,9 @@ function Header({ sale, fixedType }: { sale: SaleComposer; fixedType?: IssuableT
               : editing
               ? type === 'albaran'
                 ? t('sales.editDeliveryNoteHint', 'Change the client or the lines while it is unpaid. The number and date stay, and the stock is adjusted by the difference.')
-                : t('sales.editQuoteHint', 'Change the client or the lines. The quotation number stays.')
+                : type === 'factura' || type === 'nota_entrega'
+                  ? t('sales.editIssuedHint', 'Change the lines while it is allowed. The number and date stay, and the stock is adjusted by the difference.')
+                  : t('sales.editQuoteHint', 'Change the client or the lines. The quotation number stays.')
               : fixedType === 'nota_entrega'
                 ? t('sales.newNotaSubtitle', 'The goods handed over, with prices and a total. No IVA, discount or client details; the stock is taken out.')
                 : t('sales.newSubtitle', 'Invoice, delivery note, quotation or proforma, with the client and the lines on one screen.')}
@@ -239,7 +245,7 @@ function Header({ sale, fixedType }: { sale: SaleComposer; fixedType?: IssuableT
               type="datetime-local"
               value={issuedAt}
               max={datedByMonth ? nowLocal() : undefined}
-              disabled={editing && (type === 'albaran' || editingDraft)}
+              disabled={editing && type !== 'quotation'}
               onChange={(event) => setIssuedAt(datedByMonth ? snapIssueDate(event.target.value) : event.target.value)}
               className={cn(field, 'desk-num disabled:opacity-60')}
             />
