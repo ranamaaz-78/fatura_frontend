@@ -12,7 +12,10 @@ import { resetPassword } from '../../services/auth'
 
 const schema = z
   .object({
-    password: z.string().min(8, t('settings.passwordRule', 'Use at least 8 characters.')),
+    password: z
+      .string()
+      .min(8, t('settings.passwordRule', 'Use at least 8 characters.'))
+      .max(72, t('settings.passwordMax', 'Use at most 72 characters.')),
     password_confirmation: z.string().min(1, t('resetPassword.repeat_your_password', 'Repeat your password.')),
   })
   .refine((values) => values.password === values.password_confirmation, {

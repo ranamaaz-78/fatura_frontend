@@ -27,7 +27,6 @@ import ForgotPasswordPage from './pages/auth/ForgotPassword'
 import LoginPage from './pages/auth/Login'
 import ResetPasswordPage from './pages/auth/ResetPassword'
 import SetPasswordPage from './pages/auth/SetPassword'
-import UiGallery from './pages/dev/UiGallery'
 import PublicInvoicePage from './pages/public/PublicInvoice'
 import VerifyInvoicePage from './pages/public/VerifyInvoice'
 import CompanySetupPage from './pages/app/CompanySetup'
@@ -59,6 +58,8 @@ import HomePage from './pages/public/Home'
 
 /** A sample report for looking at the PDF layout: development only. */
 const PdfPreviewPage = lazy(() => import('./pages/dev/PdfPreview'))
+/** Every UI component on one page: development only, so it is not served (or even bundled) in production. */
+const UiGallery = lazy(() => import('./pages/dev/UiGallery'))
 
 /** Resets the error screen whenever the page changes, so one crash never traps the app. */
 function RouteGuard({ children }: { children: ReactNode }) {
@@ -215,7 +216,7 @@ function App() {
             </Route>
           </Route>
 
-          <Route path="/dev/ui" element={<UiGallery />} />
+          {import.meta.env.DEV ? <Route path="/dev/ui" element={<UiGallery />} /> : null}
           {import.meta.env.DEV ? <Route path="/dev/pdf" element={<PdfPreviewPage />} /> : null}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

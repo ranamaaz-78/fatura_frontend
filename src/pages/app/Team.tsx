@@ -1,11 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Dices, KeyRound, Pencil, Plus, Power, RotateCcw, Save, Trash2, UserCog, X } from 'lucide-react'
+import { KeyRound, Pencil, Plus, Power, RotateCcw, Save, Trash2, UserCog, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { Button } from '../../components/ui/Button'
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { Input } from '../../components/ui/Input'
-import { Modal } from '../../components/ui/Modal'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { Select } from '../../components/ui/Select'
 import { Skeleton } from '../../components/ui/Skeleton'
@@ -31,23 +30,15 @@ import { PermissionMatrix, roleLabel } from './PermissionMatrix'
 
 const teamKey = ['app', 'team']
 
-type Form = { name: string; email: string; phone: string; password: string; permissions: string[] }
+type Form = { name: string; email: string; phone: string; permissions: string[] }
 
 function sameSet(a: string[], b: string[]): boolean {
   return a.length === b.length && a.every((item) => b.includes(item))
 }
 
-/** A readable password the owner can pass on, without look-alike characters. */
-function makePassword(): string {
-  const alphabet = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789'
-  const bytes = new Uint32Array(12)
-  crypto.getRandomValues(bytes)
-  return Array.from(bytes, (byte) => alphabet[byte % alphabet.length]).join('')
-}
-
 function blankForm(catalogue: TeamCatalogue | undefined): Form {
   const first = Object.keys(catalogue?.presets ?? {})[0]
-  return { name: '', email: '', phone: '', password: '', permissions: first ? (catalogue?.presets[first] ?? []) : [] }
+  return { name: '', email: '', phone: '', permissions: first ? (catalogue?.presets[first] ?? []) : [] }
 }
 
 function Card({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
@@ -76,7 +67,6 @@ export default function Team() {
   const [form, setForm] = useState<Form>(() => blankForm(undefined))
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [resetting, setResetting] = useState<TeamMember | null>(null)
-  const [newPassword, setNewPassword] = useState('')
   const [removing, setRemoving] = useState<TeamMember | null>(null)
   const [ready, setReady] = useState(false)
   // The role the owner picked. Ticking away from it does not rename it; it is also what "Save as role" saves into.
@@ -115,13 +105,13 @@ export default function Team() {
   function startEdit(member: TeamMember) {
     setEditing(member)
     setErrors({})
-    setForm({ name: member.name, email: member.email, phone: member.phone ?? '', password: '', permissions: member.permissions })
+    setForm({ name: member.name, email: member.email, phone: member.phone ?? '', permissions: member.permissions })
     // An account made before roles were kept starts from no role until one is picked.
     setBaseRole(member.team_role && catalogue?.presets[member.team_role] ? member.team_role : null)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  /** The email with the login can fail without the member failing: say so, so the owner can pass it on. */
+  /** The email with the set-password link can fail without the member failing: say so, so the owner can send it again. */
   function reportEmail(saved: TeamMemberSaved, done: string) {
     if (saved.email_sent === false) {
       push({ tone: 'warning', title: t('team.emailFailed', 'Saved, but the email did not go out: {error}', { error: saved.email_error ?? '' }) })
@@ -140,7 +130,6 @@ export default function Team() {
         name: form.name.trim(),
         email: form.email.trim(),
         phone: phone ?? undefined,
-        password: form.password,
         permissions: form.permissions,
       })
     },
@@ -149,7 +138,7 @@ export default function Team() {
       refresh()
       startNew()
       if (wasEditing) push({ tone: 'success', title: t('team.saved', 'Team member saved.') })
-      else reportEmail(saved as TeamMemberSaved, t('team.created', 'Team member created and login emailed.'))
+      else reportEmail(saved as TeamMemberSaved, t('team.created', 'Team member created. A link to choose their password was emailed.'))
     },
     onError: (error) => {
       setErrors(mapValidationErrors(error))
@@ -190,11 +179,11 @@ export default function Team() {
   })
 
   const reset = useMutation({
-    mutationFn: () => resetTeamMemberPassword((resetting as TeamMember).id, newPassword),
+    mutationFn: () => resetTeamMemberPassword((resetting as TeamMember).id),
     onSuccess: (saved) => {
       setResetting(null)
-      setNewPassword('')
-      reportEmail(saved, t('team.passwordSent', 'New password set and emailed.'))
+      refresh()
+      reportEmail(saved, t('team.linkSent', 'Their old password no longer works. A link to choose a new one was emailed.'))
     },
     onError: (error) => push({ tone: 'danger', title: getErrorMessage(error) }),
   })
@@ -212,7 +201,7 @@ export default function Team() {
 
   const canSave =
     form.name.trim() !== '' &&
-    (editing !== null || (form.email.trim() !== '' && form.password.length >= 8)) &&
+    (editing !== null || form.email.trim() !== '') &&
     form.permissions.length > 0
 
   return (
@@ -296,7 +285,7 @@ export default function Team() {
           subtitle={
             editing
               ? editing.email
-              : t('team.accountHint', 'Their login is emailed to them with the password you set here.')
+              : t('team.accountHint', 'They get an email with a link to choose their own password. You never see it.')
           }
         >
           <div className="grid gap-4 sm:grid-cols-2">
@@ -311,24 +300,7 @@ export default function Team() {
               onChange={(event) => patch({ email: event.target.value })}
             />
             <Input label={t('team.phone', 'Phone')} value={form.phone} error={errors.phone} onChange={(event) => patch({ phone: event.target.value })} />
-            {editing ? null : (
-              <div className="flex items-end gap-2">
-                <div className="min-w-0 flex-1">
-                  <Input
-                    label={t('team.password', 'Password')}
-                    required
-                    value={form.password}
-                    error={errors.password}
-                    onChange={(event) => patch({ password: event.target.value })}
-                  />
-                </div>
-                <Button variant="secondary" icon={<Dices className="h-4 w-4" />} onClick={() => patch({ password: makePassword() })}>
-                  {t('team.generate', 'Generate')}
-                </Button>
-              </div>
-            )}
           </div>
-          {editing ? null : <p className="mt-2 text-[11px] text-ink-muted">{t('team.passwordHint', 'At least 8 characters. It is emailed to them with their email.')}</p>}
 
           <div className="mt-5 flex items-center justify-between gap-3 rounded-xl bg-page px-4 py-3">
             <span className="text-xs text-ink-muted">
@@ -342,7 +314,7 @@ export default function Team() {
                 </Button>
               ) : null}
               <Button icon={editing ? undefined : <Plus className="h-4 w-4" />} loading={save.isPending} disabled={!canSave || !catalogue} onClick={() => save.mutate()}>
-                {editing ? t('common.save', 'Save') : t('team.create', 'Create and email login')}
+                {editing ? t('common.save', 'Save') : t('team.create', 'Create and send invite')}
               </Button>
             </span>
           </div>
@@ -393,6 +365,11 @@ export default function Team() {
                 >
                   {member.status === 'active' ? t('team.active', 'Active') : t('team.disabledBadge', 'Disabled')}
                 </span>
+                {member.password_set === false ? (
+                  <span className="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-700">
+                    {t('team.invitePending', 'Waiting for password')}
+                  </span>
+                ) : null}
 
                 <span className="flex flex-wrap items-center gap-1">
                   <Button variant="ghost" size="sm" icon={<Pencil className="h-4 w-4" />} onClick={() => startEdit(member)}>
@@ -402,10 +379,7 @@ export default function Team() {
                     variant="ghost"
                     size="sm"
                     icon={<KeyRound className="h-4 w-4" />}
-                    onClick={() => {
-                      setNewPassword('')
-                      setResetting(member)
-                    }}
+                    onClick={() => setResetting(member)}
                   >
                     {t('team.resetPassword', 'Password')}
                   </Button>
@@ -422,30 +396,16 @@ export default function Team() {
         )}
       </div>
 
-      <Modal
+      <ConfirmDialog
         open={resetting !== null}
         onClose={() => setResetting(null)}
-        title={t('team.resetTitle', 'Set a new password')}
-        subtitle={resetting?.name}
-        maxWidth="md"
-        footer={
-          <>
-            <Button variant="secondary" onClick={() => setResetting(null)}>
-              {t('common.cancel', 'Cancel')}
-            </Button>
-            <Button loading={reset.isPending} disabled={newPassword.length < 8} onClick={() => reset.mutate()}>
-              {t('team.resetConfirm', 'Save and email')}
-            </Button>
-          </>
-        }
-      >
-        <Input
-          label={t('team.password', 'Password')}
-          value={newPassword}
-          hint={t('team.resetHint', 'At least 8 characters. Anywhere they are signed in is closed, and the new password is emailed to them.')}
-          onChange={(event) => setNewPassword(event.target.value)}
-        />
-      </Modal>
+        onConfirm={() => reset.mutate()}
+        loading={reset.isPending}
+        tone="warning"
+        title={t('team.resetTitle', 'Send a new password link?')}
+        description={t('team.resetHint', "{name}'s current password stops working now and anywhere they are signed in is closed. They get an email with a link to choose a new one.", { name: resetting?.name ?? '' })}
+        confirmLabel={t('team.resetConfirm', 'Send link')}
+      />
 
       <ConfirmDialog
         open={removing !== null}

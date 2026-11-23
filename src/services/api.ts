@@ -75,7 +75,10 @@ export async function unwrap<T>(promise: Promise<{ data: ApiSuccess<T> }>): Prom
 export function getErrorMessage(error: unknown, fallback = t('common.error', 'Something went wrong')): string {
   if (isAxiosError(error)) {
     const data = error.response?.data as { message?: string } | undefined
-    return data?.message || error.message || fallback
+    if (data?.message) return data.message
+    // Never axios's own technical text ("Request failed with status code 500", "Network Error").
+    if (!error.response) return t('common.networkError', 'Could not reach the server. Check your connection and try again.')
+    return fallback
   }
   if (error instanceof Error) return error.message
   return fallback

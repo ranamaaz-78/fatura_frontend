@@ -398,10 +398,14 @@ export function printThermalSlip(
   const doc = target.document
   doc.open()
   doc.write(
-    `<!doctype html><html><head><meta charset="utf-8"><title>${sale.number}</title><style>${STYLE}</style></head>` +
-      `<body><div id="slip"><p style="padding:6mm 4mm;font-family:Arial,sans-serif">${t('print.slipPreparing', 'Preparing the slip…')}</p></div></body></html>`,
+    `<!doctype html><html><head><meta charset="utf-8"><title></title><style>${STYLE}</style></head>` +
+      `<body><div id="slip"><p style="padding:6mm 4mm;font-family:Arial,sans-serif"></p></div></body></html>`,
   )
   doc.close()
+  // Data goes in as text, never into the HTML string, so nothing in it can be read as markup.
+  doc.title = sale.number
+  const preparing = doc.querySelector('#slip p')
+  if (preparing) preparing.textContent = t('print.slipPreparing', 'Preparing the slip…')
 
   void (async () => {
     const payload = await getPrintTemplates()

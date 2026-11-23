@@ -10,6 +10,8 @@ export type TeamMember = {
   team_role: string
   permissions: string[]
   last_login_at: string | null
+  /** False until the member has chosen their password through the emailed link. */
+  password_set?: boolean
 }
 
 export type TeamCatalogue = {
@@ -27,13 +29,12 @@ export type TeamMemberInput = {
   name: string
   email: string
   phone?: string
-  password: string
   /** The role picked to start from. */
   team_role?: string
   permissions: string[]
 }
 
-/** What comes back when a login was emailed: whether the email left. */
+/** What comes back when a set-password link was emailed: whether the email left. */
 export type TeamMemberSaved = TeamMember & { email_sent?: boolean; email_error?: string | null }
 
 export function getTeam(): Promise<TeamOverview> {
@@ -55,8 +56,9 @@ export function setTeamMemberStatus(id: number, status: 'active' | 'disabled'): 
   return unwrap<TeamMember>(api.patch(`/app/team/${id}/status`, { status }))
 }
 
-export function resetTeamMemberPassword(id: number, password: string): Promise<TeamMemberSaved> {
-  return unwrap<TeamMemberSaved>(api.post(`/app/team/${id}/password`, { password }))
+/** The old password stops working and a link to choose a new one is emailed to the member. */
+export function resetTeamMemberPassword(id: number): Promise<TeamMemberSaved> {
+  return unwrap<TeamMemberSaved>(api.post(`/app/team/${id}/password`))
 }
 
 export function deleteTeamMember(id: number): Promise<unknown> {

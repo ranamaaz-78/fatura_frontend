@@ -28,7 +28,10 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
         <p className="max-w-md text-sm text-[#434655]">
           {t('error.body', 'Your data is safe. Reload the page to continue. If it keeps happening, tell us what you were doing.')}
         </p>
-        <pre className="max-w-xl overflow-x-auto rounded-lg bg-slate-100 px-3 py-2 text-left text-xs text-slate-600">{error.message}</pre>
+        {/* The technical message is for developers only; in production it stays in the browser console. */}
+        {import.meta.env.DEV ? (
+          <pre className="max-w-xl overflow-x-auto rounded-lg bg-slate-100 px-3 py-2 text-left text-xs text-slate-600">{error.message}</pre>
+        ) : null}
         <div className="flex gap-3">
           <button
             type="button"
