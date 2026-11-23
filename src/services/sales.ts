@@ -109,7 +109,10 @@ export function invoiceAlbaran(
   input: {
     iva: Record<number, number>
     recargo_rate_id: number | null
-    /** Client details the delivery note lacks; the ones it has are never replaced. */
+    /** Fully edit the client: every detail below, the name included, is taken as sent. */
+    edit_client?: boolean
+    client_name?: string
+    /** Details the delivery note lacks; the ones it has are never replaced unless edit_client is on. */
     client_company?: string
     client_phone?: string
     client_nif?: string

@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Lock, ReceiptEuro as Receipt, ShieldCheck, UserRound } from 'lucide-react'
+import { Lock, LockOpen, ReceiptEuro as Receipt, ShieldCheck, UserRound } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../../auth/AuthProvider'
@@ -21,8 +21,8 @@ const clientLabel = 'mb-1.5 block text-xs font-semibold text-slate-600'
 const clientField =
   'h-10 w-full box-border rounded-xl border border-line bg-card px-3 text-[13px] text-ink outline-none transition focus:border-brand-600 focus:ring-2 focus:ring-brand-600/20'
 
-type Fill = { client_company: string; client_phone: string; client_nif: string; client_address: string; client_email: string }
-const EMPTY_FILL: Fill = { client_company: '', client_phone: '', client_nif: '', client_address: '', client_email: '' }
+type Fill = { client_name: string; client_company: string; client_phone: string; client_nif: string; client_address: string; client_email: string }
+const EMPTY_FILL: Fill = { client_name: '', client_company: '', client_phone: '', client_nif: '', client_address: '', client_email: '' }
 
 /**
  * A delivery note becomes an invoice, on a page of its own with the counter's look: the lines are locked (product,
@@ -55,7 +55,9 @@ function AlbaranToInvoice() {
 
   const [iva, setIva] = useState<Record<number, string>>({})
   const [recargoId, setRecargoId] = useState<number | null>(null)
+  // Only the blanks can be filled, until "Edit client" is on: then every detail, the name too, can be changed.
   const [fill, setFill] = useState<Fill>(EMPTY_FILL)
+  const [editClient, setEditClient] = useState(false)
   // A paid delivery note paid its own price only: the IVA and recargo on top are paid now or left owed.
   const [payNow, setPayNow] = useState(false)
   const [methodId, setMethodId] = useState('')
@@ -108,7 +110,10 @@ function AlbaranToInvoice() {
     mutationFn: () => {
       const chosen: Record<number, number> = {}
       for (const line of lines) chosen[line.id] = Number(iva[line.id] ?? 0)
-      const typed = Object.fromEntries(Object.entries(fill).filter(([, value]) => value.trim() !== ''))
+      // Editing the client sends every detail as it stands; otherwise only the blanks that were filled in.
+      const typed = editClient
+        ? { edit_client: true, ...fill }
+        : Object.fromEntries(Object.entries(fill).filter(([key, value]) => key !== 'client_name' && value.trim() !== ''))
       return invoiceAlbaran(documentId, {
         iva: chosen,
         recargo_rate_id: recargoId,
@@ -135,8 +140,8 @@ function AlbaranToInvoice() {
   if (!document) return <div className="h-64 animate-pulse rounded-2xl bg-page" />
 
   const hasTaxId = Boolean(document.client_nif || document.client_nie)
-  const fields: { key: keyof Fill | 'name'; label: string; have: string | null; type?: string }[] = [
-    { key: 'name', label: t('sales.clientName', 'Name'), have: document.client_name },
+  const fields: { key: keyof Fill; label: string; have: string | null; type?: string }[] = [
+    { key: 'client_name', label: t('sales.clientName', 'Name'), have: document.client_name },
     { key: 'client_company', label: t('sales.clientCompany', 'Company'), have: document.client_company ?? null },
     { key: 'client_phone', label: t('sales.phone', 'Telephone'), have: document.client_phone ?? null },
     { key: 'client_nif', label: t('sales.nif', 'NIF / NIE'), have: hasTaxId ? (document.client_nif || document.client_nie || null) : null },
@@ -193,15 +198,44 @@ function AlbaranToInvoice() {
         </div>
 
         <div className="flex flex-col gap-4 rounded-2xl border border-brand-100 bg-page p-5">
-          <h3 className="flex items-center gap-2.5 text-sm font-bold tracking-[0.06em] text-slate-800 uppercase">
-            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
-              <UserRound className="h-4 w-4" />
-            </span>
-            {t('sales.clientHeading', 'Client')}
-          </h3>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h3 className="flex items-center gap-2.5 text-sm font-bold tracking-[0.06em] text-slate-800 uppercase">
+              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
+                <UserRound className="h-4 w-4" />
+              </span>
+              {t('sales.clientHeading', 'Client')}
+            </h3>
+            <button
+              type="button"
+              aria-pressed={editClient}
+              onClick={() => {
+                // Opening it starts from what the delivery note says, so nothing is lost; closing it goes back.
+                if (!editClient) {
+                  setFill({
+                    client_name: document.client_name,
+                    client_company: document.client_company ?? '',
+                    client_phone: document.client_phone ?? '',
+                    client_nif: document.client_nif || document.client_nie || '',
+                    client_address: document.client_address ?? '',
+                    client_email: document.client_email ?? '',
+                  })
+                } else {
+                  setFill(EMPTY_FILL)
+                }
+                setEditClient((on) => !on)
+              }}
+              className={cn(
+                'inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold',
+                editClient ? 'bg-brand-600 text-brand-on' : 'border border-line bg-card text-ink hover:bg-slate-50',
+              )}
+            >
+              {editClient ? <LockOpen className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
+              {editClient ? t('sales.editClientOn', 'Editing the client') : t('sales.editClient', 'Edit client')}
+            </button>
+          </div>
           <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2">
             {fields.map((field) => {
-              const locked = Boolean(field.have)
+              const locked = !editClient && Boolean(field.have)
               return (
                 <div key={field.key}>
                   <span className={clientLabel}>{field.label}</span>
@@ -211,7 +245,7 @@ function AlbaranToInvoice() {
                       readOnly={locked}
                       tabIndex={locked ? -1 : 0}
                       aria-label={field.label}
-                      value={locked ? (field.have ?? '') : field.key === 'name' ? '' : fill[field.key as keyof Fill]}
+                      value={locked ? (field.have ?? '') : fill[field.key]}
                       onChange={(event) => setFill((current) => ({ ...current, [field.key]: event.target.value }))}
                       maxLength={field.key === 'client_address' ? 255 : 180}
                       className={cn(clientField, locked && 'cursor-not-allowed bg-slate-100 pr-9 text-slate-600')}
@@ -223,7 +257,9 @@ function AlbaranToInvoice() {
             })}
           </div>
           <p className="text-[11px] text-ink-muted">
-            {t('sales.convertClientHint', 'Locked details are the delivery note’s and cannot be changed. You can fill in the ones it lacks; they are kept on the invoice and on the saved client.')}
+            {editClient
+              ? t('sales.convertClientEditing', 'Every detail can be changed. The invoice gets them, and so does the saved client. The delivery note stays as it was.')
+              : t('sales.convertClientHint', 'Locked details are the delivery note’s. You can fill in the ones it lacks, or press Edit client to change everything. They are kept on the invoice and on the saved client.')}
           </p>
         </div>
 
