@@ -441,6 +441,40 @@ async function styleFor(company: Company | null, currency: string, brand: string
   return { brand, currency, company, logo }
 }
 
+/**
+ * The window a slip is printed from. Open it straight from the click: a window opened after an await is blocked by the
+ * browser. Returns null when it was blocked.
+ */
+export function openPrintWindow(): Window | null {
+  return window.open('', '_blank', 'width=900,height=1000')
+}
+
+/** Puts the slip's pages in that window, one A4 sheet each, and brings up the print dialog. */
+export async function printSlip(target: Window, slip: Slip): Promise<void> {
+  const doc = target.document
+  doc.open()
+  doc.write('<!doctype html><html><head><meta charset="utf-8"><title></title><style>@page{size:A4;margin:0}html,body{margin:0;padding:0}img{display:block;width:210mm;height:297mm;break-after:page}img:last-child{break-after:auto}</style></head><body></body></html>')
+  doc.close()
+  // Data goes in as properties, never into the HTML string, so nothing in it can be read as markup.
+  doc.title = slip.title
+  await Promise.all(
+    slip.pages.map(
+      (page, index) =>
+        new Promise<void>((resolve) => {
+          const image = doc.createElement('img')
+          image.alt = `${slip.title} · ${index + 1}`
+          image.onload = () => resolve()
+          image.onerror = () => resolve()
+          image.src = page
+          doc.body.appendChild(image)
+        }),
+    ),
+  )
+  target.focus()
+  // A tick for the layout before the dialog freezes rendering. The window stays open, so it can be printed again.
+  target.setTimeout(() => target.print(), 300)
+}
+
 type Context = { company: Company | null; currency: string; brand: string }
 
 /** One payment's receipt. */

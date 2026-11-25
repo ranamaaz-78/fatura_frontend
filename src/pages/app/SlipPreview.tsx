@@ -1,13 +1,25 @@
-import { FileDown, Loader2 } from 'lucide-react'
+import { FileDown, Loader2, Printer } from 'lucide-react'
 import { Button } from '../../components/ui/Button'
 import { Modal } from '../../components/ui/Modal'
+import { useToast } from '../../components/ui/Toast'
 import { t } from '../../i18n'
-import { downloadSlip } from '../../lib/ledgerReceipt'
+import { downloadSlip, openPrintWindow, printSlip } from '../../lib/ledgerReceipt'
 import type { SlipPreviewState } from './ledgerReceipts'
 
-/** A receipt or payment statement on screen, page by page, with a button to save it as a PDF. */
+/** A receipt or payment statement on screen, page by page, with buttons to print it or save it as a PDF. */
 export function SlipPreview({ preview, onClose }: { preview: SlipPreviewState; onClose: () => void }) {
   const slip = preview?.slip ?? null
+  const { push } = useToast()
+
+  function print() {
+    if (!slip) return
+    const target = openPrintWindow()
+    if (!target) {
+      push({ tone: 'danger', title: t('labels.blocked', 'Your browser blocked the print window. Allow pop-ups and try again.') })
+      return
+    }
+    void printSlip(target, slip)
+  }
 
   return (
     <Modal
@@ -19,6 +31,9 @@ export function SlipPreview({ preview, onClose }: { preview: SlipPreviewState; o
         <>
           <Button variant="secondary" onClick={onClose}>
             {t('common.close', 'Close')}
+          </Button>
+          <Button variant="secondary" icon={<Printer className="h-4 w-4" />} disabled={slip === null} onClick={print}>
+            {t('sales.print', 'Print')}
           </Button>
           <Button icon={<FileDown className="h-4 w-4" />} disabled={slip === null} onClick={() => slip && downloadSlip(slip)}>
             {t('ledger.downloadPdf', 'Download PDF')}

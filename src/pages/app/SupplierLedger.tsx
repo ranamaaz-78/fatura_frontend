@@ -1,5 +1,5 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Ban, BookOpen, CalendarDays, Eye, FileDown, Receipt, FileSpreadsheet, HandCoins, ListChecks, Plus, Search, Trash2, Truck, Wallet, X } from 'lucide-react'
+import { Ban, BookOpen, CalendarDays, Eye, FileDown, Receipt, FileSpreadsheet, HandCoins, ListChecks, Plus, Printer, Search, Trash2, Truck, Wallet, X } from 'lucide-react'
 import { useEffect, useState, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../auth/AuthProvider'
@@ -7,6 +7,7 @@ import { usePermissions } from '../../auth/permissions'
 import { Button } from '../../components/ui/Button'
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog'
 import { Drawer } from '../../components/ui/Drawer'
+import { IconButton } from '../../components/ui/IconButton'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { Input } from '../../components/ui/Input'
 import { Modal } from '../../components/ui/Modal'
@@ -412,6 +413,7 @@ function SupplierLedger() {
                       <th className="px-4 py-2.5">{t('ledger.lastPaid', 'Last payment')}</th>
                       <th className="px-4 py-2.5 text-right">{t('ledger.age', 'Days open')}</th>
                       <th className="px-4 py-2.5" />
+                      <th className="px-4 py-2.5 text-right">{t('ledger.payStatement', 'Statement')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -441,6 +443,21 @@ function SupplierLedger() {
                         </td>
                         <td className="px-4 py-3 text-right">
                           {row.is_voided ? <span className={cn('rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase', TONE_ROSE)}>{t('ledger.statusCancelled', 'Cancelled')}</span> : <PaymentBadge status={row.payment_status} />}
+                        </td>
+                        {/* The paper for this entry's payments, without opening it. Only where something was paid. */}
+                        <td className="px-4 py-1.5 text-right whitespace-nowrap" onClick={(event) => event.stopPropagation()}>
+                          {(row.payments_count ?? 0) > 0 ? (
+                            <span className="inline-flex items-center gap-1">
+                              <IconButton label={t('ledger.printPayments', 'Print payment statement')} tooltipAlign="end" className="min-h-9 min-w-9" onClick={() => void receipts.printStatement(row.id)}>
+                                <Printer className="h-4 w-4" />
+                              </IconButton>
+                              <IconButton label={t('ledger.downloadPayments', 'Download payment statement (PDF)')} tooltipAlign="end" className="min-h-9 min-w-9" onClick={() => void receipts.statement(row.id)}>
+                                <FileDown className="h-4 w-4" />
+                              </IconButton>
+                            </span>
+                          ) : (
+                            <span className="text-xs text-ink-muted">—</span>
+                          )}
                         </td>
                       </tr>
                     ))}
@@ -601,12 +618,15 @@ function SupplierLedger() {
                       </span>
                     </div>
                     {(entry.payments ?? []).length > 0 ? (
-                      <div className="grid grid-cols-2 gap-2 border-t border-line px-3 py-3">
-                        <Button fullWidth variant="secondary" icon={<Eye className="h-4 w-4" />} onClick={() => void receipts.viewStatement(entry.id)}>
-                          {t('ledger.viewStatement', 'View statement')}
+                      <div className="grid grid-cols-3 gap-2 border-t border-line px-3 py-3">
+                        <Button fullWidth variant="secondary" icon={<Eye className="h-4 w-4" />} className="whitespace-nowrap" title={t('ledger.viewStatement', 'View statement')} onClick={() => void receipts.viewStatement(entry.id)}>
+                          {t('common.view', 'View')}
                         </Button>
-                        <Button fullWidth variant="secondary" icon={<FileDown className="h-4 w-4" />} onClick={() => void receipts.statement(entry.id)}>
-                          {t('ledger.downloadStatementShort', 'Download PDF')}
+                        <Button fullWidth variant="secondary" icon={<Printer className="h-4 w-4" />} className="whitespace-nowrap" onClick={() => void receipts.printStatement(entry.id)}>
+                          {t('sales.print', 'Print')}
+                        </Button>
+                        <Button fullWidth variant="secondary" icon={<FileDown className="h-4 w-4" />} className="whitespace-nowrap" title={t('ledger.downloadStatementShort', 'Download PDF')} onClick={() => void receipts.statement(entry.id)}>
+                          PDF
                         </Button>
                       </div>
                     ) : null}

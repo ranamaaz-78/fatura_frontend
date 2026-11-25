@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react'
 import { useAuth } from '../../auth/AuthProvider'
 import { useToast } from '../../components/ui/Toast'
 import { t } from '../../i18n'
-import { buildPaymentReceipt, buildPaymentStatement, downloadSlip, type Slip } from '../../lib/ledgerReceipt'
+import { buildPaymentReceipt, buildPaymentStatement, downloadSlip, openPrintWindow, printSlip, type Slip } from '../../lib/ledgerReceipt'
 import { getErrorMessage } from '../../services/api'
 import { getLedgerEntry } from '../../services/ledger'
 
@@ -47,6 +47,24 @@ export function useLedgerReceipts() {
     [build, push],
   )
 
+  /** Prints a slip: the window opens at once (from the click) and is filled when the slip is drawn. */
+  const print = useCallback(
+    async (entryId: number, paymentId: number | null) => {
+      const target = openPrintWindow()
+      if (!target) {
+        push({ tone: 'danger', title: t('labels.blocked', 'Your browser blocked the print window. Allow pop-ups and try again.') })
+        return
+      }
+      try {
+        await printSlip(target, await build(entryId, paymentId))
+      } catch (error) {
+        target.close()
+        push({ tone: 'danger', title: getErrorMessage(error) })
+      }
+    },
+    [build, push],
+  )
+
   /** Opens the preview window at once (it shows a spinner) and fills it when the slip is drawn. */
   const view = useCallback(
     async (entryId: number, paymentId: number | null) => {
@@ -66,6 +84,7 @@ export function useLedgerReceipts() {
   const statement = useCallback((entryId: number) => download(entryId, null), [download])
   const viewReceipt = useCallback((entryId: number, paymentId: number) => view(entryId, paymentId), [view])
   const viewStatement = useCallback((entryId: number) => view(entryId, null), [view])
+  const printStatement = useCallback((entryId: number) => print(entryId, null), [print])
 
   /** "Payment saved." with a button that downloads that payment's receipt. */
   const saved = useCallback(
@@ -79,5 +98,5 @@ export function useLedgerReceipts() {
     [push, receipt],
   )
 
-  return { receipt, statement, viewReceipt, viewStatement, preview, closePreview: () => setPreview(null), saved }
+  return { receipt, statement, viewReceipt, viewStatement, printStatement, preview, closePreview: () => setPreview(null), saved }
 }

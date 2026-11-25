@@ -5,11 +5,12 @@ function day(value: string): string {
 }
 
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Ban, Pencil, BookOpen, CalendarDays, FileDown, FileSpreadsheet, PackageCheck, Plus, Search, ShoppingBag, Truck, Wallet, X } from 'lucide-react'
+import { Ban, Pencil, BookOpen, CalendarDays, FileDown, FileSpreadsheet, PackageCheck, Plus, Printer, Search, ShoppingBag, Truck, Wallet, X } from 'lucide-react'
 import { useEffect, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../auth/AuthProvider'
 import { usePermissions } from '../../auth/permissions'
+import { IconButton } from '../../components/ui/IconButton'
 import { Button } from '../../components/ui/Button'
 import { Drawer } from '../../components/ui/Drawer'
 import { EmptyState } from '../../components/ui/EmptyState'
@@ -31,6 +32,7 @@ import { getPurchase, listAllPurchases, listPurchases, voidPurchase } from '../.
 import { listSuppliers } from '../../services/suppliers'
 import type { Purchase, PurchaseStatus } from '../../types/purchases'
 import { PaymentBadge } from './ledgerBits'
+import { useLedgerReceipts } from './ledgerReceipts'
 import { PurchaseModal } from './PurchaseModal'
 
 
@@ -50,6 +52,7 @@ function Stat({ label, value, hint, tone, icon }: { label: string; value: ReactN
 function Purchases() {
   const { session } = useAuth()
   const { can } = usePermissions()
+  const receipts = useLedgerReceipts()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { push } = useToast()
@@ -300,6 +303,7 @@ function Purchases() {
                     <th className="px-4 py-2.5 text-right">{t('purchases.items', 'Products')}</th>
                     <th className="px-4 py-2.5 text-right">{t('purchases.total', 'Total')}</th>
                     <th className="px-4 py-2.5" />
+                    {can('ledger.view') ? <th className="px-4 py-2.5 text-right">{t('ledger.payStatement', 'Statement')}</th> : null}
                   </tr>
                 </thead>
                 <tbody>
@@ -316,6 +320,23 @@ function Purchases() {
                       <td className="px-4 py-3 text-right">
                         {row.is_voided ? <span className={cn('rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase', TONE_ROSE)}>{t('purchases.statusCancelled', 'Cancelled')}</span> : null}
                       </td>
+                      {/* The supplier's payment statement for this purchase, without opening it. */}
+                      {can('ledger.view') ? (
+                        <td className="px-4 py-1.5 text-right whitespace-nowrap" onClick={(event) => event.stopPropagation()}>
+                          {row.ledger_entry && !row.ledger_entry.is_voided ? (
+                            <span className="inline-flex items-center gap-1">
+                              <IconButton label={t('ledger.printPayments', 'Print payment statement')} tooltipAlign="end" className="min-h-9 min-w-9" onClick={() => void receipts.printStatement(row.ledger_entry!.id)}>
+                                <Printer className="h-4 w-4" />
+                              </IconButton>
+                              <IconButton label={t('ledger.downloadPayments', 'Download payment statement (PDF)')} tooltipAlign="end" className="min-h-9 min-w-9" onClick={() => void receipts.statement(row.ledger_entry!.id)}>
+                                <FileDown className="h-4 w-4" />
+                              </IconButton>
+                            </span>
+                          ) : (
+                            <span className="text-xs text-ink-muted">—</span>
+                          )}
+                        </td>
+                      ) : null}
                     </tr>
                   ))}
                 </tbody>
