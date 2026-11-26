@@ -50,6 +50,8 @@ export type ReportPdfSpec = {
   chartsTitle?: string
   charts: PdfChart[]
   table?: PdfTable
+  /** More tables after the first, each under its own title. */
+  moreTables?: PdfTable[]
   footer: string
   /** "Page {n} of {total}" in the report's language. */
   pageLabel: (page: number, total: number) => string
@@ -347,9 +349,9 @@ function layoutPages(spec: ReportPdfSpec): Block[][] {
     }
   }
 
-  // The table, as many rows to a page as fit, the heading repeated on every page.
-  if (spec.table && spec.table.rows.length > 0) {
-    const table = spec.table
+  // The tables, as many rows to a page as fit, the heading repeated on every page.
+  for (const table of [spec.table, ...(spec.moreTables ?? [])]) {
+    if (!table || table.rows.length === 0) continue
     const widths = table.columns.map((column, index) => column.weight ?? (index === 0 ? 2.2 : 1))
     const widthTotal = widths.reduce((sum, value) => sum + value, 0)
     const cell = (value: string, index: number, bold = false) => (

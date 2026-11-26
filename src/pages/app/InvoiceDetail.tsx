@@ -35,6 +35,7 @@ function InvoiceDetail() {
     exporting,
     setExporting,
     setMethodOpen,
+    setChangeMethodOpen,
     setSettleOpen,
     setReturnOpen,
     setInvoicing,
@@ -66,7 +67,7 @@ function InvoiceDetail() {
     return <div className="h-64 animate-pulse rounded-2xl bg-page" />
   }
 
-  const { issued, rules, display, voided, deleted, canDelete, deleteBlocked, mayDelete, canRestore, canVoid, canUpdate, canPay, quoteExpired, openQuote, quoteDays, canSettle, settlements, returns } = documentFlags(document, can)
+  const { issued, rules, display, voided, deleted, canDelete, deleteBlocked, mayDelete, canRestore, canVoid, canUpdate, canPay, canChangeMethod, quoteExpired, openQuote, quoteDays, canSettle, settlements, returns } = documentFlags(document, can)
 
   return (
     <div className="flex flex-col gap-6 print:contents">
@@ -85,9 +86,22 @@ function InvoiceDetail() {
               </span>
             ) : null}
             {!voided && document.payment_status === 'paid' && document.payment_method ? (
-              <span className="rounded-full bg-brand-50 px-3 py-0.5 text-xs font-semibold text-brand-600">
-                {document.payment_method.name}
-              </span>
+              canChangeMethod ? (
+                // A wrong pick (cash for a bank transfer) is corrected from the badge itself.
+                <button
+                  type="button"
+                  onClick={() => setChangeMethodOpen(true)}
+                  title={t('sales.changeMethodTitle', 'Change payment method')}
+                  className="inline-flex cursor-pointer items-center gap-1.5 rounded-full bg-brand-50 px-3 py-0.5 text-xs font-semibold text-brand-600 ring-1 ring-brand-600/20 hover:bg-brand-100"
+                >
+                  {document.payment_method.name}
+                  <Pencil className="h-3 w-3" />
+                </button>
+              ) : (
+                <span className="rounded-full bg-brand-50 px-3 py-0.5 text-xs font-semibold text-brand-600">
+                  {document.payment_method.name}
+                </span>
+              )
             ) : null}
             {quoteExpired ? (
               <span className="rounded-full bg-rose-50 px-3 py-0.5 text-xs font-semibold text-rose-700 app-dark:bg-rose-500/15 app-dark:text-rose-300">

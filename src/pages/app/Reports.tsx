@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import {
   AlertTriangle,
   Banknote,
+  ClipboardList,
   FileClock,
   FileDown,
   FileSpreadsheet,
@@ -39,7 +40,7 @@ import { centsToExcelAmount, downloadStyledReport, type ReportColumnFormat } fro
 import { downloadFileName, fileDate } from '../../lib/fileName'
 import { formatDate } from '../../lib/format'
 import { formatCents } from '../../lib/money'
-import { downloadReportPdf, type PdfChart, type PdfComparison, type ReportPdfSpec } from '../../lib/reportPdf'
+import { downloadReportPdf, type PdfChart, type PdfComparison, type PdfTable, type ReportPdfSpec } from '../../lib/reportPdf'
 import { agingBuckets, cumulative, fillDays, movingAverage, pctChange, periodRange, previousRange, weekdayTotals } from '../../lib/reportAnalytics'
 import { getErrorMessage } from '../../services/api'
 import { getReport } from '../../services/reports'
@@ -74,6 +75,7 @@ const KIND_META: Record<ReportKind, { icon: LucideIcon }> = {
   stock: { icon: Layers },
   clients: { icon: Users },
   suppliers: { icon: Truck },
+  receipts: { icon: ClipboardList },
 }
 
 type Column = {
@@ -124,6 +126,7 @@ function kindLabel(kind: ReportKind): string {
     stock: t('reports.stock', 'Stock value'),
     clients: t('reports.clients', 'Clients'),
     suppliers: t('reports.suppliers', 'Suppliers'),
+    receipts: t('nav.deliveryReceipts', 'Delivery receipts'),
   }
   return labels[kind]
 }
@@ -190,7 +193,7 @@ function formatShare(part: number, total: number): string {
 }
 
 function docTypeLabel(key: string): string {
-  if (key === 'factura' || key === 'albaran' || key === 'proforma' || key === 'quotation') {
+  if (key === 'factura' || key === 'albaran' || key === 'proforma' || key === 'quotation' || key === 'nota_entrega') {
     return typeLabel(key as SaleType)
   }
   return key
@@ -473,7 +476,52 @@ function columnsFor(kind: ReportKind, currency: string, data: ReportPayload): Co
         money('stock_value_cents', t('reports.stockValue', 'Stock value')),
         shareCol('stock_value_cents', kpis.stock_value_cents ?? 0, t('reports.share', 'Share')),
       ]
+    case 'receipts':
+      return [
+        {
+          key: 'number',
+          header: t('sales.document', 'Document'),
+          text: (row) => asText(row.number),
+          excel: (row) => asText(row.number),
+          node: (row) => <span className="block truncate font-semibold text-slate-900">{asText(row.number)}</span>,
+        },
+        {
+          key: 'issued_at',
+          header: t('sales.date', 'Date'),
+          text: (row) => (row.issued_at ? formatDate(String(row.issued_at)) : '—'),
+          excel: (row) => (row.issued_at ? formatDate(String(row.issued_at)) : null),
+        },
+        countCol('line_count', t('reports.lines', 'Lines')),
+        countCol('quantity', t('reports.units', 'Units')),
+        money('total_cents', t('reports.total', 'Total')),
+        shareCol('total_cents', kpis.total_cents ?? 0, t('reports.share', 'Share')),
+      ]
   }
+}
+
+/** The second table of the delivery receipts report: what those receipts handed over, by product. */
+function receiptProductColumns(currency: string, data: ReportPayload): Column[] {
+  currentCurrency = currency
+  return [
+    {
+      key: 'article',
+      header: t('sales.article', 'Article'),
+      text: (row) => asText(row.article),
+      excel: (row) => asText(row.article),
+      node: (row) => <span className="block truncate font-semibold text-slate-900">{asText(row.article)}</span>,
+    },
+    {
+      key: 'barcode',
+      header: t('products.barcode', 'Bar code'),
+      hideOnPhone: true,
+      text: (row) => asText(row.barcode),
+      excel: (row) => asText(row.barcode),
+    },
+    countCol('quantity', t('reports.quantity', 'Quantity')),
+    countCol('document_count', t('reports.onDocuments', 'On documents'), false),
+    moneyCol('total_cents', t('reports.total', 'Total')),
+    shareCol('quantity', data.kpis.quantity ?? 0, t('reports.share', 'Share')),
+  ]
 }
 
 function kpisFor(kind: ReportKind, kpis: ReportKpis, currency: string): Tile[] {
@@ -551,6 +599,13 @@ function kpisFor(kind: ReportKind, kpis: ReportKpis, currency: string): Tile[] {
         tile(t('reports.units', 'Units'), count('quantity'), t('reports.quantity', 'Quantity'), 'blue', <Layers className="h-5 w-5" />),
         tile(t('reports.stockValue', 'Stock value'), money('stock_value_cents'), t('reports.stock', 'Stock value'), 'green', <Layers className="h-5 w-5" />),
       ]
+    case 'receipts':
+      return [
+        tile(t('reports.documents', 'Documents'), count('document_count'), t('nav.deliveryReceipts', 'Delivery receipts'), 'slate', <ClipboardList className="h-5 w-5" />),
+        tile(t('reports.units', 'Units'), count('quantity'), t('reports.quantity', 'Quantity'), 'blue', <Layers className="h-5 w-5" />),
+        tile(t('reports.productsCount', 'Products'), count('product_count'), t('nav.deliveryReceipts', 'Delivery receipts'), 'slate', <Package className="h-5 w-5" />),
+        tile(t('reports.total', 'Total'), money('total_cents'), t('nav.deliveryReceipts', 'Delivery receipts'), 'green', <Banknote className="h-5 w-5" />),
+      ]
   }
 }
 
@@ -626,7 +681,9 @@ async function exportPayload(
     columns: cols.map((col) => ({ header: col.header, format: col.format ?? 'text', sum: col.sum })),
     rows: rows.map((row) => cols.map((col) => col.excel(row))),
     extra:
-      data.series && data.series.length > 0
+      kind === 'receipts'
+        ? [productSheet(currency, data)]
+        : data.series && data.series.length > 0
         ? [
             {
               name: t('reports.byDay', 'Sales by day'),
@@ -644,6 +701,15 @@ async function exportPayload(
           ]
         : undefined,
   })
+}
+
+function productSheet(currency: string, data: ReportPayload) {
+  const cols = receiptProductColumns(currency, data)
+  return {
+    name: t('reports.productsCount', 'Products'),
+    columns: cols.map((col) => ({ header: col.header, format: col.format ?? ('text' as const) })),
+    rows: (data.products ?? []).map((row) => cols.map((col) => col.excel(row))),
+  }
 }
 
 /* ---------------------------------------------------------------------------------------------- the PDF of a report */
@@ -687,6 +753,11 @@ const COMPARE: Partial<Record<ReportKind, CompareMetric[]>> = {
     { key: 'received_cents', label: () => t('payments.received', 'Received'), money: true },
     { key: 'outstanding_cents', label: () => t('payments.outstanding', 'Outstanding'), money: true, goodWhen: 'down' },
     { key: 'document_count', label: () => t('reports.documents', 'Documents'), money: false },
+  ],
+  receipts: [
+    { key: 'total_cents', label: () => t('reports.total', 'Total'), money: true },
+    { key: 'document_count', label: () => t('reports.documents', 'Documents'), money: false },
+    { key: 'quantity', label: () => t('reports.units', 'Units'), money: false },
   ],
   clients: [
     { key: 'total_cents', label: () => t('reports.total', 'Total'), money: true },
@@ -785,6 +856,10 @@ function pdfCharts(
     charts.push({ type: 'rank', title: t('reports.topByQuantity', 'Top products by units sold'), money: false, color: brand, items: ranking(rows.map((row) => ({ name: asText(row.article), value: asNumber(row.quantity) }))) })
     charts.push({ type: 'rank', title: t('reports.topByRevenue', 'Top products by revenue'), money: true, color: second, items: ranking(rows.map((row) => ({ name: asText(row.article), value: asNumber(row.total_cents) }))) })
     charts.push({ type: 'donut', title: t('reports.share', 'Share'), money: true, center: formatCents(data.kpis.total_cents ?? 0, currentCurrency), slices: slices(rows.map((row) => ({ name: asText(row.article), value: asNumber(row.total_cents) }))) })
+  } else if (kind === 'receipts') {
+    const rows = data.products ?? []
+    charts.push({ type: 'rank', title: t('reports.topByQuantity', 'Top products by units sold'), money: false, color: brand, items: ranking(rows.map((row) => ({ name: asText(row.article), value: asNumber(row.quantity) }))) })
+    charts.push({ type: 'rank', title: t('reports.topByRevenue', 'Top products by revenue'), money: true, color: second, items: ranking(rows.map((row) => ({ name: asText(row.article), value: asNumber(row.total_cents) }))) })
   } else if (kind === 'outstanding') {
     const rows = data.rows ?? []
     const aging = agingBuckets(rows.map((row) => ({ days: asNumber(row.days_open), cents: asNumber(row.outstanding_cents) })))
@@ -837,6 +912,18 @@ function pdfCharts(
   return charts.filter((chart) => chart.type !== 'donut' || chart.slices.length > 0).filter((chart) => chart.type !== 'rank' || chart.items.length > 0)
 }
 
+/** The last line of a PDF table: the columns marked `sum`, added up. */
+function totalRow(cols: Column[], rows: ReportRow[], currency: string): string[] | undefined {
+  if (!cols.some((col) => col.sum)) return undefined
+  return cols.map((col, index) => {
+    if (index === 0) return t('reports.total', 'Total')
+    if (!col.sum) return ''
+    // money cells are in euros here, counts are plain numbers
+    const sum = rows.reduce((acc, row) => acc + (Number(col.excel(row)) || 0), 0)
+    return col.format === 'money' ? formatCents(Math.round(sum * 100), currency) : String(Math.round(sum * 100) / 100)
+  })
+}
+
 /** The report as a PDF: headline numbers, the change against the period before, analytical charts and the full table. */
 async function exportPdfPayload(
   kind: ReportKind,
@@ -883,14 +970,19 @@ async function exportPdfPayload(
 
   // Products sold is the full list, exactly as in the Excel file: every product, no cap.
   const capped = kind === 'sold' ? rows : rows.slice(0, 400)
-  const total = cols.some((col) => col.sum)
-    ? cols.map((col, index) => {
-        if (index === 0) return t('reports.total', 'Total')
-        if (!col.sum) return ''
-        const sum = capped.reduce((acc, row) => acc + (Number(col.excel(row)) || 0), 0)
-        return col.format === 'money' ? formatCents(Math.round(sum * 100), currency) : String(Math.round(sum * 100) / 100)
-      })
-    : undefined
+  const total = totalRow(cols, capped, currency)
+
+  const moreTables: PdfTable[] = []
+  if (kind === 'receipts') {
+    const productCols = receiptProductColumns(currency, data)
+    const products = data.products ?? []
+    moreTables.push({
+      title: t('reports.productsCount', 'Products'),
+      columns: productCols.map((col) => ({ header: col.header, align: col.align === 'right' ? 'right' : 'left' })),
+      rows: products.map((row) => productCols.map((col) => col.text(row))),
+      total: totalRow(productCols, products, currency),
+    })
+  }
 
   const spec: ReportPdfSpec = {
     filename: downloadFileName([companyName, kindLabel(kind), period === 'custom' && dated ? `${from} ${t('reportDownloads.to', 'to')} ${to}` : fileDate()], 'pdf'),
@@ -912,6 +1004,7 @@ async function exportPdfPayload(
       rows: capped.map((row) => cols.map((col) => col.text(row))),
       total,
     },
+    moreTables,
     footer: `${companyName} · ${kindLabel(kind)}`,
     pageLabel: (page, count) => t('reports.pageOf', 'Page {page} of {total}', { page, total: count }),
   }
@@ -1097,7 +1190,9 @@ function Reports() {
                 : t('reports.snapshotEmpty', 'Nothing to show yet')
             }
             description={
-              dated
+              kind === 'receipts'
+                ? t('reports.emptyReceipts', 'Try another date range, or issue a delivery receipt.')
+                : dated
                 ? t('reports.emptyBody', 'Try another date range, or issue invoices, delivery notes or proformas.')
                 : t('reports.snapshotEmptyBody', 'Add products and suppliers, then come back.')
             }
@@ -1113,59 +1208,72 @@ function Reports() {
 
           <Charts kind={kind} data={data} currency={currency} />
 
-          <div className="overflow-hidden rounded-2xl border border-line/80 bg-card shadow-xs">
-            <div className="hidden overflow-x-auto md:block">
-              <div className="flex items-center bg-slate-50 px-4 py-2.5 text-[11px] font-semibold tracking-[0.08em] text-slate-500 uppercase">
-                <span className="w-8 shrink-0">{t('reports.rank', '#')}</span>
-                {cols.map((col) => (
-                  <span key={col.key} className={cn('min-w-0 flex-1', col.align === 'right' ? 'text-right' : '')}>
-                    {col.header}
-                  </span>
-                ))}
-              </div>
-              {rows.map((row, index) => (
-                <div key={index} className="flex items-center border-t border-slate-100 px-4 py-3 text-[13px]">
-                  <span className="w-8 shrink-0 text-[11px] text-slate-400">{index + 1}</span>
-                  {cols.map((col) => (
-                    <span
-                      key={col.key}
-                      className={cn(
-                        'min-w-0 flex-1',
-                        col.align === 'right' ? 'text-right' : 'text-slate-800',
-                      )}
-                    >
-                      {col.node ? col.node(row) : col.text(row)}
-                    </span>
-                  ))}
-                </div>
-              ))}
-            </div>
+          <ReportTable cols={cols} rows={rows} />
 
-            <div className="divide-y divide-slate-100 md:hidden">
-              {rows.map((row, index) => (
-                <div key={index} className="flex flex-col gap-1.5 p-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="truncate text-[13px] font-semibold text-slate-900">
-                      {cols[0]?.node ? cols[0].node(row) : cols[0] ? cols[0].text(row) : ''}
-                    </p>
-                    <span className="text-[11px] text-slate-400">{index + 1}</span>
-                  </div>
-                  {cols.slice(1).map((col) =>
-                    col.hideOnPhone ? null : (
-                      <p key={col.key} className="flex items-center justify-between gap-3 text-[12px] text-slate-500">
-                        <span>{col.header}</span>
-                        <span className={cn(col.align === 'right' ? 'text-slate-800' : 'text-slate-800')}>
-                          {col.node ? col.node(row) : col.text(row)}
-                        </span>
-                      </p>
-                    ),
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
+          {kind === 'receipts' ? (
+            <section className="flex flex-col gap-2">
+              <h2 className="text-[11px] font-semibold tracking-[0.08em] text-slate-500 uppercase">{t('reports.productsCount', 'Products')}</h2>
+              <ReportTable cols={receiptProductColumns(currency, data)} rows={data.products ?? []} />
+            </section>
+          ) : null}
         </>
       ) : null}
+    </div>
+  )
+}
+
+function ReportTable({ cols, rows }: { cols: Column[]; rows: ReportRow[] }) {
+  return (
+    <div className="overflow-hidden rounded-2xl border border-line/80 bg-card shadow-xs">
+      <div className="hidden overflow-x-auto md:block">
+        <div className="flex items-center bg-slate-50 px-4 py-2.5 text-[11px] font-semibold tracking-[0.08em] text-slate-500 uppercase">
+          <span className="w-8 shrink-0">{t('reports.rank', '#')}</span>
+          {cols.map((col) => (
+            <span key={col.key} className={cn('min-w-0 flex-1', col.align === 'right' ? 'text-right' : '')}>
+              {col.header}
+            </span>
+          ))}
+        </div>
+        {rows.map((row, index) => (
+          <div key={index} className="flex items-center border-t border-slate-100 px-4 py-3 text-[13px]">
+            <span className="w-8 shrink-0 text-[11px] text-slate-400">{index + 1}</span>
+            {cols.map((col) => (
+              <span
+                key={col.key}
+                className={cn(
+                  'min-w-0 flex-1',
+                  col.align === 'right' ? 'text-right' : 'text-slate-800',
+                )}
+              >
+                {col.node ? col.node(row) : col.text(row)}
+              </span>
+            ))}
+          </div>
+        ))}
+      </div>
+
+      <div className="divide-y divide-slate-100 md:hidden">
+        {rows.map((row, index) => (
+          <div key={index} className="flex flex-col gap-1.5 p-4">
+            <div className="flex items-center justify-between gap-3">
+              <p className="truncate text-[13px] font-semibold text-slate-900">
+                {cols[0]?.node ? cols[0].node(row) : cols[0] ? cols[0].text(row) : ''}
+              </p>
+              <span className="text-[11px] text-slate-400">{index + 1}</span>
+            </div>
+            {cols.slice(1).map((col) =>
+              col.hideOnPhone ? null : (
+                <p key={col.key} className="flex items-center justify-between gap-3 text-[12px] text-slate-500">
+                  <span>{col.header}</span>
+                  <span className={cn(col.align === 'right' ? 'text-slate-800' : 'text-slate-800')}>
+                    {col.node ? col.node(row) : col.text(row)}
+                  </span>
+                </p>
+              ),
+            )}
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
@@ -1351,6 +1459,31 @@ function Charts({ kind, data, currency }: { kind: ReportKind; data: ReportPayloa
         {typeSlices.length > 0 ? (
           <ChartCard className="lg:col-span-2" title={t('reports.stockBands', 'Stock health')}>
             <Donut data={typeSlices} currency={currency} center={String(data.kpis.product_count ?? 0)} />
+          </ChartCard>
+        ) : null}
+      </div>
+    )
+  }
+
+  if (kind === 'receipts') {
+    const products = (data.products ?? []).slice(0, 8)
+    const bars = products.map((row) => ({ name: asText(row.article), count: asNumber(row.quantity), fill: 'var(--app-primary)' }))
+    const slices: Slice[] = products.map((row, index) => ({
+      name: asText(row.article),
+      value: asNumber(row.total_cents),
+      color: CHART[index % CHART.length]!,
+      money: true,
+    })).filter((slice) => slice.value > 0)
+    return (
+      <div className="grid gap-4 lg:grid-cols-5">
+        {bars.length > 0 ? (
+          <ChartCard className="lg:col-span-3" title={t('reports.topProducts', 'Top products')}>
+            <CountBars data={bars} />
+          </ChartCard>
+        ) : null}
+        {slices.length > 0 ? (
+          <ChartCard className="lg:col-span-2" title={t('reports.share', 'Share')}>
+            <Donut data={slices} currency={currency} center={formatCents(data.kpis.total_cents ?? 0, currency)} />
           </ChartCard>
         ) : null}
       </div>

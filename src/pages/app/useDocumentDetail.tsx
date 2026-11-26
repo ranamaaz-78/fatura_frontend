@@ -58,6 +58,8 @@ export function useDocumentDetail() {
   const documentId = Number(id)
   const [exporting, setExporting] = useState<'png' | 'pdf' | null>(null)
   const [methodOpen, setMethodOpen] = useState(false)
+  // Correcting the method of a document already paid (cash picked, but it was a bank transfer).
+  const [changeMethodOpen, setChangeMethodOpen] = useState(false)
   const [settleOpen, setSettleOpen] = useState(false)
   const [returnOpen, setReturnOpen] = useState(false)
   const [invoicing, setInvoicing] = useState<SaleSettlement | null>(null)
@@ -119,6 +121,20 @@ export function useDocumentDetail() {
       if (celebratesPayment(document.type) && document.payment_status === 'paid' && !isSaleVoided(document)) {
         startCelebrate()
       }
+    },
+    onError: (error) => push({ tone: 'danger', title: getErrorMessage(error) }),
+  })
+
+  /** The same document stays paid; only how it was paid changes. No celebration: nothing new was paid. */
+  const changingMethod = useMutation({
+    mutationFn: (methodId: number) => updateSalePayment(documentId, 'paid', methodId),
+    onSuccess: (document) => {
+      setChangeMethodOpen(false)
+      queryClient.setQueryData(['app', 'sale', documentId], document)
+      void queryClient.invalidateQueries({ queryKey: ['app', 'sales'] })
+      void queryClient.invalidateQueries({ queryKey: ['app', 'dashboard'] })
+      void queryClient.invalidateQueries({ queryKey: ['app', 'payments'] })
+      push({ tone: 'success', title: t('sales.methodChanged', 'Payment method changed.') })
     },
     onError: (error) => push({ tone: 'danger', title: getErrorMessage(error) }),
   })
@@ -286,6 +302,9 @@ export function useDocumentDetail() {
     setExporting,
     methodOpen,
     setMethodOpen,
+    changeMethodOpen,
+    setChangeMethodOpen,
+    changingMethod,
     settleOpen,
     setSettleOpen,
     returnOpen,
@@ -342,6 +361,7 @@ export function documentFlags(document: SaleDocument, can: (needed: string) => b
   // A quotation can be edited while it is open, and a delivery note while it is unpaid; the rest are paid, returned or voided, not changed.
   const canUpdate = !deleted && can(docPermission(document.type, 'update'))
   const canPay = !deleted && can(docPermission(document.type, 'pay'))
+  const canChangeMethod = canPay && rules.settlesPayment && !voided && !document.is_draft && document.payment_status === 'paid'
   const quoteExpired = document.type === 'quotation' && !isSaleConverted(document) && isSaleExpired(document)
   const openQuote = !deleted && document.type === 'quotation' && !isSaleConverted(document) && !quoteExpired
   const quoteDays = openQuote && document.expires_at ? quoteDaysLeft(document.expires_at) : null
@@ -349,7 +369,7 @@ export function documentFlags(document: SaleDocument, can: (needed: string) => b
   const settlements = document.settlements ?? []
   const returns = document.returns ?? []
 
-  return { issued, rules, display, voided, deleted, canDelete, deleteBlocked, mayDelete, canRestore, canVoid, canUpdate, canPay, quoteExpired, openQuote, quoteDays, canSettle, settlements, returns }
+  return { issued, rules, display, voided, deleted, canDelete, deleteBlocked, mayDelete, canRestore, canVoid, canUpdate, canPay, canChangeMethod, quoteExpired, openQuote, quoteDays, canSettle, settlements, returns }
 }
 
 /** Every dialog the document screen opens. Both the website and the Windows app show these same ones. */
@@ -359,6 +379,9 @@ export function DocumentDialogs({ detail, document }: { detail: DocumentDetail; 
     company,
     methodOpen,
     setMethodOpen,
+    changeMethodOpen,
+    setChangeMethodOpen,
+    changingMethod,
     settleOpen,
     setSettleOpen,
     returnOpen,
@@ -398,6 +421,16 @@ export function DocumentDialogs({ detail, document }: { detail: DocumentDetail; 
           loading={payment.isPending}
           onClose={() => setMethodOpen(false)}
           onConfirm={(methodId) => payment.mutate({ status: 'paid', methodId })}
+        />
+        <RecordPaymentModal
+          open={changeMethodOpen}
+          loading={changingMethod.isPending}
+          title={t('sales.changeMethodTitle', 'Change payment method')}
+          subtitle={t('sales.changeMethodHint', 'Pick how it was really paid. The document stays paid.')}
+          confirmLabel={t('sales.saveMethod', 'Save method')}
+          initialMethodId={document.payment_method_id}
+          onClose={() => setChangeMethodOpen(false)}
+          onConfirm={(methodId) => changingMethod.mutate(methodId)}
         />
         <SettleProformaModal
           open={settleOpen}

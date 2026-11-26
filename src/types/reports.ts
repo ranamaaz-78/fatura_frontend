@@ -10,6 +10,7 @@ export type ReportKind =
   | 'stock'
   | 'clients'
   | 'suppliers'
+  | 'receipts'
 
 export type ReportKpis = Record<string, number>
 
@@ -43,6 +44,8 @@ export type ReportPayload = {
   breakdown?: ReportBreakdownRow[]
   status?: ReportStatusRow[]
   rows?: ReportRow[]
+  /** Delivery receipts report: what the listed receipts handed over, one line per product. */
+  products?: ReportRow[]
 }
 
 export type ReportParams = {
@@ -56,6 +59,7 @@ export const REPORT_KINDS: ReportKind[] = [
   'tax',
   'products',
   'sold',
+  'receipts',
   'outstanding',
   'payments',
   'stock',

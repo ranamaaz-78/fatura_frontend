@@ -68,7 +68,7 @@ export default function DeskDocumentDetail() {
   }
 
   const flags = documentFlags(document, can)
-  const { rules, display, voided, deleted, canDelete, deleteBlocked, mayDelete, canRestore, canVoid, canUpdate, canPay, quoteExpired, openQuote, quoteDays, canSettle, settlements, returns } = flags
+  const { rules, display, voided, deleted, canDelete, deleteBlocked, mayDelete, canRestore, canVoid, canUpdate, canPay, canChangeMethod, quoteExpired, openQuote, quoteDays, canSettle, settlements, returns } = flags
   const identity = identityFor(document.type)
   const Icon = identity.icon
   const credit = document.type === 'abono'
@@ -190,9 +190,21 @@ export default function DeskDocumentDetail() {
                 <h1 className="desk-num text-[26px] leading-tight font-extrabold tracking-[-0.03em] text-ink">{document.number}</h1>
                 {showsStatus ? <Pill tone={statusTone(display)}>{paymentLabel(display)}</Pill> : null}
                 {!voided && document.payment_status === 'paid' && document.payment_method ? (
-                  <Pill tone="neutral" dot={false}>
-                    {document.payment_method.name}
-                  </Pill>
+                  canChangeMethod ? (
+                    <button
+                      type="button"
+                      onClick={() => detail.setChangeMethodOpen(true)}
+                      title={t('sales.changeMethodTitle', 'Change payment method')}
+                      className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-line bg-elevated px-3 py-0.5 text-xs font-semibold text-ink hover:bg-card"
+                    >
+                      {document.payment_method.name}
+                      <Pencil className="h-3 w-3" />
+                    </button>
+                  ) : (
+                    <Pill tone="neutral" dot={false}>
+                      {document.payment_method.name}
+                    </Pill>
+                  )
                 ) : null}
                 {quoteExpired ? <Pill tone="voided">{t('sales.expired', 'Expired')}</Pill> : null}
               </div>

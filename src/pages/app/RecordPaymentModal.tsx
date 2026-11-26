@@ -13,6 +13,8 @@ type RecordPaymentModalProps = {
   title?: string
   subtitle?: string
   confirmLabel?: string
+  /** The method already on the document (when correcting it): it opens selected. */
+  initialMethodId?: number | null
   onClose: () => void
   onConfirm: (methodId: number) => void
 }
@@ -23,6 +25,7 @@ export function RecordPaymentModal({
   title,
   subtitle,
   confirmLabel,
+  initialMethodId = null,
   onClose,
   onConfirm,
 }: RecordPaymentModalProps) {
@@ -39,8 +42,10 @@ export function RecordPaymentModal({
       return
     }
     const rows = methods.data ?? []
-    setSelected(rows.length === 1 ? rows[0]!.id : null)
-  }, [open, methods.data])
+    // The current method opens selected (if it is still active); a single method is picked on its own.
+    const current = rows.some((row) => row.id === initialMethodId) ? initialMethodId : null
+    setSelected(current ?? (rows.length === 1 ? rows[0]!.id : null))
+  }, [open, methods.data, initialMethodId])
 
   const rows = methods.data ?? []
 

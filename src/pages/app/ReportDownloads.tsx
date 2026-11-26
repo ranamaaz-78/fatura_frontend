@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import {
   CalendarDays,
+  ClipboardList,
   ChevronLeft,
   ChevronRight,
   Download,
@@ -40,6 +41,7 @@ const DOC_TYPES: { type: DocType; icon: LucideIcon; label: () => string }[] = [
   { type: 'factura', icon: Receipt, label: () => t('reportDownloads.invoices', 'Invoices') },
   { type: 'proforma', icon: FileCheck2, label: () => t('reportDownloads.proformas', 'Proformas') },
   { type: 'albaran', icon: Truck, label: () => t('reportDownloads.deliveryNotes', 'Delivery notes') },
+  { type: 'nota_entrega', icon: ClipboardList, label: () => t('nav.deliveryReceipts', 'Delivery receipts') },
 ]
 
 const card = 'rounded-2xl border border-line/80 bg-card shadow-xs'
@@ -196,7 +198,7 @@ function DocumentsTab({ types }: { types: DocType[] }) {
     <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
       <div className={cn(card, 'flex flex-col gap-7 p-6 lg:col-span-7')}>
         <Step number={1} title={t('reportDownloads.stepType', 'Choose the documents')}>
-          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
             {DOC_TYPES.filter((option) => types.includes(option.type)).map((option) => (
               <Choice
                 key={option.type}

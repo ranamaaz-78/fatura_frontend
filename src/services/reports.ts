@@ -23,7 +23,7 @@ export type ReportDocumentList = {
 }
 
 export type ReportDocumentParams = {
-  type: 'factura' | 'proforma' | 'albaran'
+  type: 'factura' | 'proforma' | 'albaran' | 'nota_entrega'
   from: string
   to: string
   include_voided?: boolean
